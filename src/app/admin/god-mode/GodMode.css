@@ -1,0 +1,185 @@
+/* GodMode.css - Premium Administration Interface */
+
+:root {
+  --admin-gold: #FFD700;
+  --admin-gold-glow: rgba(255, 215, 0, 0.3);
+  --admin-dark: #111;
+  --admin-dark-glass: rgba(17, 17, 17, 0.85);
+  --bg-frost: rgba(255, 255, 255, 0.7);
+  --border-glass: rgba(255, 255, 255, 0.3);
+}
+
+.god-mode-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding-bottom: 100px; /* Space for bottom nav */
+}
+
+.god-mode-header {
+  padding: 40px 0 20px;
+}
+
+.god-mode-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: 38px;
+  color: var(--admin-dark);
+  letter-spacing: -1px;
+}
+
+/* GLASS PANELS */
+.glass-panel {
+  background: var(--bg-frost);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 28px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+  padding: 30px;
+  margin-bottom: 24px;
+}
+
+/* DASHBOARD CONTROL BAR */
+.control-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* MODERN TABLES */
+.modern-table-container {
+  border-radius: 28px;
+  overflow-x: auto; /* ENABLES HORIZONTAL SCROLLING */
+  overflow-y: hidden;
+  border: 1px solid rgba(0,0,0,0.05);
+  background: #fff;
+}
+
+.modern-table {
+  min-width: 1000px; /* ENSURES ALL COLUMNS HAVE SPACE */
+  border-collapse: collapse;
+}
+
+.modern-table th {
+  background: #f1f3f5 !important;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  padding: 18px !important;
+}
+
+.modern-table td {
+  padding: 16px 18px !important;
+  font-family: 'Sora', sans-serif;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid rgba(0,0,0,0.03) !important;
+}
+
+.modern-table tr:hover td {
+  background: rgba(0,0,0,0.01) !important;
+}
+
+/* TABS */
+.admin-tabs .MuiTabs-indicator {
+  background-color: var(--admin-dark);
+  height: 3px;
+  border-radius: 3px;
+}
+
+.admin-tabs .MuiTab-root {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  text-transform: none;
+  font-size: 15px;
+  color: #999;
+}
+
+.admin-tabs .Mui-selected {
+  color: var(--admin-dark) !important;
+}
+
+/* MODAL MODERNIZATION */
+.glass-modal-overlay {
+  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.4);
+}
+
+.glass-modal-content {
+  background: #fff;
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 700px;
+  max-height: 58vh; /* STRICT VIEWPORT CONSTRAINT */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.modal-header {
+  padding: 24px 30px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 30px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 20px 30px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* JSON EDITOR */
+.json-editor {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #fafafa !important;
+  border: 1px solid #eee !important;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* SCROLLBARS */
+.modal-body::-webkit-scrollbar,
+.modern-table-container::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-thumb,
+.modern-table-container::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
+}
+.modal-body::-webkit-scrollbar-track,
+.modern-table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (max-width: 600px) {
+  .god-mode-title {
+    font-size: 28px;
+  }
+  .glass-panel {
+    padding: 20px;
+  }
+}
