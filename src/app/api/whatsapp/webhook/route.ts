@@ -24,9 +24,14 @@ export async function POST(req: NextRequest) {
 
         // Process in background (detach from response)
         (async () => {
-            await dbConnect();
-            
-            for (const msg of messages) {
+            try {
+                if (!process.env.MONGO_URI) {
+                    console.error("❌ MONGO_URI is missing in Vercel Environment Variables");
+                    return;
+                }
+                await dbConnect();
+                
+                for (const msg of messages) {
                 // 1. Only process text messages
                 if (msg.type !== 'text') continue;
                 
@@ -62,16 +67,19 @@ export async function POST(req: NextRequest) {
 
                     // 5. Trigger Notifications
                     await notifyPharmacists(newRequest);
-                } else {
-                    console.log("❌ AI rejected message as non-request.");
                 }
             }
-        })().catch(err => console.error("🔥 Webhook Background Error:", err));
+        } catch (err) {
+            console.error("🔥 Webhook Background Processing Error:", err);
+        }
+    })().catch(err => {
+        console.error("🔥 Webhook Uncaught Background Error:", err);
+    });
 
-        return response;
+    return response;
 
-    } catch (error) {
-        console.error("🔥 Webhook Fatal Error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    }
+} catch (error) {
+    console.error("🔥 Webhook Fatal Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+}
 }
