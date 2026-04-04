@@ -5,11 +5,12 @@ import { classifyWhatsAppMessage } from "@/lib/whatsapp-classifier";
 import { notifyPharmacists } from "@/lib/whatsapp-notifier";
 
 // Keyword filter to save AI costs (regex)
-const DRUG_KEYWORDS = /drug search|who has|looking for|urgently needed|available|where can i get|pls who has|anybody has|who get|searching for|qty|strength|location:|loc:/i;
+const DRUG_KEYWORDS = /drug search|who has|looking for|urgently needed|in need of|needed|available|where can i get|pls who has|anybody has|who get|searching for|qty|strength|location:|loc:/i;
 const NOISE_KEYWORDS = /meeting|lecture|dues|election|football|chelsea|arsenal|politics/i;
 
 console.log("🚀 [Whapi Webhook] Route Initialized");
 
+// Deployment Trace: Clean Build 2026-04-04
 export async function POST(req: NextRequest) {
     console.log("📥 [Whapi Webhook] POST request received");
     try {
