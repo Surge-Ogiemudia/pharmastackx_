@@ -47,7 +47,12 @@ export async function notifyPharmacists(request: any) {
     // 3. Send Admin WhatsApp Alert (Manual Oversight)
     if (WHAPI_TOKEN && ADMIN_NUMBER) {
         try {
-            const waMessage = `🔔 *New Request Intercepted*\n\n💊 *Drug:* ${medicineNames}\n📍 *Loc:* ${location || 'Unknown'}\n\nReview & Notify: psx.ng/admin/requests/${_id}`;
+            const platformId = request.platform_request_id;
+            const link = platformId 
+                ? `https://www.pharmastackx.com/admin/requests/${platformId}`
+                : `https://www.pharmastackx.com/admin/requests/${_id}`;
+
+            const waMessage = `🔔 *New Request Intercepted*\n\n💊 *Drug:* ${medicineNames}\n📍 *Loc:* ${location || 'Unknown'}\n\nReview & Notify: ${link}`;
             
             await axios.post(`https://gate.whapi.cloud/messages/text`, {
                 typing_time: 0,
