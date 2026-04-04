@@ -40,10 +40,10 @@ Extract and return ONLY this JSON:
 If it is NOT a drug request (e.g., general chat, football talk, vacancies, or adverts), return only: {"isDrugRequest": false}.
 `;
 
-export async function classifyWhatsAppMessage(text: string) {
+export async function classifyWhatsAppMessage(text: string, chat_name?: string) {
     try {
         const result = await model.generateContent([
-            { text: SYSTEM_PROMPT },
+            { text: SYSTEM_PROMPT + `\n\nCONTEXT:\n- WhatsApp Group Name: "${chat_name || 'Unknown'}"\n- Rule: If the message has no location, infer it from the Group Name (e.g., "Lagos Pharm" -> "Lagos").` },
             { text: `Analyze this message: "${text}"` }
         ]);
         
