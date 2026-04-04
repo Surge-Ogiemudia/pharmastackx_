@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
   // Minimal Bot Protection: block known aggressive scrapers that bypass CDN caching
   const botList = [/bot/i, /scraper/i, /crawl/i, /spider/i];
   const isBot = botList.some(r => r.test(userAgent));
-  if (isBot && pathname.startsWith('/api/')) {
+  if (isBot && pathname.startsWith('/api/') && pathname !== '/api/whatsapp/webhook') {
     console.warn(`[Middleware] Blocked suspected bot: ${userAgent}`);
     return new NextResponse('Access Denied', { status: 403 });
   }
