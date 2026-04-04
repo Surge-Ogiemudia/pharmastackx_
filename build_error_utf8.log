@@ -1,0 +1,87 @@
+﻿
+> pharmastackx@0.1.0 build
+> next build
+
+node.exe : [baseline-brows
+er-mapping] The data in 
+this module is over two 
+months old.  To ensure 
+accurate Baseline data, 
+please update: `npm i base
+line-browser-mapping@lates
+t -D`
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: ([  
+  baseline-brows...ping   
+ @latest -D`:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+[baseline-browser-mapping]
+ The data in this module 
+is over two months old.  
+To ensure accurate 
+Baseline data, please 
+update: `npm i baseline-br
+owser-mapping@latest -D`
+ ΓÜá Warning: Next.js 
+inferred your workspace 
+root, but it may not be 
+correct.
+ We detected multiple 
+lockfiles and selected 
+the directory of C:\Users\
+HP\package-lock.json as 
+the root directory.
+ To silence this warning, 
+set `turbopack.root` in 
+your Next.js config, or 
+consider removing one of 
+the lockfiles if it's not 
+needed.
+   See https://nextjs.org/
+docs/app/api-reference/con
+fig/next-config-js/turbopa
+ck#root-directory for 
+more information.
+ Detected additional 
+lockfiles: 
+   * C:\Users\HP\Desktop\z
+ipped pharmastackx\package
+-lock.json
+
+   Γû▓ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.local
+
+ ΓÜá The "middleware" 
+file convention is 
+deprecated. Please use 
+"proxy" instead. Learn 
+more: https://nextjs.org/d
+ocs/messages/middleware-to
+-proxy
+   Creating an optimized production build ...
+[baseline-browser-mapping]
+ The data in this module 
+is over two months old.  
+To ensure accurate 
+Baseline data, please 
+update: `npm i baseline-br
+owser-mapping@latest -D`
+[baseline-browser-mapping]
+ The data in this module 
+is over two months old.  
+To ensure accurate 
+Baseline data, please 
+update: `npm i baseline-br
+owser-mapping@latest -D`
