@@ -17,6 +17,7 @@ export interface IWhatsAppRequest extends Document {
     status: 'open' | 'fulfilled' | 'expired';
     confidence: number;
     notifiedPharmacists: mongoose.Types.ObjectId[];
+    platform_request_id?: mongoose.Types.ObjectId;
     createdAt: Date;
     expiresAt: Date;
 }
@@ -38,6 +39,7 @@ const WhatsAppRequestSchema: Schema = new Schema({
     status: { type: String, enum: ['open', 'fulfilled', 'expired'], default: 'open' },
     confidence: { type: Number, default: 0 },
     notifiedPharmacists: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    platform_request_id: { type: Schema.Types.ObjectId, ref: 'Request' },
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true }
 }, {
