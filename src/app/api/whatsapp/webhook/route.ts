@@ -14,7 +14,14 @@ console.log("🚀 [Whapi Webhook] Route Initialized");
 export async function POST(req: NextRequest) {
     console.log("📥 [Whapi Webhook] POST request received");
     try {
-        const payload = await req.json();
+    let payload: any;
+    try {
+        payload = await req.json();
+    } catch (e) {
+        const raw = await req.text();
+        console.error("❌ JSON Parse Failed. Raw Body:", raw);
+        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
         
         // Whapi sends messages in messages array
         const messages = payload.messages || [];
