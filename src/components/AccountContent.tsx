@@ -10,6 +10,7 @@ import FileUpload from './FileUpload';
 const SubscriptionContent = dynamic(() => import('./SubscriptionContent'), { ssr: false });
 const StoreManagement = dynamic(() => import('../app/components/StoreManagement'), { ssr: false });
 const MedicineRestock = dynamic(() => import('./MedicineRestock'), { ssr: false });
+const WhatsAppManagement = dynamic(() => import('./WhatsAppManagement'), { ssr: false });
 import AboutContent from './AboutContent';
 import PrivacyContent from './PrivacyContent';
 import DotCanvas from './DotCanvas';
@@ -329,7 +330,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
     const [locationEnabled, setLocationEnabled] = useState(true);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -700,7 +701,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             <span>Back</span>
                         </div>
                     )}
-                    {(profileMode === 'profile' || profileMode === 'contact' || profileMode === 'about' || profileMode === 'privacy') && (
+                    {(profileMode === 'profile' || profileMode === 'contact' || profileMode === 'about' || profileMode === 'privacy' || profileMode === 'whatsapp') && (
                         <div className="back-btn-pill" onClick={() => setProfileMode('list')}>
                             <ArrowBack style={{ fontSize: '16px' }} />
                             <span>Back</span>
@@ -825,6 +826,12 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         {profileMode === 'restock' && (
                             <Box sx={{ mt: 2 }}>
                                 {sessionUser && <MedicineRestock onBack={() => setProfileMode('list')} userId={(sessionUser as any)._id || sessionUser.id} />}
+                            </Box>
+                        )}
+
+                        {profileMode === 'whatsapp' && (
+                            <Box sx={{ mt: 2 }}>
+                                <WhatsAppManagement />
                             </Box>
                         )}
 
@@ -959,6 +966,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                             <div className="profile-row-action" onClick={() => router.push('/admin/god-mode')}>
                                                 <VpnKey style={{ color: 'var(--primary-green)' }} />
                                                 <span className="profile-row-label">God Mode Terminal</span>
+                                                <span className="profile-chevron">›</span>
+                                            </div>
+                                            <div className="profile-row-action" onClick={() => setProfileMode('whatsapp')}>
+                                                <WhatsAppIcon style={{ color: '#25D366' }} />
+                                                <span className="profile-row-label">WhatsApp Management</span>
                                                 <span className="profile-chevron">›</span>
                                             </div>
                                             <div className="profile-row-action" onClick={() => setProfileMode('consultations')}>
