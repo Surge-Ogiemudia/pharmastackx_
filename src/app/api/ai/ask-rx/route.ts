@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
       parts: [{ text: m.text }]
     }));
 
-    // Using gemini-2.5-flash based on availability in listModels
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Using gemma-4-26b-a4b-it based on availability
+    const model = genAI.getGenerativeModel({ model: "gemma-4-26b-a4b-it" });
 
     // Ensure the chat is initialized correctly with the system prompt as the first message if history is empty
     let chatHistory = history;

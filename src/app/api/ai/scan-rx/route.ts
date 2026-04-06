@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
+  model: "gemma-4-26b-a4b-it",
   generationConfig: { responseMimeType: "application/json" }
 });
 
@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
     // Handle base64 data (strip prefix if present)
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
 
-    // Use gemini-2.5-flash for consistency with other working routes in this project
+    // Use gemma-4-26b-a4b-it for consistency
     const generationModel = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemma-4-26b-a4b-it",
       generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -55,19 +55,36 @@ export async function POST(req: NextRequest) {
     const text = response.text();
     console.log("📸 [ScanRX API] AI Response text length:", text.length);
 
-    // Robust JSON parsing with fallback cleanup
+    // Robust JSON parsing with balanced-brace extraction
     let medicines;
     try {
-      medicines = JSON.parse(text);
-    } catch {
-      console.warn("📸 [ScanRX API] Simple JSON parse failed, attempting cleanup...");
-      const jsonString = text.replace(/```json|```/g, "").trim();
-      medicines = JSON.parse(jsonString);
+        let jsonString = text.replace(/```json|```/gi, "").trim();
+        const results: string[] = [];
+        let braceCount = 0;
+        let start = -1;
+        for (let i = 0; i < jsonString.length; i++) {
+            if (jsonString[i] === '{') {
+                if (braceCount === 0) start = i;
+                braceCount++;
+            } else if (jsonString[i] === '}') {
+                braceCount--;
+                if (braceCount === 0 && start !== -1) {
+                    results.push(jsonString.substring(start, i + 1));
+                    start = -1;
+                }
+            }
+        }
+        const finalJson = results.length > 0 ? results[results.length - 1] : jsonString;
+        const parsed = JSON.parse(finalJson);
+        medicines = parsed.medicines || parsed; // Handle wrapping if present
+    } catch (e) {
+        console.error("📸 [ScanRX API] JSON Parse Error:", e);
+        throw new Error("Failed to parse AI response into valid JSON.");
     }
 
-    console.log("📸 [ScanRX API] Extracted medicines count:", medicines.length);
+    console.log("📸 [ScanRX API] Extracted medicines count:", Array.isArray(medicines) ? medicines.length : "N/A");
 
-    return NextResponse.json({ medicines });
+    return NextResponse.json({ medicines: Array.isArray(medicines) ? medicines : [] });
 
   } catch (error: any) {
     console.error("📸 [ScanRX API] Fatal Error:", error);

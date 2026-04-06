@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     // Handle base64 data (strip prefix if present)
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
 
-    // Use gemini-2.5-flash for consistency with other working routes in this project
+    // Use gemma-4-26b-a4b-it for consistency
     const generationModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemma-4-26b-a4b-it",
       generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -49,16 +49,33 @@ export async function POST(req: NextRequest) {
 
     const response = await result.response;
     const text = response.text();
-    console.log("📸 [ScanMed API] AI Response text:", text);
+    console.log("📸 [ScanMed API] AI Response text length:", text.length);
 
-    // Robust JSON parsing with fallback cleanup
+    // Robust JSON parsing with balanced-brace extraction
     let medicines;
     try {
-      medicines = JSON.parse(text);
-    } catch {
-      console.warn("📸 [ScanMed API] Simple JSON parse failed, attempting cleanup...");
-      const jsonString = text.replace(/```json|```/g, "").trim();
-      medicines = JSON.parse(jsonString);
+        let jsonString = text.replace(/```json|```/gi, "").trim();
+        const results: string[] = [];
+        let braceCount = 0;
+        let start = -1;
+        for (let i = 0; i < jsonString.length; i++) {
+            if (jsonString[i] === '{') {
+                if (braceCount === 0) start = i;
+                braceCount++;
+            } else if (jsonString[i] === '}') {
+                braceCount--;
+                if (braceCount === 0 && start !== -1) {
+                    results.push(jsonString.substring(start, i + 1));
+                    start = -1;
+                }
+            }
+        }
+        const finalJson = results.length > 0 ? results[results.length - 1] : jsonString;
+        const parsed = JSON.parse(finalJson);
+        medicines = parsed;
+    } catch (e) {
+        console.error("📸 [ScanMed API] JSON Parse Error:", e);
+        throw new Error("Failed to parse AI response into valid JSON.");
     }
 
     // Ensure it's returned as a single medicine in an array for compatibility with the frontend callback

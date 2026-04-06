@@ -84,14 +84,34 @@ async function enrichProduct(product: IProduct, genAI: GoogleGenerativeAI): Prom
             };
         } else {
             const generationModel = genAI.getGenerativeModel({
-                model: "gemini-2.5-flash",
+                model: "gemma-4-26b-a4b-it",
                 generationConfig: { responseMimeType: "application/json" },
             });
 
             if (matchScore >= 70) {
                 const prompt = `<RAW_INVENTORY_DATA>\n${JSON.stringify(product)}\n</RAW_INVENTORY_DATA>\n\n<DATABASE_MATCH>\n${JSON.stringify(topMatch)}\n</DATABASE_MATCH>`;
                 const result = await generationModel.generateContent([validationPrompt, prompt]);
-                const aiData = JSON.parse(result.response.text());
+                const text = result.response.text();
+                
+                // Balanced-brace extraction
+                const results: string[] = [];
+                let braceCount = 0;
+                let startPos = -1;
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === '{') {
+                        if (braceCount === 0) startPos = i;
+                        braceCount++;
+                    } else if (text[i] === '}') {
+                        braceCount--;
+                        if (braceCount === 0 && startPos !== -1) {
+                            results.push(text.substring(startPos, i + 1));
+                            startPos = -1;
+                        }
+                    }
+                }
+                const finalJson = results.length > 0 ? results[results.length - 1] : text;
+                const aiData = JSON.parse(finalJson);
+
                 updateData = {
                     itemName: aiData.cleaned_name || itemName,
                     activeIngredient: aiData.active_ingredient,
@@ -103,7 +123,27 @@ async function enrichProduct(product: IProduct, genAI: GoogleGenerativeAI): Prom
             } else {
                 const prompt = `<RAW_INVENTORY_DATA>\n${JSON.stringify(product)}\n</RAW_INVENTORY_DATA>`;
                 const result = await generationModel.generateContent([fullEnrichmentPrompt, prompt]);
-                const aiData = JSON.parse(result.response.text());
+                const text = result.response.text();
+
+                // Balanced-brace extraction
+                const results: string[] = [];
+                let braceCount = 0;
+                let startPos = -1;
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === '{') {
+                        if (braceCount === 0) startPos = i;
+                        braceCount++;
+                    } else if (text[i] === '}') {
+                        braceCount--;
+                        if (braceCount === 0 && startPos !== -1) {
+                            results.push(text.substring(startPos, i + 1));
+                            startPos = -1;
+                        }
+                    }
+                }
+                const finalJson = results.length > 0 ? results[results.length - 1] : text;
+                const aiData = JSON.parse(finalJson);
+
                 updateData = {
                     itemName: aiData.cleaned_name || itemName,
                     activeIngredient: aiData.active_ingredient,
