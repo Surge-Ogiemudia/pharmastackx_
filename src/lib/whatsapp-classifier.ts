@@ -43,6 +43,26 @@ Extract and return ONLY this JSON:
 If it is NOT a drug request (e.g., general chat, football talk, vacancies, or adverts), return only: {"isDrugRequest": false}.
 `;
 
+const IMAGE_PROMPT = `
+You are an expert pharmacist for PharmaStackX. 
+Analyze this prescription image and extract all medications. 
+Extract the following for each medicine:
+- name: The medicine's brand or generic name.
+- strength: The dose (e.g., '500mg', '10mg/5ml').
+- form: One of ["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Inhaler"].
+- quantity: The total amount prescribed (as a number).
+- unit: One of ["Strips", "Packs", "Bottles", "Vials", "Sachets", "Pieces"]. Pick the most appropriate packaging unit.
+
+Return ONLY this JSON format:
+{
+  "isDrugRequest": true,
+  "medicines": [{ "name": "string", "strength": "string", "form": "string", "quantity": number, "unit": "string" }],
+  "location": "Infer if possible from stamps or text, otherwise null",
+  "urgency": "urgent or normal",
+  "confidence": 0.0 to 1.0
+}
+`;
+
 export async function classifyWhatsAppMessage(text: string, chat_name?: string) {
     try {
         const result = await model.generateContent([
@@ -55,5 +75,30 @@ export async function classifyWhatsAppMessage(text: string, chat_name?: string) 
     } catch (error) {
         console.error("AI Classification Error:", error);
         return { isDrugRequest: false, error: "Classification failed" };
+    }
+}
+
+export async function classifyWhatsAppImage(base64Data: string, chat_name?: string) {
+    try {
+        const generationModel = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash", 
+            generationConfig: { responseMimeType: "application/json" } 
+        });
+
+        const result = await generationModel.generateContent([
+            IMAGE_PROMPT + `\n\nCONTEXT: WhatsApp Group Name: "${chat_name || 'Unknown'}"`,
+            {
+                inlineData: {
+                    data: base64Data,
+                    mimeType: "image/jpeg",
+                },
+            },
+        ]);
+
+        const responseText = result.response.text();
+        return JSON.parse(responseText);
+    } catch (error) {
+        console.error("AI Image Classification Error:", error);
+        return { isDrugRequest: false, error: "Image classification failed" };
     }
 }

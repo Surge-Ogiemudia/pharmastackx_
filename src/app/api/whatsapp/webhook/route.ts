@@ -8,7 +8,7 @@ dns.setDefaultResultOrder("ipv4first");
 import WhatsAppRequest from "@/models/WhatsAppRequest";
 import RequestModel from "@/models/Request";
 import UserModel from "@/models/User";
-import { classifyWhatsAppMessage } from "@/lib/whatsapp-classifier";
+import { classifyWhatsAppMessage, classifyWhatsAppImage } from "@/lib/whatsapp-classifier";
 import { notifyPharmacists } from "@/lib/whatsapp-notifier";
 
 // Keyword filter to save AI costs (regex)
@@ -40,18 +40,41 @@ export async function POST(req: NextRequest) {
         // 2. Process all messages synchronously so Vercel doesn't suspend the function
         try {
             for (const msg of messages) {
-                // 1. Only process text messages
-                if (msg.type !== 'text') continue;
-                
-                const rawText = msg.text?.body || "";
-                
-                // 2. Cheap Regex Filter
-                if (!DRUG_KEYWORDS.test(rawText) || NOISE_KEYWORDS.test(rawText)) {
-                    console.log("⏭️ Skipping non-drug message:", rawText.substring(0, 50));
-                    continue;
+                // 1. Determine Message Type & Content
+                let classification: any = null;
+                let rawText = "";
+                let isImage = false;
+                let mediaBase64: string | null = null;
+
+                if (msg.type === 'text') {
+                    rawText = msg.text?.body || "";
+                    // Cheap Regex Filter for text
+                    if (!DRUG_KEYWORDS.test(rawText) || NOISE_KEYWORDS.test(rawText)) {
+                        console.log("⏭️ Skipping non-drug message:", rawText.substring(0, 50));
+                        continue;
+                    }
+                } else if (msg.type === 'image' || (msg.type === 'document' && msg.document?.mime_type?.startsWith('image/'))) {
+                    isImage = true;
+                    const mediaId = msg.image?.id || msg.document?.id;
+                    if (mediaId && process.env.WHAPI_TOKEN) {
+                        try {
+                            console.log(`📸 Fetching media from Whapi: ${mediaId}`);
+                            const mediaRes = await fetch(`https://gate.whapi.cloud/media/${mediaId}`, {
+                                headers: { 'Authorization': `Bearer ${process.env.WHAPI_TOKEN}` }
+                            });
+                            if (mediaRes.ok) {
+                                const buffer = await mediaRes.arrayBuffer();
+                                mediaBase64 = Buffer.from(buffer).toString('base64');
+                            }
+                        } catch (err) {
+                            console.error("❌ Failed to fetch Whapi media:", err);
+                        }
+                    }
+                } else {
+                    continue; // Skip other types (audio, video, etc.)
                 }
 
-                // 3. Extract Group Name via Whapi API if not in payload
+                // 2. Extract Group Name via Whapi API if not in payload
                 let chatName = payload.chat_name || "WhatsApp Group";
                 if (!payload.chat_name && msg.chat_id && msg.chat_id.endsWith('@g.us')) {
                     try {
@@ -70,13 +93,17 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
-                console.log(`🤖 Classifying potential drug request in: ${chatName}...`);
-                
-                // 4. AI Classification (Gemini 2.5 Flash)
-                const classification = await classifyWhatsAppMessage(rawText, chatName);
-                
-                if (classification.isDrugRequest && classification.confidence > 0.6) {
-                    console.log("✅ Verified Drug Request. Saving to DB...");
+                // 3. AI Classification
+                if (isImage && mediaBase64) {
+                    console.log(`🤖 Classifying prescription image in: ${chatName}...`);
+                    classification = await classifyWhatsAppImage(mediaBase64, chatName);
+                } else if (!isImage && rawText) {
+                    console.log(`🤖 Classifying potential drug request in: ${chatName}...`);
+                    classification = await classifyWhatsAppMessage(rawText, chatName);
+                }
+
+                if (classification?.isDrugRequest && classification.confidence > 0.6) {
+                    console.log("✅ Verified Request. Saving to DB...");
                     
                     // 4. Create/Find WhatsApp System User
                     let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
@@ -95,7 +122,7 @@ export async function POST(req: NextRequest) {
                         user: botUser._id,
                         phoneNumber: msg.from || "WhatsApp",
                         state: classification.location || "National",
-                        requestType: 'drug-list',
+                        requestType: isImage ? 'prescription' : 'drug-list',
                         items: (classification.medicines || []).map((m: any) => ({
                             name: m.name,
                             strength: m.strength,
@@ -103,7 +130,8 @@ export async function POST(req: NextRequest) {
                             quantity: m.quantity || 1
                         })),
                         status: 'pending',
-                        notes: `[WHAPI AUTOMATED] From Group: ${chatName}\nRaw: ${rawText}`
+                        notes: `[WHAPI AUTOMATED] From Group: ${chatName}\nRaw: ${rawText || '[IMAGE/DOCUMENT]'}`,
+                        prescriptionImage: isImage ? `data:image/jpeg;base64,${mediaBase64}` : null
                     });
 
                     // 6. Save to WhatsApp Tracking DB
@@ -111,7 +139,7 @@ export async function POST(req: NextRequest) {
                         source: 'whatsapp_group',
                         groupId: msg.chat_id,
                         groupName: chatName,
-                        rawText: rawText,
+                        rawText: rawText || "[Prescription Image]",
                         medicines: classification.medicines,
                         location: classification.location || "National",
                         urgency: classification.urgency || "normal",
