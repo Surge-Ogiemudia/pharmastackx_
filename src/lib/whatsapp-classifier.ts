@@ -12,7 +12,8 @@ const model = genAI.getGenerativeModel({
 const SYSTEM_PROMPT = `
 ACT AS A RAW DATA PROCESSOR for PharmaStackX. 
 Analyze the WhatsApp message and return ONLY a valid JSON object.
-DO NOT include any markdown, code blocks (like \`\`\`json), or conversational text.
+DO NOT include any markdown, code blocks, or conversational text.
+DO NOT INCLUDE REASONING, CHAIN OF THOUGHT, OR ANY TEXT OUTSIDE THE JSON STARTING WITH '{' AND ENDING WITH '}'.
 
 SCHEMA:
 {
@@ -51,11 +52,15 @@ SCHEMA:
 
 function cleanJson(text: string) {
     if (!text) return "{}";
+    // Remove markdown code blocks
     let cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start !== -1 && end !== -1) {
-        cleaned = cleaned.substring(start, end + 1);
+    
+    // Find the LAST actual { ... } block (Gemma 4 sometimes thinks out loud first)
+    const lastStartIndex = cleaned.lastIndexOf('{');
+    const lastEndIndex = cleaned.lastIndexOf('}');
+    
+    if (lastStartIndex !== -1 && lastEndIndex !== -1 && lastEndIndex > lastStartIndex) {
+        return cleaned.substring(lastStartIndex, lastEndIndex + 1);
     }
     return cleaned;
 }
