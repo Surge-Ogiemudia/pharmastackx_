@@ -51,10 +51,28 @@ export async function POST(req: NextRequest) {
                     continue;
                 }
 
-                console.log("🤖 Classifying potential drug request...");
+                // 3. Extract Group Name via Whapi API if not in payload
+                let chatName = payload.chat_name || "WhatsApp Group";
+                if (!payload.chat_name && msg.chat_id && msg.chat_id.endsWith('@g.us')) {
+                    try {
+                        const whapiToken = process.env.WHAPI_TOKEN;
+                        if (whapiToken) {
+                            const chatRes = await fetch(`https://gate.whapi.cloud/chats/${msg.chat_id}`, {
+                                headers: { 'Authorization': `Bearer ${whapiToken}`, 'Accept': 'application/json' }
+                            });
+                            if (chatRes.ok) {
+                                const chatData = await chatRes.json();
+                                chatName = chatData.name || chatName;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("⚠️ Failed to fetch group name from Whapi:", err);
+                    }
+                }
+
+                console.log(`🤖 Classifying potential drug request in: ${chatName}...`);
                 
-                // 3. AI Classification (Gemini 2.5 Flash)
-                const chatName = payload.chat_name || "WhatsApp Group";
+                // 4. AI Classification (Gemini 2.5 Flash)
                 const classification = await classifyWhatsAppMessage(rawText, chatName);
                 
                 if (classification.isDrugRequest && classification.confidence > 0.6) {
