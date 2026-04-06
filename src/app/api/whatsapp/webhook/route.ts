@@ -37,14 +37,9 @@ export async function POST(req: NextRequest) {
         // This is fast if a connection is cached.
         await dbConnect();
 
-        // 2. Immediate 200 OK to prevent Whapi timeout
-        const response = NextResponse.json({ status: "received" }, { status: 200 });
-
-        // 3. Process in background (detach from response)
-        (async () => {
-            try {
-                
-                for (const msg of messages) {
+        // 2. Process all messages synchronously so Vercel doesn't suspend the function
+        try {
+            for (const msg of messages) {
                 // 1. Only process text messages
                 if (msg.type !== 'text') continue;
                 
@@ -113,15 +108,14 @@ export async function POST(req: NextRequest) {
                 }
             }
         } catch (err) {
-            console.error("🔥 Webhook Background Processing Error:", err);
+            console.error("🔥 Webhook Synchronous Processing Error:", err);
+            // We log the error but still return 200 below so Whapi doesn't infinitely retry bad messages
         }
-    })().catch(err => {
-        console.error("🔥 Webhook Uncaught Background Error:", err);
-    });
 
-    return response;
+        // 3. Return 200 OK *AFTER* processing finishes
+        return NextResponse.json({ status: "received", count: messages.length }, { status: 200 });
 
-} catch (error) {
+    } catch (error) {
     console.error("🔥 Webhook Fatal Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
 }
