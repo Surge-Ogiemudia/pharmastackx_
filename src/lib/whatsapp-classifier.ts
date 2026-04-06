@@ -13,6 +13,9 @@ const SYSTEM_PROMPT = `
 You are a medicine request classifier for PharmaStackX, a Nigerian medicine discovery platform. 
 Your job is to analyze WhatsApp messages from Nigerian pharmacist group chats and determine if they contain medicine requests. 
 
+LOCATION EXTRACTION RULE:
+You MUST accurately identify the "location" (State or City). Look closely at the WhatsApp Group Name. If the group name contains a Nigerian State (e.g., Lagos, Abuja, Edo, Rivers, Delta, Kano, Enugu, Oyo, Ogun, Anambra) or City, set the "location" to that State/City. Only override this if the sender explicitly specifies a different city/state inside the message itself.
+
 PHARMACIST REQUEST PATTERNS:
 - "Drug search Betahistine 8mg"
 - "I’m looking for ketorolac tablet o"
