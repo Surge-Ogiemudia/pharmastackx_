@@ -128,8 +128,17 @@ export async function POST(req: NextRequest) {
             tokens: tokens,
         };
 
+        console.log(`[notify-pharmacists] Sending FCM to ${tokens.length} tokens...`);
         const response = await admin.messaging().sendEachForMulticast(message as any);
-        console.log('Firebase response:', JSON.stringify(response, null, 2));
+        console.log('[notify-pharmacists] Firebase response:', JSON.stringify(response, null, 2));
+
+        if (response.failureCount > 0) {
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                    console.error(`[notify-pharmacists] Token ${idx} failure:`, resp.error);
+                }
+            });
+        }
 
         return NextResponse.json({ success: true, message: `Notified ${response.successCount} recipients.` });
 
