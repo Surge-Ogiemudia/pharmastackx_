@@ -32,27 +32,28 @@ export async function dbConnect(): Promise<Mongoose> {
     console.log('[dbConnect] No existing connection promise. Creating a new one.');
     const opts = {
       bufferCommands: true,
-      maxPoolSize: 10, // Restrict connection pool to avoid Atlas M0 limits
-      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10, 
+      serverSelectionTimeoutMS: 15000, // Increased from 5s to 15s
       socketTimeoutMS: 45000,
+      family: 4, // Force IPv4 (can help with some DNS issues in serverless)
     };
-    // Use the correct MONGO_URI variable
+    console.log('[dbConnect] Initializing mongoose.connect with URI:', MONGO_URI!.split('@')[1]);
     cached.promise = mongoose.connect(MONGO_URI!, opts).then((mongoose) => {
-      console.log('[dbConnect] Database connection successfully established.');
+      console.log('[dbConnect] ✅ Database connection successfully established.');
       return mongoose;
     }).catch(err => {
-        console.error('[dbConnect] Initial connection error:', err);
-        cached.promise = null; // Important: clear promise on error
+        console.error('[dbConnect] ❌ Initial connection error:', err.message);
+        cached.promise = null; 
         throw err;
     });
   }
 
   try {
-    console.log('[dbConnect] Awaiting existing connection promise.');
+    console.log('[dbConnect] ⏳ Awaiting existing connection promise...');
     cached.conn = await cached.promise;
-  } catch(e) {
-      // This will catch the error thrown from the .catch block above
-      console.error("[dbConnect] Failed to await the connection promise.", e);
+    console.log('[dbConnect] 🎉 Connection resolved.');
+  } catch(e: any) {
+      console.error("[dbConnect] 💥 Failed to await the connection promise:", e.message);
       throw e;
   }
   

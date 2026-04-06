@@ -28,17 +28,16 @@ export async function POST(req: NextRequest) {
         // Whapi sends messages in messages array
         const messages = payload.messages || [];
         
-        // Immediate 200 OK to prevent Whapi timeout
+        // 1. Establish DB Connection synchronously for reliable serverless execution
+        // This is fast if a connection is cached.
+        await dbConnect();
+
+        // 2. Immediate 200 OK to prevent Whapi timeout
         const response = NextResponse.json({ status: "received" }, { status: 200 });
 
-        // Process in background (detach from response)
+        // 3. Process in background (detach from response)
         (async () => {
             try {
-                if (!process.env.MONGO_URI) {
-                    console.error("❌ MONGO_URI is missing in Vercel Environment Variables");
-                    return;
-                }
-                await dbConnect();
                 
                 for (const msg of messages) {
                 // 1. Only process text messages
