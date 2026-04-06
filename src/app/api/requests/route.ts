@@ -61,6 +61,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Request type is required' }, { status: 400 });
     }
 
+    let parsedCoordinates = undefined;
+    if (coordinates) {
+        if (Array.isArray(coordinates.coordinates)) {
+            parsedCoordinates = coordinates.coordinates; // Handle GeoJSON object
+        } else if (Array.isArray(coordinates)) {
+            parsedCoordinates = coordinates; // Handle plain array
+        }
+    }
+
     const requestData: any = {
       user: userId,
       requestType,
@@ -76,7 +85,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       phoneNumber: phoneNumber,
       state: state,
-      coordinates: coordinates,
+      coordinates: parsedCoordinates,
       notes: notes,
       prescriptionImage: prescriptionImage
     };
