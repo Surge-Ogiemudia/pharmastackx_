@@ -2,6 +2,7 @@ import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import axios from 'axios';
 import User from '@/models/User';
 import { dbConnect } from '@/lib/mongoConnect';
+import GlobalSettings from '@/models/GlobalSettings';
 
 const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
 const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. "2348157788101"
@@ -12,6 +13,22 @@ const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. "2348157788101"
 async function getRecipientTokens(requestState?: string): Promise<string[]> {
     await dbConnect();
     const recipientTokens = new Set<string>();
+
+    // Check Global Settings for disabled states
+    if (requestState) {
+        const settings = await GlobalSettings.findOne();
+        if (settings && settings.disabledWhatsAppStates && settings.disabledWhatsAppStates.includes(requestState)) {
+            console.log(`[whatsapp-notifier] 🚫 Notifications DISABLED for state: ${requestState}. Only notifying admins.`);
+            // Only return admin tokens if the state is disabled
+            const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
+            admins.forEach(admin => {
+                if (admin.fcmTokens) {
+                    admin.fcmTokens.forEach(token => recipientTokens.add(token));
+                }
+            });
+            return Array.from(recipientTokens);
+        }
+    }
 
     // 1. Get all admin tokens
     const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();

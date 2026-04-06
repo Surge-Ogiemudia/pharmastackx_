@@ -2,12 +2,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGlobalSettings extends Document {
   isActivityCentreEnabled: boolean;
+  disabledWhatsAppStates: string[];
   updatedBy: mongoose.Types.ObjectId;
   updatedAt: Date;
 }
 
 const GlobalSettingsSchema: Schema = new Schema({
   isActivityCentreEnabled: { type: Boolean, default: true },
+  disabledWhatsAppStates: { type: [String], default: [] },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
