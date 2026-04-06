@@ -10,28 +10,46 @@ export async function notifyPharmacists(request: any) {
     const { medicines, location, _id } = request;
     const medicineNames = medicines.map((m: any) => m.name).join(', ');
     
-    // 1. Find pharmacists in the same state/location
-    const pharmacists = await User.find({
-        role: 'pharmacy',
-        state: location || 'Edo', // Fallback to Edo if not specified
+    // 1. Find recipients (Admins + Relevant Providers in the same state)
+    const requestState = location || 'Edo';
+    const usersToNotify = await User.find({
+        $or: [
+            { role: 'admin' },
+            { 
+                role: { $in: ['pharmacy', 'pharmacist', 'clinic'] },
+                $or: [
+                    { state: requestState },
+                    { stateOfPractice: requestState }
+                ]
+            }
+        ],
         fcmTokens: { $exists: true, $not: { $size: 0 } }
     });
 
-    console.log(`📣 Notifying ${pharmacists.length} pharmacists for request: ${medicineNames}`);
+    console.log(`📣 Notifying ${usersToNotify.length} recipients for request: ${medicineNames} in ${requestState}`);
 
     // 2. Send FCM Push Notifications (Primary)
     const admin = getFirebaseAdmin();
-    const tokens = pharmacists.flatMap(p => p.fcmTokens || []).filter(t => !!t) as string[];
+    const tokens = usersToNotify.flatMap(p => p.fcmTokens || []).filter(t => !!t) as string[];
 
     if (tokens.length > 0) {
+        const platformId = request.platform_request_id;
+        const notificationUrl = platformId ? `/review-request/${platformId}` : `/admin/requests/${_id}`;
+        
         const message = {
             notification: {
-                title: '🔔 New Medicine Request!',
-                body: `Need: ${medicineNames}\nLocation: ${location || 'Nearby'}`
+                title: medicineNames.length > 30 ? 'New Medicine Request' : `Request for ${medicineNames}`,
+                body: `A new request from WhatsApp is available in ${requestState}.`
             },
             data: {
                 requestId: _id.toString(),
-                type: 'whatsapp_request'
+                platformId: platformId?.toString() || '',
+                url: notificationUrl
+            },
+            webpush: {
+                fcmOptions: {
+                    link: notificationUrl
+                }
             },
             tokens: tokens
         };
