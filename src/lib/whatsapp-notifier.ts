@@ -64,9 +64,14 @@ export async function notifyPharmacists(request: any) {
     // Use platform ID if available, fallback to tracking ID
     const targetId = platform_request_id || _id;
 
+    // Normalize location (e.g., "Bayelsa state" -> "Bayelsa", " Lagos " -> "Lagos")
+    const normalizedLocation = location 
+        ? location.replace(/\bstate\b/gi, '').trim() 
+        : 'National';
+
     // 1. Get Recipients (Unified Mirror)
-    const tokens = await getRecipientTokens(location);
-    console.log(`📣 [whatsapp-notifier] Notifying ${tokens.length} recipients for request: ${medicineNamesString} in ${location || 'National'}`);
+    const tokens = await getRecipientTokens(normalizedLocation);
+    console.log(`📣 [whatsapp-notifier] Notifying ${tokens.length} recipients for request: ${medicineNamesString} in ${normalizedLocation}`);
 
     // 2. Send FCM Push Notifications (Mirrored Payload)
     if (tokens.length > 0) {
