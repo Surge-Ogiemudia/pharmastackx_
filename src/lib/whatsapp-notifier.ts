@@ -39,7 +39,9 @@ async function getRecipientTokens(requestState?: string): Promise<string[]> {
         });
     }
 
-    return Array.from(recipientTokens);
+    const tokens = Array.from(recipientTokens);
+    console.log(`[getRecipientTokens] Total unique tokens found: ${tokens.length}`);
+    return tokens;
 }
 
 /**
@@ -64,7 +66,7 @@ export async function notifyPharmacists(request: any) {
 
     // 1. Get Recipients (Unified Mirror)
     const tokens = await getRecipientTokens(location);
-    console.log(`📣 Notifying ${tokens.length} recipients for request: ${medicineNamesString} in ${location || 'National'}`);
+    console.log(`📣 [whatsapp-notifier] Notifying ${tokens.length} recipients for request: ${medicineNamesString} in ${location || 'National'}`);
 
     // 2. Send FCM Push Notifications (Mirrored Payload)
     if (tokens.length > 0) {
@@ -90,11 +92,21 @@ export async function notifyPharmacists(request: any) {
         };
 
         try {
+            console.log(`📤 Sending FCM to ${tokens.length} tokens...`);
             const response = await admin.messaging().sendEachForMulticast(message as any);
-            console.log(`✅ FCM sent successfully: ${response.successCount} messages delivered.`);
+            console.log(`✅ FCM Result: ${response.successCount} success, ${response.failureCount} failure.`);
+            if (response.failureCount > 0) {
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                        console.error(`❌ Token ${idx} failure:`, resp.error);
+                    }
+                });
+            }
         } catch (error) {
-            console.error("❌ FCM Error:", error);
+            console.error("❌ Fatal FCM Error:", error);
         }
+    } else {
+        console.warn("⚠️ No FCM tokens found to notify.");
     }
 
     // 3. Send Admin WhatsApp Alert (Keep this as it's WhatsApp-specific)
