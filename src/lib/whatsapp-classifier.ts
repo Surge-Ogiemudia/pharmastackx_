@@ -52,17 +52,32 @@ SCHEMA:
 
 function cleanJson(text: string) {
     if (!text) return "{}";
-    // Remove markdown code blocks
-    let cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    // Find the LAST actual { ... } block (Gemma 4 sometimes thinks out loud first)
-    const lastStartIndex = cleaned.lastIndexOf('{');
-    const lastEndIndex = cleaned.lastIndexOf('}');
+    // Find all top-level { ... } blocks using balanced brace matching
+    const results: string[] = [];
+    let braceCount = 0;
+    let start = -1;
     
-    if (lastStartIndex !== -1 && lastEndIndex !== -1 && lastEndIndex > lastStartIndex) {
-        return cleaned.substring(lastStartIndex, lastEndIndex + 1);
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === '{') {
+            if (braceCount === 0) start = i;
+            braceCount++;
+        } else if (text[i] === '}') {
+            braceCount--;
+            if (braceCount === 0 && start !== -1) {
+                results.push(text.substring(start, i + 1));
+                start = -1;
+            }
+        }
     }
-    return cleaned;
+
+    // If we found multiple top-level objects, pick the last one (usually the final answer)
+    if (results.length > 0) {
+        return results[results.length - 1];
+    }
+    
+    // Fallback to simple strip if no balanced braces found
+    return text.replace(/```json/gi, "").replace(/```/g, "").trim();
 }
 
 export async function classifyWhatsAppMessage(text: string, chat_name?: string) {
