@@ -10,68 +10,67 @@ const model = genAI.getGenerativeModel({
 });
 
 const SYSTEM_PROMPT = `
-You are a medicine request classifier for PharmaStackX, a Nigerian medicine discovery platform. 
-Your job is to analyze WhatsApp messages from Nigerian pharmacist group chats and determine if they contain medicine requests. 
+ACT AS A RAW DATA PROCESSOR for PharmaStackX. 
+Analyze the WhatsApp message and return ONLY a valid JSON object.
+DO NOT include any markdown, code blocks (like \`\`\`json), or conversational text.
 
-LOCATION EXTRACTION RULE:
-You MUST accurately identify the "location" (State or City). Look closely at the WhatsApp Group Name. If the group name contains a Nigerian State (e.g., Lagos, Abuja, Edo, Rivers, Delta, Kano, Enugu, Oyo, Ogun, Anambra) or City, set the "location" to that State/City. Only override this if the sender explicitly specifies a different city/state inside the message itself.
-
-PHARMACIST REQUEST PATTERNS:
-- "Drug search Betahistine 8mg"
-- "I’m looking for ketorolac tablet o"
-- "Good Afternoon.... Please who has Zinnat suspension..... Abeg 🙏🙏"
-- "Urgent Drug Search‼️‼️ *Flixonase suspension*"
-- "Drug Search. Tab. Ursodiol (Ursodeoxycholic acid) 250mg or 300mg. Tab. Duodart"
-- "Drug Search... Cap. Ampiflux or Flumox"
-
-Extract and return ONLY this JSON:
+SCHEMA:
 {
   "isDrugRequest": boolean,
   "medicines": [{
     "name": "string",
     "strength": "string or null",
-    "form": "tablet/syrup/injection/etc or null",
+    "form": "string or null",
     "quantity": number or null,
-    "unit": "strips/vials/bottles/etc or null"
+    "unit": "string or null"
   }],
-  "location": "city or state mentioned or null",
+  "location": "string or null",
   "urgency": "urgent or normal",
   "confidence": 0.0 to 1.0,
   "rawText": "string"
 }
 
-If it is NOT a drug request (e.g., general chat, football talk, vacancies, or adverts), return only: {"isDrugRequest": false}.
+LOCATION RULE:
+If no location is in the message, use the provided Group Name.
+If not a drug request, return: {"isDrugRequest": false}
 `;
 
 const IMAGE_PROMPT = `
-You are an expert pharmacist for PharmaStackX. 
-Analyze this prescription image and extract all medications. 
-Extract the following for each medicine:
-- name: The medicine's brand or generic name.
-- strength: The dose (e.g., '500mg', '10mg/5ml').
-- form: One of ["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Inhaler"].
-- quantity: The total amount prescribed (as a number).
-- unit: One of ["Strips", "Packs", "Bottles", "Vials", "Sachets", "Pieces"]. Pick the most appropriate packaging unit.
+Analyze this prescription image and return ONLY a valid JSON object.
+DO NOT include any markdown or text outside the JSON.
 
-Return ONLY this JSON format:
+SCHEMA:
 {
   "isDrugRequest": true,
   "medicines": [{ "name": "string", "strength": "string", "form": "string", "quantity": number, "unit": "string" }],
-  "location": "Infer if possible from stamps or text, otherwise null",
+  "location": "string or null",
   "urgency": "urgent or normal",
   "confidence": 0.0 to 1.0
 }
 `;
 
+function cleanJson(text: string) {
+    if (!text) return "{}";
+    let cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end !== -1) {
+        cleaned = cleaned.substring(start, end + 1);
+    }
+    return cleaned;
+}
+
 export async function classifyWhatsAppMessage(text: string, chat_name?: string) {
     try {
         const result = await model.generateContent([
-            { text: SYSTEM_PROMPT + `\n\nCONTEXT:\n- WhatsApp Group Name: "${chat_name || 'Unknown'}"\n- Rule: If the message has no location, infer it from the Group Name (e.g., "Lagos Pharm" -> "Lagos").` },
-            { text: `Analyze this message: "${text}"` }
+            { text: SYSTEM_PROMPT + `\n\nCONTEXT:\n- WhatsApp Group Name: "${chat_name || 'Unknown'}"` },
+            { text: `MESSAGE TO ANALYZE: "${text}"` }
         ]);
         
         const responseText = result.response.text();
-        return JSON.parse(responseText);
+        console.log("🤖 [Classifier Response]:", responseText);
+        const jsonContent = cleanJson(responseText);
+        return JSON.parse(jsonContent);
     } catch (error) {
         console.error("AI Classification Error:", error);
         return { isDrugRequest: false, error: "Classification failed" };
@@ -96,7 +95,9 @@ export async function classifyWhatsAppImage(base64Data: string, chat_name?: stri
         ]);
 
         const responseText = result.response.text();
-        return JSON.parse(responseText);
+        console.log("🤖 [Image Classifier Response]:", responseText);
+        const jsonContent = cleanJson(responseText);
+        return JSON.parse(jsonContent);
     } catch (error) {
         console.error("AI Image Classification Error:", error);
         return { isDrugRequest: false, error: "Image classification failed" };
