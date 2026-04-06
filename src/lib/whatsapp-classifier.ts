@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash",
+    model: "gemma-4-26b-a4b-it",
     generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.1,
@@ -81,7 +81,7 @@ export async function classifyWhatsAppMessage(text: string, chat_name?: string) 
 export async function classifyWhatsAppImage(base64Data: string, chat_name?: string) {
     try {
         const generationModel = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash", 
+            model: "gemma-4-26b-a4b-it", 
             generationConfig: { responseMimeType: "application/json" } 
         });
 
