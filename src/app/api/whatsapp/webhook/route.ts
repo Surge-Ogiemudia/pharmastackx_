@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import dns from "dns";
 import { dbConnect } from "@/lib/mongoConnect";
+
+// Force IPv4 resolution for outbound requests (fixes Vercel ETIMEDOUT / fetch failed)
+dns.setDefaultResultOrder("ipv4first");
+
 import WhatsAppRequest from "@/models/WhatsAppRequest";
 import RequestModel from "@/models/Request";
 import UserModel from "@/models/User";
