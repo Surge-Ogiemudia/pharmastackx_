@@ -49,6 +49,25 @@ export async function notifyPharmacists(request: any) {
             webpush: {
                 fcmOptions: {
                     link: notificationUrl
+                },
+                notification: {
+                    icon: '/icons/icon-192x192.png',
+                    tag: 'new-request',
+                    renotify: true
+                }
+            },
+            android: {
+                priority: 'high' as 'high',
+                notification: {
+                    sound: 'default',
+                    channelId: 'requests'
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default'
+                    }
                 }
             },
             tokens: tokens
