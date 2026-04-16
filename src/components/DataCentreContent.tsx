@@ -473,7 +473,26 @@ export default function DataCentreContent() {
                     fontFamily: 'Sora, sans-serif',
                   }}>
                     {msg.loading ? (
-                      <span style={{ opacity: 0.6 }}>Thinking…</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
+                        <span>typing</span>
+                        <div style={{ display: 'flex', gap: '3px', marginTop: '4px' }}>
+                          <style>{`
+                            @keyframes dot-jump {
+                              0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+                              40% { transform: translateY(-4px); opacity: 1; }
+                            }
+                          `}</style>
+                          {[0, 1, 2].map(i => (
+                            <div key={i} style={{
+                              width: '4px',
+                              height: '4px',
+                              background: '#888',
+                              borderRadius: '50%',
+                              animation: `dot-jump 1.4s infinite ease-in-out ${i * 0.2}s`
+                            }} />
+                          ))}
+                        </div>
+                      </div>
                     ) : msg.text}
                   </div>
                 </div>

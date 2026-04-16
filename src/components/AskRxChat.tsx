@@ -270,8 +270,28 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                         ))}
                         {isLoading && (
                             <Box sx={{ alignSelf: 'flex-start', bgcolor: '#fff', p: 1.5, borderRadius: '16px 16px 16px 4px', border: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <CircularProgress size={14} sx={{ color: '#0F6E56' }} />
-                                <Typography sx={{ fontSize: '12px', color: '#666', fontWeight: 500 }}>Rx Expert is thinking...</Typography>
+                                <Typography sx={{ fontSize: '13px', color: '#666', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    typing
+                                    <Box sx={{ display: 'flex', gap: '3px', mt: '4px' }}>
+                                        {[0, 1, 2].map((i) => (
+                                            <Box
+                                                key={i}
+                                                sx={{
+                                                    width: '4px',
+                                                    height: '4px',
+                                                    bgcolor: '#0F6E56',
+                                                    borderRadius: '50%',
+                                                    animation: 'typingDot 1.4s infinite ease-in-out',
+                                                    animationDelay: `${i * 0.2}s`,
+                                                    '@keyframes typingDot': {
+                                                        '0%, 80%, 100%': { transform: 'translateY(0)', opacity: 0.4 },
+                                                        '40%': { transform: 'translateY(-4px)', opacity: 1 }
+                                                    }
+                                                }}
+                                            />
+                                        ))}
+                                    </Box>
+                                </Typography>
                             </Box>
                         )}
                         {status === 'escalated' && !isLoading && (
