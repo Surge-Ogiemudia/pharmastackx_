@@ -173,22 +173,22 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
             {!isDark ? (
               <Box>
                 <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '24px', fontWeight: 900, mb: 1, letterSpacing: '-0.5px' }}>
-                  Scan your <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>{isRx ? 'Rx' : 'Medicine'}</em>
+                  Scan your <em style={{ color: '#0F6E56', fontStyle: 'italic' }}>{isRx ? 'Rx' : 'Medicine'}</em>
                 </Typography>
                 <Typography sx={{ fontSize: '14px', color: '#777', mb: 3, lineHeight: 1.6, fontWeight: 400, px: 2 }}>
                   {isRx ? "Snap or upload your prescription. Our AI reads everything and finds it for you in minutes." : "Snap a clear photo of your medicine box or bottle. We'll identify it and add it for you."}
                 </Typography>
                 {!isRx && (
                   <Box sx={{ mb: 3, p: 2, borderRadius: '16px', bgcolor: 'rgba(15,110,86,0.05)', border: '1px solid rgba(15,110,86,0.1)', textAlign: 'left' }}>
-                    <Typography sx={{ fontSize: '12px', color: 'var(--green)', fontWeight: 800, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>💡 Quick Guide</Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#0F6E56', fontWeight: 800, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>💡 Quick Guide</Typography>
                     <Typography sx={{ fontSize: '13px', color: '#444', lineHeight: 1.4 }}>Snap the side where the <strong>Full Name</strong> and <strong>Strength</strong> are written clearly.</Typography>
                   </Box>
                 )}
 
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box onClick={() => fileInputRef.current?.click()} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, borderRadius: '20px', bgcolor: 'var(--green-pale)', border: '1.5px dashed rgba(15,110,86,0.3)', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { bgcolor: '#fff', borderColor: 'var(--green)', transform: 'translateY(-2px)' } }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '14px', bgcolor: 'var(--green)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Box onClick={() => fileInputRef.current?.click()} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5, borderRadius: '20px', bgcolor: 'rgba(15,110,86,0.05)', border: '1.5px dashed rgba(15,110,86,0.3)', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { bgcolor: '#fff', borderColor: '#0F6E56', transform: 'translateY(-2px)' } }}>
+                    <Box sx={{ width: 48, height: 48, borderRadius: '14px', bgcolor: '#0F6E56', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <CameraAltIcon fontSize="small" />
                     </Box>
                     <Box sx={{ textAlign: 'left' }}>
@@ -212,7 +212,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
               </Box>
             ) : scanPhase === 'failed' ? (
               <Box sx={{ textAlign: 'left', mt: 3 }}>
-                <Typography sx={{ color: 'var(--green)', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', mb: 1 }}>Analysis Halted</Typography>
+                <Typography sx={{ color: '#0F6E56', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', mb: 1 }}>Analysis Halted</Typography>
                 <Typography sx={{ fontSize: '18px', fontWeight: 850, lineHeight: 1.3, mb: 2, color: '#111' }}>We couldn't automatically read this {isRx ? 'prescription' : 'medicine'}.</Typography>
                 <Typography sx={{ fontSize: '14px', color: '#666', mb: 4, lineHeight: 1.6 }}>
                   {isRx 
@@ -229,7 +229,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                    </Box>
                    <Box 
                      onClick={handleFallbackContinue} 
-                     sx={{ flex: 1, py: 1.5, borderRadius: '12px', bgcolor: 'var(--primary-green)', textAlign: 'center', cursor: 'pointer', '&:hover': { bgcolor: '#0B5E4A' } }}
+                     sx={{ flex: 1, py: 1.5, borderRadius: '12px', bgcolor: '#0F6E56', textAlign: 'center', cursor: 'pointer', '&:hover': { bgcolor: '#0B5E4A' } }}
                    >
                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>Continue</Typography>
                    </Box>
@@ -264,7 +264,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                   <motion.div
                     animate={{ opacity: [0.1, 0.3, 0.1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--green-pale)', zIndex: 2 }}
+                    style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 110, 86, 0.05)', zIndex: 2 }}
                   />
 
                   {/* Scan Chip */}
@@ -285,7 +285,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                    <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#111' }}>
                      {statusText}
                    </Typography>
-                   <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--green)' }}>
+                   <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
                      {timeLeft > 0 ? `Processing...` : 'Done'}
                    </Typography>
                 </Box>
@@ -294,12 +294,12 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                 <Box sx={{ width: '100%', height: '6px', bgcolor: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden', mb: 3, position: 'relative' }}>
                    {scanPhase !== 'results' ? (
                      <Box sx={{ 
-                       width: '40%', height: '100%', bgcolor: 'var(--primary-green)',
+                       width: '40%', height: '100%', bgcolor: '#0F6E56',
                        animation: 'slideProgress 1.5s infinite linear',
-                       boxShadow: '0 0 15px var(--primary-green)'
+                       boxShadow: '0 0 15px #0F6E56'
                      }} />
                    ) : (
-                     <Box sx={{ width: '100%', height: '100%', bgcolor: 'var(--green)' }} />
+                     <Box sx={{ width: '100%', height: '100%', bgcolor: '#0F6E56' }} />
                    )}
                 </Box>
 
