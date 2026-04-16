@@ -1,16 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import Consultation from "@/models/Consultation";
+import AISettings from "@/models/AISettings";
 import { dbConnect } from "@/lib/mongoConnect";
 import { transporter } from "@/lib/nodemailer";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-const SYSTEM_PROMPT = `You are Ask Rx, a friendly medicine expert. 
-
-STRICT RULE: Only output the conversational reply. NEVER output labels like "User:", "Context:", or "Final Response:". NEVER think out loud or drafts. Be brief (1-3 sentences). Warm and human. No asterisks.
-
-If a symptom sounds severe, include the text: ESCALATE_TO_PHARMACIST`;
 
 function sanitizeResponse(text: string): string {
   // If the model is leaking its chain of thought, we need to find the REAL answer.
@@ -102,31 +97,37 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare history for AI
-    const history = consultation.messages.map((m: any) => ({
+    let baseHistory = consultation.messages.map((m: any) => ({
       role: m.sender === 'user' ? 'user' : 'model',
       parts: [{ text: m.text }]
     }));
 
+    // Fetch dynamic AI settings
+    const settings = await AISettings.findOne();
+    const systemPrompt = settings?.systemPrompt || `You are Ask Rx, a friendly medicine expert.\n\nSTRICT RULE: Only output the conversational reply. NEVER output labels. NEVER think out loud. No asterisks.\n\nIf a symptom sounds severe, include the text: ESCALATE_TO_PHARMACIST`;
+
+    // Inject Golden Rules as few-shot examples if any exist
+    let chatHistory = [...baseHistory];
+    if (settings?.goldenRules && settings.goldenRules.length > 0) {
+        const rulesHistory = [];
+        for (const rule of settings.goldenRules) {
+            rulesHistory.push({ role: 'user', parts: [{ text: rule.input }] });
+            rulesHistory.push({ role: 'model', parts: [{ text: rule.output }] });
+        }
+        chatHistory = [...rulesHistory, ...chatHistory];
+    }
+
     // Using gemma-4-26b-a4b-it based on availability
     const model = genAI.getGenerativeModel({ 
       model: "gemma-4-26b-a4b-it",
-      systemInstruction: SYSTEM_PROMPT
+      systemInstruction: systemPrompt
     });
-
-    // Ensure the chat is initialized correctly with the system prompt as the first message if history is empty
-    let chatHistory = history;
-    if (chatHistory.length === 0) {
-        // We add the system prompt as a user/model interaction if systemInstruction is not working correctly
-        // But better is to just pass it correctly:
-    }
 
     const chat = model.startChat({
         history: chatHistory,
         generationConfig: { maxOutputTokens: 500 }
     });
 
-    // If history is empty, the first message SHOULD be the system prompt context. 
-    // But since startChat expects only history, we'll prefix our CURRENT message
     const promptMessage = message;
 
     const result = await chat.sendMessage(promptMessage);
@@ -154,6 +155,28 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("AI Consultation Error:", error);
+    
+    try {
+        const settings = await AISettings.findOne();
+        if (settings?.isAlertingEnabled && settings?.alertEmail) {
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: settings.alertEmail,
+                subject: '🚨 URGENT: AI System Error / Fault in Ask Rx',
+                html: `
+                    <div style="font-family: sans-serif; padding: 20px;">
+                        <h2>AI Consultation Error Detected</h2>
+                        <p>The system encountered a critical error while trying to process a user's health query.</p>
+                        <p><strong>Error Details:</strong></p>
+                        <pre style="background: #f4f4f4; padding: 10px; border-radius: 6px;">${error.message}</pre>
+                    </div>
+                `
+            });
+        }
+    } catch (emailErr) {
+        console.error("Failed to send AI fault alert:", emailErr);
+    }
+
     return NextResponse.json({ 
         error: "Consultation failed: " + (error.message || "Unknown AI error"),
         details: error.stack 
