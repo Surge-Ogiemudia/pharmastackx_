@@ -55,31 +55,31 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        const stripped = text.replace(/```json|```/gi, "");
-        // Always prefer a { object } over a [ array ] since we expect a single medicine
-        const objStart = stripped.indexOf('{');
-        const arrStart = stripped.indexOf('[');
-        // Pick the first { unless there's a [ that appears earlier AND there's no { before it
-        const startIdx = (objStart !== -1 && (arrStart === -1 || objStart <= arrStart)) ? objStart : arrStart;
-        if (startIdx === -1) throw new Error("No JSON start found");
-
-        const opener = stripped[startIdx];
-        const closer = opener === '[' ? ']' : '}';
-        let depth = 0;
-        let endIdx = -1;
-        for (let i = startIdx; i < stripped.length; i++) {
-          if (stripped[i] === opener) depth++;
-          else if (stripped[i] === closer) {
-            depth--;
-            if (depth === 0) { endIdx = i; break; }
-          }
+        // Strip backticks and code fences
+        const stripped = text.replace(/```json|```|`/gi, "");
+        
+        // Anchor on the first "name" key — skip all reasoning/echo text
+        const nameIdx = stripped.indexOf('"name"');
+        if (nameIdx === -1) throw new Error("No 'name' key found in AI response");
+        
+        // Backtrack from "name" to find the enclosing {
+        let startIdx = -1;
+        for (let i = nameIdx; i >= 0; i--) {
+          if (stripped[i] === '{') { startIdx = i; break; }
         }
-        if (endIdx === -1) throw new Error("Unbalanced JSON");
-
+        if (startIdx === -1) throw new Error("No opening brace before 'name' key");
+        
+        // Depth-walk forward to find the balanced }
+        let depth = 0, endIdx = -1;
+        for (let i = startIdx; i < stripped.length; i++) {
+          if (stripped[i] === '{') depth++;
+          else if (stripped[i] === '}') { depth--; if (depth === 0) { endIdx = i; break; } }
+        }
+        if (endIdx === -1) throw new Error("Unbalanced JSON object");
+        
         const jsonString = stripped.substring(startIdx, endIdx + 1);
-        const parsed = JSON.parse(jsonString);
-        // Normalize: handle both {name:...} and {medicine:{name:...}} shapes
-        medicines = parsed.name ? parsed : (parsed.medicine || parsed);
+        console.log("📸 [ScanMed API] Extracted JSON string:", jsonString);
+        medicines = JSON.parse(jsonString);
     } catch (e) {
         console.error("📸 [ScanMed API] JSON Parse Error:", e, "Raw text:", text);
         throw new Error("Failed to parse AI response into valid JSON.");
