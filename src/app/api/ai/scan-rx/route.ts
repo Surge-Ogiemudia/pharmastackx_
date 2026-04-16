@@ -58,7 +58,18 @@ export async function POST(req: NextRequest) {
     let medicines;
     try {
         let jsonString = text.replace(/```json|```/gi, "").trim();
-        // The model returns 'application/json', so we can parse directly
+        
+        // Find the first [ or { and the last ] or }
+        const startIdx = jsonString.search(/[\{\[]/);
+        // Find the last occurrence of } or ]
+        const endIdxObj = jsonString.lastIndexOf('}');
+        const endIdxArr = jsonString.lastIndexOf(']');
+        const endIdx = Math.max(endIdxObj, endIdxArr);
+
+        if (startIdx !== -1 && endIdx !== -1 && endIdx >= startIdx) {
+            jsonString = jsonString.substring(startIdx, endIdx + 1);
+        }
+
         const parsed = JSON.parse(jsonString);
         medicines = parsed.medicines || parsed; // Handle wrapping if present
     } catch (e) {
