@@ -101,11 +101,9 @@ Devices (30d): ${deviceBreakdown.map(d => `${d._id || 'Unknown'}: ${d.count}`).j
 Top referrers (30d): ${referrerBreakdown.map(r => `${r._id}: ${r.count}`).join(', ') || 'none'}
 Daily trend: ${dailyLastWeek.map((d: any) => `${d.date}: ${d.visitors}`).join(', ') || 'none'}`;
 
-  const prompt = `You are a helpful analytics assistant for PharmaStackX, a Nigerian healthcare platform. 
+  const prompt = `You are a helpful analytics assistant for PharmaStackX. 
 
-CRITICAL INSTRUCTION: You must respond DIRECTLY with the final answer. Do NOT output any internal monologues, reasoning processes, drafts, constraint checks, or context analysis. NEVER use formats like "* User input:", "* Context:", or "* Option:". 
-
-Someone just asked you a question about the platform's traffic. Answer it naturally, like you're texting a friend who happens to run a pharmacy app. Be brief — 1 to 3 short sentences max unless they specifically ask for a breakdown. Never use asterisks, bullet points, or repeat data labels. Just answer the question directly.
+STRICT RULE: Only output the conversational reply. NEVER output labels like "User:", "Context:", or "Final Response:". NEVER think out loud or drafts. Be brief (1-3 sentences). Warm and human. No asterisks.
 
 Current analytics data:
 ${dataContext}
@@ -114,9 +112,48 @@ Question: ${question}
 
 Your reply:`;
 
+function sanitizeResponse(text: string): string {
+  const markers = [
+    /\*?\*?Final Response\*?\*?:\s*/i,
+    /\*?\*?Final Result\*?\*?:\s*/i,
+    /\*?\*?Selected Response\*?\*?:\s*/i,
+    /\*?\*?Response\*?\*?:\s*/i,
+    /\*?\*?Your reply\*?\*?:\s*/i
+  ];
+
+  let cleaned = text;
+  for (const marker of markers) {
+    if (marker.test(cleaned)) {
+      const parts = cleaned.split(marker);
+      cleaned = parts[parts.length - 1].trim();
+      break;
+    }
+  }
+
+  if (cleaned.includes('*')) {
+     const sections = cleaned.split(/\*[^*]+\*/);
+     if (sections.length > 1) {
+       cleaned = sections.pop()?.trim() || cleaned;
+     }
+  }
+
+  cleaned = cleaned.replace(/^User says:.*$/im, '')
+                   .replace(/^Context:.*$/im, '')
+                   .replace(/^Drafting response:.*$/im, '')
+                   .trim();
+
+  // Deduplication
+  const mid = Math.floor(cleaned.length / 2);
+  const firstHalf = cleaned.substring(0, mid).trim();
+  const secondHalf = cleaned.substring(mid).trim();
+  if (firstHalf === secondHalf && firstHalf.length > 5) return firstHalf;
+
+  return cleaned || "I couldn't find a direct answer in that data. Could you try rephrasing?";
+}
+
   const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
   const result = await model.generateContent(prompt);
-  const answer = result.response.text().trim();
+  const answer = sanitizeResponse(result.response.text());
 
   return NextResponse.json({ answer });
 }
