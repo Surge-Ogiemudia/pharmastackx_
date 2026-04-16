@@ -40,12 +40,11 @@ export async function POST(req: NextRequest) {
 
     // Check move count
     if (consultation.aiMoveCount >= 5 && consultation.status === 'ai') {
-        consultation.status = 'escalated';
+        consultation.status = 'pending_escalation';
         await consultation.save();
-        await sendEscalationEmail(consultation._id);
         return NextResponse.json({ 
-            text: "I've reached my limit for this session. I'm connecting you to our Head Pharmacist for specialized help. Please wait a moment.", 
-            status: 'escalated' 
+            text: "I've reached my AI limit for this session. Would you like me to connect you to our Head Pharmacist for specialized help?", 
+            status: 'pending_escalation' 
         });
     }
 
@@ -84,9 +83,8 @@ export async function POST(req: NextRequest) {
     const shouldEscalate = aiText.includes("ESCALATE_TO_PHARMACIST");
     if (shouldEscalate) {
         aiText = aiText.replace("ESCALATE_TO_PHARMACIST", "").trim();
-        if (!aiText) aiText = "This case requires a professional review. I'm connecting you to our pharmacist right now.";
-        consultation.status = 'escalated';
-        await sendEscalationEmail(consultation._id);
+        if (!aiText) aiText = "This case requires a professional review. Would you like me to connect you to our pharmacist right now?";
+        consultation.status = 'pending_escalation';
     }
 
     // Save messages
