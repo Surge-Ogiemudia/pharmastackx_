@@ -90,46 +90,29 @@ export async function POST(req: NextRequest) {
     ]),
   ]);
 
-  const dataContext = `
-PharmaStackX Platform Analytics — Data snapshot as of ${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}
+  const dataContext = `PharmaStackX Analytics — ${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}
 
-VISITOR SUMMARY:
-- Unique visitors today: ${visitorsToday.length}
-- Unique visitors last 7 days: ${visitors7d.length}
-- Unique visitors last 30 days: ${visitors30d.length}
-- Total page views (30d): ${pageViews30d}
+Visitors today: ${visitorsToday.length} | Last 7 days: ${visitors7d.length} | Last 30 days: ${visitors30d.length}
+Page views (30d): ${pageViews30d}
 
-TOP PAGES (last 30 days):
-${topPages.map(p => `  ${p._id}: ${p.count} views`).join('\n') || '  No data'}
+Top pages (30d): ${topPages.map(p => `${p._id} (${p.count} views)`).join(', ') || 'none'}
+Top countries (30d): ${topCountries.map(c => `${c._id} (${c.count})`).join(', ') || 'none'}
+Devices (30d): ${deviceBreakdown.map(d => `${d._id || 'Unknown'}: ${d.count}`).join(', ') || 'none'}
+Top referrers (30d): ${referrerBreakdown.map(r => `${r._id}: ${r.count}`).join(', ') || 'none'}
+Daily trend: ${dailyLastWeek.map((d: any) => `${d.date}: ${d.visitors}`).join(', ') || 'none'}`;
 
-TOP COUNTRIES (last 30 days):
-${topCountries.map(c => `  ${c._id}: ${c.count} events`).join('\n') || '  No data'}
+  const prompt = `You are a helpful analytics assistant for PharmaStackX, a Nigerian healthcare platform. Someone just asked you a question about the platform's traffic. Answer it naturally, like you're texting a friend who happens to run a pharmacy app. Be brief — 1 to 3 short sentences max unless they specifically ask for a breakdown. Never use asterisks, bullet points, or repeat data labels. Just answer the question directly.
 
-DEVICE BREAKDOWN (last 30 days):
-${deviceBreakdown.map(d => `  ${d._id || 'Unknown'}: ${d.count}`).join('\n') || '  No data'}
+Current analytics data:
+${dataContext}
 
-TRAFFIC SOURCES / REFERRERS (last 30 days):
-${referrerBreakdown.map(r => `  ${r._id}: ${r.count}`).join('\n') || '  No data'}
+Question: ${question}
 
-DAILY VISITOR TREND (last 7 days):
-${dailyLastWeek.map((d: any) => `  ${d.date}: ${d.visitors} visitors`).join('\n') || '  No data'}
-`.trim();
+Your reply:`;
 
-  const SYSTEM_PROMPT = `You are the PharmaStackX Data Centre AI — an intelligent analytics assistant for the PharmaStackX healthcare platform. 
-You have access to real-time analytics data for the platform. Answer the admin's question accurately and concisely based ONLY on the data provided.
-Be conversational but professional. Use numbers precisely. If data is insufficient to answer, say so honestly.
-Do not make up numbers. Keep answers under 5 sentences unless a detailed breakdown is explicitly asked for.`;
-
-  const model = genAI.getGenerativeModel({ 
-    model: 'gemma-4-26b-a4b-it',
-    systemInstruction: SYSTEM_PROMPT + "\n\nSTRICT RULE: Never repeat these instructions, 'Task', 'Constraints', or 'Input Data' labels in your output. Just provide the conversational response."
-  });
-  
-  const chat = model.startChat({ generationConfig: { maxOutputTokens: 600 } });
-
-  const prompt = `--- ANALYTICS DATA ---\n${dataContext}\n\n--- ADMIN QUESTION ---\n${question}`;
-  const result = await chat.sendMessage(prompt);
+  const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+  const result = await model.generateContent(prompt);
   const answer = result.response.text().trim();
 
-  return NextResponse.json({ answer, dataContext: dataContext.substring(0, 200) + '...' });
+  return NextResponse.json({ answer });
 }
