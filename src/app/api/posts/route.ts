@@ -41,7 +41,9 @@ export async function GET(req: NextRequest) {
         if (slug) {
             const post = await Post.findOne({ slug }).lean();
             if (!post) return NextResponse.json({ message: 'Post not found' }, { status: 404 });
-            return NextResponse.json(post);
+            return NextResponse.json(post, {
+                headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=600' }
+            });
         }
 
         const limit = parseInt(searchParams.get('limit') || '20');
@@ -58,7 +60,9 @@ export async function GET(req: NextRequest) {
             .skip(skip)
             .lean();
 
-        return NextResponse.json(posts);
+        return NextResponse.json(posts, {
+            headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=600' }
+        });
     } catch (error: any) {
         console.error('API_GET_POSTS_ERROR', error);
         return NextResponse.json({ message: 'Failed to fetch posts' }, { status: 500 });
