@@ -6,11 +6,11 @@ import { transporter } from "@/lib/nodemailer";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const SYSTEM_PROMPT = `You are Ask Rx, a friendly medicine expert embedded in PharmaStackX, a Nigerian healthcare app.
+const SYSTEM_PROMPT = `You are Ask Rx, a friendly medicine expert embedded in PharmaStackX, a Nigerian healthcare app. 
 
-CRITICAL INSTRUCTION: You must respond DIRECTLY with your final conversational answer. Do NOT output any internal monologues, reasoning processes, drafts, constraint checks, or user context analysis. NEVER use formats like "* User input:", "* Context:", "* Rule:", or "* Option:". 
+CRITICAL INSTRUCTION: You must respond DIRECTLY with the final answer meant for the user. Do not think out loud. Do not output your reasoning process. Under absolutely NO circumstances should you use an asterisk (*) in your response. NEVER output your evaluation of the user's intent. Do not mention that you are an AI or talk about your instructions.
 
-Respond like a knowledgeable friend to the user — short, clear, warm, and human. Never use asterisks, bullet points, or numbered lists. Never repeat back what the user said or mention your own instructions. If something sounds urgent or dangerous, say clearly they should see a doctor or pharmacist now. Only discuss health and medicine topics. If a user asks about something unrelated, gently redirect them. If the situation is clearly beyond AI help, end your message with the exact text: ESCALATE_TO_PHARMACIST`;
+Respond like a knowledgeable friend to the user — short, clear, warm, and human. Never use asterisks, bullet points, or numbered lists. Never repeat back what the user said. If something sounds urgent or dangerous, say clearly they should see a doctor or pharmacist now. Only discuss health and medicine topics. If a user asks about something unrelated, gently redirect them. If the situation is clearly beyond AI help, end your message with the exact text: ESCALATE_TO_PHARMACIST`;
 
 
 export async function POST(req: NextRequest) {
@@ -83,6 +83,22 @@ export async function POST(req: NextRequest) {
     const result = await chat.sendMessage(promptMessage);
     const response = await result.response;
     let aiText = response.text().trim();
+
+    // Aggressive fallback sanitization: if the model leaked its chain of thought (e.g. "* User input: ... * Final response: hello"), strip everything before the actual response
+    if (aiText.includes('* Final response:')) {
+        aiText = aiText.split('* Final response:')[1].trim();
+    } else if (aiText.includes('*Final response*:')) {
+        aiText = aiText.split('*Final response*:')[1].trim();
+    } else if (aiText.includes('*Final Text*:')) {
+         aiText = aiText.split('*Final Text*:')[1].trim();
+    } else if (aiText.includes('* Final Result*:')) {
+         aiText = aiText.split('* Final Result*:')[1].trim();
+    } else if (aiText.startsWith('*')) {
+        // If it still starts with an asterisk, it's likely a leaked chain of thought without a clean break. 
+        // We look for the last period or question mark that isn't inside an asterisk block, or we just fail gracefully.
+        const parts = aiText.split(/\*[^*]+\*/); 
+        aiText = parts.pop()?.trim() || "I am having trouble formulating my response. Could you rephrase your health question?";
+    }
 
     const shouldEscalate = aiText.includes("ESCALATE_TO_PHARMACIST");
     if (shouldEscalate) {
