@@ -17,17 +17,17 @@ export async function POST(req: NextRequest) {
     console.log("📸 [ScanMed API] Received image. Starting AI processing...");
 
     const prompt = `
-      You are an expert pharmacist helper. 
-      Identify the specific medicine product shown in this image (likely a box or bottle). 
-      Extract the following details:
-      - name: The brand or generic name of the medicine.
-      - strength: The dosage strength (e.g., '500mg', '20mg/5ml').
-      - form: One of ["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Inhaler", "Drops"].
-      - quantity: The number of items in the pack (e.g., 30 for 30 tablets).
-      - unit: One of ["Strips", "Packs", "Bottles", "Vials", "Sachets", "Pieces"].
+      You are a pharmaceutical scanner. Look at this medicine image and extract these EXACT fields:
+      - name: The EXACT brand name as written on the packaging. Do NOT guess or use generic alternatives.
+      - strength: The dosage (e.g. '500mg', '10mg/5ml', '30g').
+      - form: MUST be one of: Tablet, Capsule, Syrup, Injection, Cream, Inhaler, Drops.
+      - quantity: A number (e.g. 30).
+      - unit: MUST be one of: Strips, Packs, Bottles, Vials, Sachets, Pieces.
 
-      Return ONLY a JSON object (not an array) with these fields.
-      Example: {"name": "Panadol", "strength": "500mg", "form": "Tablet", "quantity": 1, "unit": "Packs"}
+      IMPORTANT:
+      - Output ONLY the raw JSON object. No explanation. No thinking. No markdown. No extra text.
+      - Return a SINGLE JSON object like this (keys must match exactly):
+      {"name": "...", "strength": "...", "form": "...", "quantity": 1, "unit": "Packs"}
     `;
 
     // Handle base64 data (strip prefix if present)
@@ -54,9 +54,12 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        // Walk character by character to find the FIRST complete, balanced JSON block
         const stripped = text.replace(/```json|```/gi, "");
-        const startIdx = stripped.search(/[\[\{]/);
+        // Always prefer a { object } over a [ array ] since we expect a single medicine
+        const objStart = stripped.indexOf('{');
+        const arrStart = stripped.indexOf('[');
+        // Pick the first { unless there's a [ that appears earlier AND there's no { before it
+        const startIdx = (objStart !== -1 && (arrStart === -1 || objStart <= arrStart)) ? objStart : arrStart;
         if (startIdx === -1) throw new Error("No JSON start found");
 
         const opener = stripped[startIdx];
@@ -73,7 +76,9 @@ export async function POST(req: NextRequest) {
         if (endIdx === -1) throw new Error("Unbalanced JSON");
 
         const jsonString = stripped.substring(startIdx, endIdx + 1);
-        medicines = JSON.parse(jsonString);
+        const parsed = JSON.parse(jsonString);
+        // Normalize: handle both {name:...} and {medicine:{name:...}} shapes
+        medicines = parsed.name ? parsed : (parsed.medicine || parsed);
     } catch (e) {
         console.error("📸 [ScanMed API] JSON Parse Error:", e, "Raw text:", text);
         throw new Error("Failed to parse AI response into valid JSON.");
