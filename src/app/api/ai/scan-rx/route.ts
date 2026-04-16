@@ -17,17 +17,17 @@ export async function POST(req: NextRequest) {
     console.log("📸 [ScanRX API] Received image. Starting AI processing...");
 
     const prompt = `
-      You are an expert pharmacist helping a patient find their medicines. 
-      Identify all medications listed in this prescription image. 
-      Extract the following for each medicine:
-      - name: The medicine's brand or generic name.
-      - strength: The dose (e.g., '500mg', '10mg/5ml').
-      - form: One of ["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Inhaler"].
-      - quantity: The total amount prescribed (as a number).
-      - unit: One of ["Strips", "Packs", "Bottles", "Vials", "Sachets", "Pieces"]. Pick the most appropriate packaging unit.
+      You are a pharmaceutical scanner reading a prescription image.
+      List all medicines visible in the prescription. For each medicine extract:
+      - name: The EXACT name as written (brand or generic). Do NOT substitute with alternatives.
+      - strength: The dose (e.g. '500mg', '10mg/5ml').
+      - form: MUST be one of: Tablet, Capsule, Syrup, Injection, Cream, Inhaler.
+      - quantity: Total amount prescribed (number only).
+      - unit: MUST be one of: Strips, Packs, Bottles, Vials, Sachets, Pieces.
 
-      Return ONLY a JSON array of these objects.
-      Example: [{"name": "Paracetamol", "strength": "500mg", "form": "Tablet", "quantity": 2, "unit": "Packs"}]
+      IMPORTANT:
+      - Output ONLY the raw JSON array. No explanation. No thinking. No markdown. No extra text.
+      - Format: [{"name": "...", "strength": "...", "form": "...", "quantity": 2, "unit": "Packs"}]
     `;
 
     // Handle base64 data (strip prefix if present)
@@ -54,9 +54,11 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        // Walk character by character to find the FIRST complete, balanced JSON block
         const stripped = text.replace(/```json|```/gi, "");
-        const startIdx = stripped.search(/[\[\{]/);
+        // For Rx, we expect an array. Prefer [ over {
+        const arrStart = stripped.indexOf('[');
+        const objStart = stripped.indexOf('{');
+        const startIdx = (arrStart !== -1 && (objStart === -1 || arrStart <= objStart)) ? arrStart : objStart;
         if (startIdx === -1) throw new Error("No JSON start found");
 
         const opener = stripped[startIdx];
