@@ -264,7 +264,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                   <motion.div
                     animate={{ opacity: [0.1, 0.3, 0.1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    style={{ position: 'absolute', inset: 0, bgcolor: 'var(--green-pale)', zIndex: 2 }}
+                    style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--green-pale)', zIndex: 2 }}
                   />
 
                   {/* Scan Chip */}
