@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     const response = await result.response;
     const text = response.text();
     console.log("📸 [ScanMed API] AI Response text length:", text.length);
+    console.log("📸 [ScanMed API] RAW AI TEXT:", text.substring(0, 1000));
 
     let medicines;
     try {
