@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from "@/context/SessionProvider";
 import { Box, Typography, Avatar, Button, List, ListItem, Divider, CircularProgress, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel } from "@mui/material";
-import { Person, VpnKey, Logout, Info, ContactMail, Business, LocationOn, VerifiedUser, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon } from "@mui/icons-material";
+import { Person, VpnKey, Logout, Info, ContactMail, Business, LocationOn, VerifiedUser, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy } from "@mui/icons-material";
 import FileUpload from './FileUpload';
 // Dynamically import SubscriptionContent to avoid "window is not defined" SSR error
 const SubscriptionContent = dynamic(() => import('./SubscriptionContent'), { ssr: false });
@@ -12,6 +12,7 @@ const StoreManagement = dynamic(() => import('../app/components/StoreManagement'
 const MedicineRestock = dynamic(() => import('./MedicineRestock'), { ssr: false });
 const WhatsAppManagement = dynamic(() => import('./WhatsAppManagement'), { ssr: false });
 const DataCentreContent = dynamic(() => import('./DataCentreContent'), { ssr: false });
+const AICommandCentreContent = dynamic(() => import('./AICommandCentreContent'), { ssr: false });
 import AboutContent from './AboutContent';
 import PrivacyContent from './PrivacyContent';
 import DotCanvas from './DotCanvas';
@@ -331,7 +332,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
     const [locationEnabled, setLocationEnabled] = useState(true);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -842,6 +843,12 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             </Box>
                         )}
 
+                        {profileMode === 'aicentre' && (
+                            <Box sx={{ mt: 2 }}>
+                                <AICommandCentreContent />
+                            </Box>
+                        )}
+
                         {profileMode === 'list' && (
                             <Box sx={{ mt: 2 }}>
                                 <div className="profile-main-header">
@@ -983,6 +990,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                             <div className="profile-row-action" onClick={() => setProfileMode('datacentre')}>
                                                 <span style={{ fontSize: '18px', lineHeight: 1 }}>🏢</span>
                                                 <span className="profile-row-label">Data Centre</span>
+                                                <span className="profile-chevron">›</span>
+                                            </div>
+                                            <div className="profile-row-action" onClick={() => setProfileMode('aicentre')}>
+                                                <SmartToy style={{ color: 'var(--primary-green)' }} />
+                                                <span className="profile-row-label">AI Command Centre</span>
                                                 <span className="profile-chevron">›</span>
                                             </div>
                                             <div className="profile-row-action" onClick={() => setProfileMode('consultations')}>
