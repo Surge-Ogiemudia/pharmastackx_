@@ -55,27 +55,31 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        const stripped = text.replace(/```json|```/gi, "");
-        // For Rx, we expect an array. Prefer [ over {
-        const arrStart = stripped.indexOf('[');
-        const objStart = stripped.indexOf('{');
-        const startIdx = (arrStart !== -1 && (objStart === -1 || arrStart <= objStart)) ? arrStart : objStart;
-        if (startIdx === -1) throw new Error("No JSON start found");
-
+        // Strip backticks and code fences
+        const stripped = text.replace(/```json|```|`/gi, "");
+        
+        // Anchor on the first "name" key — skip all reasoning/echo text
+        const nameIdx = stripped.indexOf('"name"');
+        if (nameIdx === -1) throw new Error("No 'name' key found in AI response");
+        
+        // Backtrack from "name" to find the enclosing [ or {
+        let startIdx = -1;
+        for (let i = nameIdx; i >= 0; i--) {
+          if (stripped[i] === '[' || stripped[i] === '{') { startIdx = i; break; }
+        }
+        if (startIdx === -1) throw new Error("No opening bracket before 'name' key");
+        
         const opener = stripped[startIdx];
         const closer = opener === '[' ? ']' : '}';
-        let depth = 0;
-        let endIdx = -1;
+        let depth = 0, endIdx = -1;
         for (let i = startIdx; i < stripped.length; i++) {
           if (stripped[i] === opener) depth++;
-          else if (stripped[i] === closer) {
-            depth--;
-            if (depth === 0) { endIdx = i; break; }
-          }
+          else if (stripped[i] === closer) { depth--; if (depth === 0) { endIdx = i; break; } }
         }
         if (endIdx === -1) throw new Error("Unbalanced JSON");
-
+        
         const jsonString = stripped.substring(startIdx, endIdx + 1);
+        console.log("📸 [ScanRX API] Extracted JSON string (first 300 chars):", jsonString.substring(0, 300));
         const parsed = JSON.parse(jsonString);
         medicines = parsed.medicines || parsed;
     } catch (e) {
