@@ -123,6 +123,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
   };
 
   const handleFallbackContinue = () => {
+    console.log("📸 [RxScanModal] handleFallbackContinue called. Image present:", !!image);
     if (image) {
       onScanResult([], image);
     }
