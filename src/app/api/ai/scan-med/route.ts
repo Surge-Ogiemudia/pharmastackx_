@@ -54,6 +54,16 @@ export async function POST(req: NextRequest) {
     let medicines;
     try {
         let jsonString = text.replace(/```json|```/gi, "").trim();
+        
+        const startIdx = jsonString.search(/[\{\[]/);
+        const endIdxObj = jsonString.lastIndexOf('}');
+        const endIdxArr = jsonString.lastIndexOf(']');
+        const endIdx = Math.max(endIdxObj, endIdxArr);
+
+        if (startIdx !== -1 && endIdx !== -1 && endIdx >= startIdx) {
+            jsonString = jsonString.substring(startIdx, endIdx + 1);
+        }
+
         medicines = JSON.parse(jsonString);
     } catch (e) {
         console.error("📸 [ScanMed API] JSON Parse Error:", e, "Raw text:", text);
