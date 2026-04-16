@@ -83,52 +83,34 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
 
   const performScan = async (base64Image: string) => {
     setScanPhase('capture');
-    setProgressWidth(15);
-    setStatusText('Mapping image coordinates');
+    setStatusText('Identifying medicines...');
     setTimeLeft(3);
 
-    const matchTimer = setTimeout(() => {
-      setScanPhase('identify');
-      setProgressWidth(40);
-      setStatusText('Extracting critical keywords');
-      setTimeLeft(2);
-    }, 800);
-
-    const broadcastTimer = setTimeout(() => {
-      setScanPhase('match');
-      setProgressWidth(70);
-      setStatusText('Broadcasting search');
-      setTimeLeft(1);
-    }, 1800);
-
+    // Constant progress animation handled by CSS animation in the JSX
+    
     try {
       const endpoint = isRx ? '/api/ai/scan-rx' : '/api/ai/scan-med';
       const res = await axios.post(endpoint, { image: base64Image });
       
-      clearTimeout(matchTimer);
-      clearTimeout(broadcastTimer);
-
       if (res.data.medicines && res.data.medicines.length > 0) {
         setScanPhase('results');
-        setProgressWidth(100);
-        setStatusText('Match successful');
+        setStatusText('Items identified');
         setTimeLeft(0);
         setTimeout(() => {
           onScanResult(res.data.medicines, base64Image);
           handleClose();
-        }, 800);
+        }, 1200);
       } else {
         throw new Error("No medicines extracted");
       }
     } catch (err: any) {
-      clearTimeout(matchTimer);
-      clearTimeout(broadcastTimer);
       console.error('Scan error:', err);
-      // Initiate fallback UX
-      setScanPhase('failed');
-      setProgressWidth(100);
-      setTimeLeft(0);
-      setStatusText('Extraction Failed');
+      // Wait a tiny bit so the user sees the 'Scanning' phase before failure
+      setTimeout(() => {
+        setScanPhase('failed');
+        setTimeLeft(0);
+        setStatusText('Extraction Failed');
+      }, 1500);
     }
   };
 
@@ -166,21 +148,28 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
         <Box sx={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           width: { xs: '90%', sm: 460 }, 
-          bgcolor: isDark ? '#121212' : 'rgba(255,255,255,0.95)', 
-          color: isDark ? '#fff' : '#111',
+          bgcolor: '#fff', 
+          color: '#111',
           borderRadius: '32px', p: { xs: 3, sm: 4 }, 
-          boxShadow: '0 32px 80px rgba(0,0,0,0.2)', 
-          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)',
-          outline: 'none', textAlign: 'center', overflow: 'hidden',
-          transition: 'background-color 0.4s ease'
+          boxShadow: '0 32px 80px rgba(0,0,0,0.15)', 
+          border: '1px solid rgba(255,255,255,0.5)',
+          outline: 'none', textAlign: 'center', overflow: 'hidden'
         }}>
           {!isDark && <Box sx={{ position: 'absolute', top: -100, right: -100, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(15,110,86,0.05)', filter: 'blur(40px)', zIndex: 0 }} />}
           
-          <IconButton onClick={handleClose} sx={{ position: 'absolute', right: 16, top: 16, color: isDark ? '#fff' : '#aaa', zIndex: 2 }}>
+          <IconButton onClick={handleClose} sx={{ position: 'absolute', right: 16, top: 16, color: '#aaa', zIndex: 2 }}>
             <CloseIcon />
           </IconButton>
           
           <Box sx={{ position: 'relative', zIndex: 1, height: '100%' }}>
+            <style>
+              {`
+                @keyframes slideProgress {
+                  0% { transform: translateX(-100%); }
+                  100% { transform: translateX(100%); }
+                }
+              `}
+            </style>
             {!isDark ? (
               <Box>
                 <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '24px', fontWeight: 900, mb: 1, letterSpacing: '-0.5px' }}>
@@ -223,20 +212,20 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
               </Box>
             ) : scanPhase === 'failed' ? (
               <Box sx={{ textAlign: 'left', mt: 3 }}>
-                <Typography sx={{ color: '#ffaaaa', fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', mb: 1 }}>Analysis Failed</Typography>
-                <Typography sx={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.4, mb: 2 }}>We couldn't automatically read this {isRx ? 'prescription' : 'medicine'}.</Typography>
-                <Typography sx={{ fontSize: '14px', color: '#aaa', mb: 4, lineHeight: 1.6 }}>
+                <Typography sx={{ color: 'var(--green)', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', mb: 1 }}>Analysis Halted</Typography>
+                <Typography sx={{ fontSize: '18px', fontWeight: 850, lineHeight: 1.3, mb: 2, color: '#111' }}>We couldn't automatically read this {isRx ? 'prescription' : 'medicine'}.</Typography>
+                <Typography sx={{ fontSize: '14px', color: '#666', mb: 4, lineHeight: 1.6 }}>
                   {isRx 
-                    ? "Your image or prescription wasn't clear enough for the AI. However, I have attached your image. Our pharmacist will be able to identify the medicine and state its availability for you."
-                    : "The lighting or angle wasn't clear enough for the AI. Don't worry! I have attached it below so the pharmacist can identify it for you."
+                    ? "Your prescription image wasn't clear enough for the AI. Don't worry, I've attached it below so the pharmacist can manually verify and state its availability."
+                    : "The lighting wasn't clear enough for the AI. I've attached the photo below so our pharmacist can identify it and state its availability for you."
                   }
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                    <Box 
                      onClick={() => { setImage(null); setScanPhase('idle'); }} 
-                     sx={{ flex: 1, py: 1.5, borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', textAlign: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}
+                     sx={{ flex: 1, py: 1.5, borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', textAlign: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}
                    >
-                     <Typography sx={{ fontSize: '14px', fontWeight: 700 }}>Retake Photo</Typography>
+                     <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>Retake Photo</Typography>
                    </Box>
                    <Box 
                      onClick={handleFallbackContinue} 
@@ -249,26 +238,33 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* HUD Camera Feed Area */}
-                <Box sx={{ position: 'relative', width: '100%', height: '260px', borderRadius: '16px', overflow: 'hidden', bgcolor: '#0a0a0a', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)' }}>
-                  <img src={image} alt="Prescription" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }} />
+                <Box sx={{ position: 'relative', width: '100%', height: '260px', borderRadius: '16px', overflow: 'hidden', bgcolor: '#f5f5f5', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <img src={image} alt="Prescription" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8, filter: 'grayscale(0.3) contrast(1.1)' }} />
                   
                   {/* Viewfinder Corners */}
-                  <Box sx={{ position: 'absolute', top: 20, left: 20, width: 30, height: 30, borderTop: '3px solid #0F6E56', borderLeft: '3px solid #0F6E56', borderRadius: '4px 0 0 0' }} />
-                  <Box sx={{ position: 'absolute', top: 20, right: 20, width: 30, height: 30, borderTop: '3px solid #0F6E56', borderRight: '3px solid #0F6E56', borderRadius: '0 4px 0 0' }} />
-                  <Box sx={{ position: 'absolute', bottom: 20, left: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderLeft: '3px solid #0F6E56', borderRadius: '0 0 0 4px' }} />
-                  <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderRight: '3px solid #0F6E56', borderRadius: '0 0 4px 0' }} />
+                  <Box sx={{ position: 'absolute', top: 20, left: 20, width: 30, height: 30, borderTop: '3px solid #0F6E56', borderLeft: '3px solid #0F6E56', borderRadius: '4px 0 0 0', zIndex: 5 }} />
+                  <Box sx={{ position: 'absolute', top: 20, right: 20, width: 30, height: 30, borderTop: '3px solid #0F6E56', borderRight: '3px solid #0F6E56', borderRadius: '0 4px 0 0', zIndex: 5 }} />
+                  <Box sx={{ position: 'absolute', bottom: 20, left: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderLeft: '3px solid #0F6E56', borderRadius: '0 0 0 4px', zIndex: 5 }} />
+                  <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderRight: '3px solid #0F6E56', borderRadius: '0 0 4px 0', zIndex: 5 }} />
 
                   {/* Laser Sweeps */}
                   <motion.div
                     initial={{ y: 0 }} 
                     animate={{ y: 260 }} 
-                    transition={{ duration: 1.8, repeat: Infinity, ease: 'linear', repeatType: 'reverse' }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', repeatType: 'reverse' }}
                     style={{
-                      position: 'absolute', left: 40, right: 40, height: '2px',
+                      position: 'absolute', left: 20, right: 20, height: '3px',
                       background: '#0F6E56',
-                      boxShadow: '0 0 10px #0F6E56, 0 0 20px #0F6E56',
-                      zIndex: 3
+                      boxShadow: '0 0 15px #0F6E56, 0 0 30px #0F6E56',
+                      zIndex: 10
                     }}
+                  />
+
+                  {/* Scanning Overlay (Pulse) */}
+                  <motion.div
+                    animate={{ opacity: [0.1, 0.3, 0.1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    style={{ position: 'absolute', inset: 0, bgcolor: 'var(--green-pale)', zIndex: 2 }}
                   />
 
                   {/* Scan Chip */}
@@ -286,17 +282,25 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
 
                 {/* Progress Status Area */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3, mb: 1 }}>
-                   <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#fff' }}>
+                   <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#111' }}>
                      {statusText}
                    </Typography>
-                   <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-green)' }}>
-                     {timeLeft > 0 ? `~${timeLeft}s remaining` : 'Done'}
+                   <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--green)' }}>
+                     {timeLeft > 0 ? `Processing...` : 'Done'}
                    </Typography>
                 </Box>
                 
-                {/* Slim Progress Bar */}
-                <Box sx={{ width: '100%', height: '4px', bgcolor: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', mb: 3 }}>
-                   <Box sx={{ width: `${progressWidth}%`, height: '100%', bgcolor: 'var(--primary-green)', transition: 'width 0.4s easeOut' }} />
+                {/* Slim Progress Bar with Constant Animation */}
+                <Box sx={{ width: '100%', height: '6px', bgcolor: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden', mb: 3, position: 'relative' }}>
+                   {scanPhase !== 'results' ? (
+                     <Box sx={{ 
+                       width: '40%', height: '100%', bgcolor: 'var(--primary-green)',
+                       animation: 'slideProgress 1.5s infinite linear',
+                       boxShadow: '0 0 15px var(--primary-green)'
+                     }} />
+                   ) : (
+                     <Box sx={{ width: '100%', height: '100%', bgcolor: 'var(--green)' }} />
+                   )}
                 </Box>
 
                 {/* Steps */}
@@ -311,7 +315,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                              boxShadow: isActive ? '0 0 10px #0F6E56' : 'none',
                              transition: 'all 0.3s ease'
                            }} />
-                           <Typography sx={{ fontSize: '10px', color: isActive ? '#fff' : '#666', fontWeight: isActive ? 600 : 400, transition: 'color 0.3s' }}>
+                           <Typography sx={{ fontSize: '10px', color: isActive ? '#111' : '#aaa', fontWeight: isActive ? 800 : 400, transition: 'color 0.3s' }}>
                              {stepStr}
                            </Typography>
                         </Box>
