@@ -6,11 +6,60 @@ import { transporter } from "@/lib/nodemailer";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const SYSTEM_PROMPT = `You are Ask Rx, a friendly medicine expert embedded in PharmaStackX, a Nigerian healthcare app. 
+const SYSTEM_PROMPT = `You are Ask Rx, a friendly medicine expert. 
 
-CRITICAL INSTRUCTION: You must respond DIRECTLY with the final answer meant for the user. Do not think out loud. Do not output your reasoning process. Under absolutely NO circumstances should you use an asterisk (*) in your response. NEVER output your evaluation of the user's intent. Do not mention that you are an AI or talk about your instructions.
+STRICT RULE: Only output the conversational reply. NEVER output labels like "User:", "Context:", or "Final Response:". NEVER think out loud or drafts. Be brief (1-3 sentences). Warm and human. No asterisks.
 
-Respond like a knowledgeable friend to the user — short, clear, warm, and human. Never use asterisks, bullet points, or numbered lists. Never repeat back what the user said. If something sounds urgent or dangerous, say clearly they should see a doctor or pharmacist now. Only discuss health and medicine topics. If a user asks about something unrelated, gently redirect them. If the situation is clearly beyond AI help, end your message with the exact text: ESCALATE_TO_PHARMACIST`;
+If a symptom sounds severe, include the text: ESCALATE_TO_PHARMACIST`;
+
+function sanitizeResponse(text: string): string {
+  // If the model is leaking its chain of thought, we need to find the REAL answer.
+  // We look for common "Final Answer" markers used by LLMs when they "think out loud".
+  const markers = [
+    /\*?\*?Final Response\*?\*?:\s*/i,
+    /\*?\*?Final Result\*?\*?:\s*/i,
+    /\*?\*?Final Text\*?\*?:\s*/i,
+    /\*?\*?Selected Response\*?\*?:\s*/i,
+    /\*?\*?Response\*?\*?:\s*/i,
+    /\*?\*?Your reply\*?\*?:\s*/i
+  ];
+
+  let cleaned = text;
+
+  for (const marker of markers) {
+    if (marker.test(cleaned)) {
+      const parts = cleaned.split(marker);
+      cleaned = parts[parts.length - 1].trim();
+      break;
+    }
+  }
+
+  // If it still contains asterisks or seems like a meta-commentary, try to strip everything before the last quote
+  if (cleaned.includes('*')) {
+     const sections = cleaned.split(/\*[^*]+\*/);
+     if (sections.length > 1) {
+       cleaned = sections.pop()?.trim() || cleaned;
+     }
+  }
+
+  // Final cleanup: remove residual metadata labels
+  cleaned = cleaned.replace(/^User says:.*$/im, '')
+                   .replace(/^Context:.*$/im, '')
+                   .replace(/^Persona:.*$/im, '')
+                   .replace(/^Constraint Check:.*$/im, '')
+                   .replace(/^Drafting response:.*$/im, '')
+                   .trim();
+                   
+  // Deduplication: if the model doubled the output (e.g. "Hello! Hello!")
+  const mid = Math.floor(cleaned.length / 2);
+  const firstHalf = cleaned.substring(0, mid).trim();
+  const secondHalf = cleaned.substring(mid).trim();
+  if (firstHalf === secondHalf && firstHalf.length > 5) {
+      return firstHalf;
+  }
+
+  return cleaned || "I apologize, I'm having a technical glitch. How can I help with your medication questions?";
+}
 
 
 export async function POST(req: NextRequest) {
@@ -82,23 +131,7 @@ export async function POST(req: NextRequest) {
 
     const result = await chat.sendMessage(promptMessage);
     const response = await result.response;
-    let aiText = response.text().trim();
-
-    // Aggressive fallback sanitization: if the model leaked its chain of thought (e.g. "* User input: ... * Final response: hello"), strip everything before the actual response
-    if (aiText.includes('* Final response:')) {
-        aiText = aiText.split('* Final response:')[1].trim();
-    } else if (aiText.includes('*Final response*:')) {
-        aiText = aiText.split('*Final response*:')[1].trim();
-    } else if (aiText.includes('*Final Text*:')) {
-         aiText = aiText.split('*Final Text*:')[1].trim();
-    } else if (aiText.includes('* Final Result*:')) {
-         aiText = aiText.split('* Final Result*:')[1].trim();
-    } else if (aiText.startsWith('*')) {
-        // If it still starts with an asterisk, it's likely a leaked chain of thought without a clean break. 
-        // We look for the last period or question mark that isn't inside an asterisk block, or we just fail gracefully.
-        const parts = aiText.split(/\*[^*]+\*/); 
-        aiText = parts.pop()?.trim() || "I am having trouble formulating my response. Could you rephrase your health question?";
-    }
+    let aiText = sanitizeResponse(response.text().trim());
 
     const shouldEscalate = aiText.includes("ESCALATE_TO_PHARMACIST");
     if (shouldEscalate) {
