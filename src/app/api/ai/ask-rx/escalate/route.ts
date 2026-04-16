@@ -28,13 +28,14 @@ export async function POST(req: NextRequest) {
             message: 'I have notified the pharmacist. They will join this chat shortly.' 
         });
     } else {
-        consultation.status = 'resolved';
-        consultation.messages.push({ sender: 'ai', text: 'No problem. I will close this session for now. Feel free to start a new chat anytime!', timestamp: new Date() });
+        consultation.status = 'ai';
+        consultation.aiMoveCount = 0; // reset counter so they can keep chatting
+        consultation.messages.push({ sender: 'ai', text: 'Alright! Let me know if you have any other questions.', timestamp: new Date() });
         await consultation.save();
 
         return NextResponse.json({ 
-            status: 'resolved',
-            message: 'No problem. I will close this session for now. Feel free to start a new chat anytime!' 
+            status: 'ai',
+            message: 'Alright! Let me know if you have any other questions.' 
         });
     }
 

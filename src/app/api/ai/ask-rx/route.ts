@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         consultation.status = 'pending_escalation';
         await consultation.save();
         return NextResponse.json({ 
-            text: "I've reached my AI limit for this session. Would you like me to connect you to our Head Pharmacist for specialized help?", 
+            text: "If you would like to connect with a professional pharmacist please indicate or continue chatting with me (AI).", 
             status: 'pending_escalation' 
         });
     }

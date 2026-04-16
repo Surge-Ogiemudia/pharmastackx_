@@ -304,7 +304,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                                     onClick={() => handleEscalationConsent(false)}
                                     sx={{ flex: 1, p: 1, bgcolor: '#f1f1f1', color: '#333', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: 500, '&:hover': { bgcolor: '#e0e0e0' } }}
                                 >
-                                    No, thanks
+                                    Continue with AI
                                 </Box>
                             </Box>
                         </Box>
