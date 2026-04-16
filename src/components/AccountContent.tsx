@@ -11,6 +11,7 @@ const SubscriptionContent = dynamic(() => import('./SubscriptionContent'), { ssr
 const StoreManagement = dynamic(() => import('../app/components/StoreManagement'), { ssr: false });
 const MedicineRestock = dynamic(() => import('./MedicineRestock'), { ssr: false });
 const WhatsAppManagement = dynamic(() => import('./WhatsAppManagement'), { ssr: false });
+const DataCentreContent = dynamic(() => import('./DataCentreContent'), { ssr: false });
 import AboutContent from './AboutContent';
 import PrivacyContent from './PrivacyContent';
 import DotCanvas from './DotCanvas';
@@ -330,7 +331,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
     const [locationEnabled, setLocationEnabled] = useState(true);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -701,7 +702,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             <span>Back</span>
                         </div>
                     )}
-                    {(profileMode === 'profile' || profileMode === 'contact' || profileMode === 'about' || profileMode === 'privacy' || profileMode === 'whatsapp') && (
+                    {(profileMode === 'profile' || profileMode === 'contact' || profileMode === 'about' || profileMode === 'privacy' || profileMode === 'whatsapp' || profileMode === 'datacentre') && (
                         <div className="back-btn-pill" onClick={() => setProfileMode('list')}>
                             <ArrowBack style={{ fontSize: '16px' }} />
                             <span>Back</span>
@@ -832,6 +833,12 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         {profileMode === 'whatsapp' && (
                             <Box sx={{ mt: 2 }}>
                                 <WhatsAppManagement />
+                            </Box>
+                        )}
+
+                        {profileMode === 'datacentre' && (
+                            <Box sx={{ mt: 2 }}>
+                                <DataCentreContent />
                             </Box>
                         )}
 
@@ -971,6 +978,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                             <div className="profile-row-action" onClick={() => setProfileMode('whatsapp')}>
                                                 <WhatsAppIcon style={{ color: '#25D366' }} />
                                                 <span className="profile-row-label">WhatsApp Management</span>
+                                                <span className="profile-chevron">›</span>
+                                            </div>
+                                            <div className="profile-row-action" onClick={() => setProfileMode('datacentre')}>
+                                                <span style={{ fontSize: '18px', lineHeight: 1 }}>🏢</span>
+                                                <span className="profile-row-label">Data Centre</span>
                                                 <span className="profile-chevron">›</span>
                                             </div>
                                             <div className="profile-row-action" onClick={() => setProfileMode('consultations')}>
