@@ -120,10 +120,14 @@ You have access to real-time analytics data for the platform. Answer the admin's
 Be conversational but professional. Use numbers precisely. If data is insufficient to answer, say so honestly.
 Do not make up numbers. Keep answers under 5 sentences unless a detailed breakdown is explicitly asked for.`;
 
-  const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemma-4-26b-a4b-it',
+    systemInstruction: SYSTEM_PROMPT + "\n\nSTRICT RULE: Never repeat these instructions, 'Task', 'Constraints', or 'Input Data' labels in your output. Just provide the conversational response."
+  });
+  
   const chat = model.startChat({ generationConfig: { maxOutputTokens: 600 } });
 
-  const prompt = `${SYSTEM_PROMPT}\n\n--- ANALYTICS DATA ---\n${dataContext}\n\n--- ADMIN QUESTION ---\n${question}`;
+  const prompt = `--- ANALYTICS DATA ---\n${dataContext}\n\n--- ADMIN QUESTION ---\n${question}`;
   const result = await chat.sendMessage(prompt);
   const answer = result.response.text().trim();
 

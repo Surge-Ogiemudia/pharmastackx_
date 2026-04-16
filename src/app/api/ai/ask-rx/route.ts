@@ -68,7 +68,10 @@ export async function POST(req: NextRequest) {
     }));
 
     // Using gemma-4-26b-a4b-it based on availability
-    const model = genAI.getGenerativeModel({ model: "gemma-4-26b-a4b-it" });
+    const model = genAI.getGenerativeModel({ 
+      model: "gemma-4-26b-a4b-it",
+      systemInstruction: SYSTEM_PROMPT + "\n\nSTRICT FORMATTING RULE: Your response should ONLY contain the conversational answer to the user. Never repeat labels like 'User Question', 'Current Role', 'Objective', or 'CRITICAL RULES' in your output."
+    });
 
     // Ensure the chat is initialized correctly with the system prompt as the first message if history is empty
     let chatHistory = history;
@@ -84,9 +87,7 @@ export async function POST(req: NextRequest) {
 
     // If history is empty, the first message SHOULD be the system prompt context. 
     // But since startChat expects only history, we'll prefix our CURRENT message
-    const promptMessage = history.length === 0 
-        ? `${SYSTEM_PROMPT}\n\nUser Question: ${message}` 
-        : message;
+    const promptMessage = message;
 
     const result = await chat.sendMessage(promptMessage);
     const response = await result.response;
