@@ -170,7 +170,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                       }}>
                          <CircularProgress size={44} thickness={4} sx={{ color: '#fff' }} />
                          <Typography sx={{ color: '#fff', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                            AI Extraction...
+                            Scanning...
                          </Typography>
                       </Box>
                     </>
