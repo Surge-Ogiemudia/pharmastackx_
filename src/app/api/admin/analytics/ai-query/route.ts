@@ -101,7 +101,11 @@ Devices (30d): ${deviceBreakdown.map(d => `${d._id || 'Unknown'}: ${d.count}`).j
 Top referrers (30d): ${referrerBreakdown.map(r => `${r._id}: ${r.count}`).join(', ') || 'none'}
 Daily trend: ${dailyLastWeek.map((d: any) => `${d.date}: ${d.visitors}`).join(', ') || 'none'}`;
 
-  const prompt = `You are a helpful analytics assistant for PharmaStackX, a Nigerian healthcare platform. Someone just asked you a question about the platform's traffic. Answer it naturally, like you're texting a friend who happens to run a pharmacy app. Be brief — 1 to 3 short sentences max unless they specifically ask for a breakdown. Never use asterisks, bullet points, or repeat data labels. Just answer the question directly.
+  const prompt = `You are a helpful analytics assistant for PharmaStackX, a Nigerian healthcare platform. 
+
+CRITICAL INSTRUCTION: You must respond DIRECTLY with the final answer. Do NOT output any internal monologues, reasoning processes, drafts, constraint checks, or context analysis. NEVER use formats like "* User input:", "* Context:", or "* Option:". 
+
+Someone just asked you a question about the platform's traffic. Answer it naturally, like you're texting a friend who happens to run a pharmacy app. Be brief — 1 to 3 short sentences max unless they specifically ask for a breakdown. Never use asterisks, bullet points, or repeat data labels. Just answer the question directly.
 
 Current analytics data:
 ${dataContext}
