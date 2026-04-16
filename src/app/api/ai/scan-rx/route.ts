@@ -54,21 +54,27 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        let jsonString = text.replace(/```json|```/gi, "").trim();
-        
-        // Find the first [ or { and the last ] or }
-        const startIdx = jsonString.search(/[\{\[]/);
-        // Find the last occurrence of } or ]
-        const endIdxObj = jsonString.lastIndexOf('}');
-        const endIdxArr = jsonString.lastIndexOf(']');
-        const endIdx = Math.max(endIdxObj, endIdxArr);
+        // Walk character by character to find the FIRST complete, balanced JSON block
+        const stripped = text.replace(/```json|```/gi, "");
+        const startIdx = stripped.search(/[\[\{]/);
+        if (startIdx === -1) throw new Error("No JSON start found");
 
-        if (startIdx !== -1 && endIdx !== -1 && endIdx >= startIdx) {
-            jsonString = jsonString.substring(startIdx, endIdx + 1);
+        const opener = stripped[startIdx];
+        const closer = opener === '[' ? ']' : '}';
+        let depth = 0;
+        let endIdx = -1;
+        for (let i = startIdx; i < stripped.length; i++) {
+          if (stripped[i] === opener) depth++;
+          else if (stripped[i] === closer) {
+            depth--;
+            if (depth === 0) { endIdx = i; break; }
+          }
         }
+        if (endIdx === -1) throw new Error("Unbalanced JSON");
 
+        const jsonString = stripped.substring(startIdx, endIdx + 1);
         const parsed = JSON.parse(jsonString);
-        medicines = parsed.medicines || parsed; // Handle wrapping if present
+        medicines = parsed.medicines || parsed;
     } catch (e) {
         console.error("📸 [ScanRX API] JSON Parse Error:", e, "Raw text:", text);
         throw new Error("Failed to parse AI response into valid JSON.");

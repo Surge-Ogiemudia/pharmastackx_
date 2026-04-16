@@ -54,17 +54,25 @@ export async function POST(req: NextRequest) {
 
     let medicines;
     try {
-        let jsonString = text.replace(/```json|```/gi, "").trim();
-        
-        const startIdx = jsonString.search(/[\{\[]/);
-        const endIdxObj = jsonString.lastIndexOf('}');
-        const endIdxArr = jsonString.lastIndexOf(']');
-        const endIdx = Math.max(endIdxObj, endIdxArr);
+        // Walk character by character to find the FIRST complete, balanced JSON block
+        const stripped = text.replace(/```json|```/gi, "");
+        const startIdx = stripped.search(/[\[\{]/);
+        if (startIdx === -1) throw new Error("No JSON start found");
 
-        if (startIdx !== -1 && endIdx !== -1 && endIdx >= startIdx) {
-            jsonString = jsonString.substring(startIdx, endIdx + 1);
+        const opener = stripped[startIdx];
+        const closer = opener === '[' ? ']' : '}';
+        let depth = 0;
+        let endIdx = -1;
+        for (let i = startIdx; i < stripped.length; i++) {
+          if (stripped[i] === opener) depth++;
+          else if (stripped[i] === closer) {
+            depth--;
+            if (depth === 0) { endIdx = i; break; }
+          }
         }
+        if (endIdx === -1) throw new Error("Unbalanced JSON");
 
+        const jsonString = stripped.substring(startIdx, endIdx + 1);
         medicines = JSON.parse(jsonString);
     } catch (e) {
         console.error("📸 [ScanMed API] JSON Parse Error:", e, "Raw text:", text);
