@@ -94,12 +94,19 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
       const res = await axios.post(endpoint, { image: base64Image });
       
       if (res.data.medicines && res.data.medicines.length > 0) {
+        // Validate names — reject medicines with empty/placeholder names
+        const validMedicines = res.data.medicines.filter(
+          (m: any) => m.name && m.name.trim().length > 0
+        );
+        if (validMedicines.length === 0) {
+          throw new Error("Medicines returned but all had empty names");
+        }
         setScanPhase('results');
         setStatusText('Items identified');
         setProgressPct(100);
         setTimeLeft(0);
         setTimeout(() => {
-          onScanResult(res.data.medicines, base64Image);
+          onScanResult(validMedicines, base64Image);
           handleClose();
         }, 1200);
       } else {
