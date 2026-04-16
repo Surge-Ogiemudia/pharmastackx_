@@ -21,7 +21,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
   const [scanPhase, setScanPhase] = useState<'idle' | 'uploading' | 'capture' | 'identify' | 'match' | 'results' | 'failed'>('idle');
   const [timeLeft, setTimeLeft] = useState(3);
   const [statusText, setStatusText] = useState('Extracting Visual Data');
-  const [progressWidth, setProgressWidth] = useState(0);
+  const [progressPct, setProgressPct] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isRx = mode === 'rx';
@@ -85,9 +85,10 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
     setScanPhase('capture');
     setStatusText('Identifying medicines...');
     setTimeLeft(3);
+    // Kick progress off at 5%, then let the CSS transition ease it to 80% over 12s
+    setProgressPct(5);
+    setTimeout(() => setProgressPct(80), 150);
 
-    // Constant progress animation handled by CSS animation in the JSX
-    
     try {
       const endpoint = isRx ? '/api/ai/scan-rx' : '/api/ai/scan-med';
       const res = await axios.post(endpoint, { image: base64Image });
@@ -95,6 +96,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
       if (res.data.medicines && res.data.medicines.length > 0) {
         setScanPhase('results');
         setStatusText('Items identified');
+        setProgressPct(100);
         setTimeLeft(0);
         setTimeout(() => {
           onScanResult(res.data.medicines, base64Image);
@@ -105,7 +107,6 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
       }
     } catch (err: any) {
       console.error('Scan error:', err);
-      // Wait a tiny bit so the user sees the 'Scanning' phase before failure
       setTimeout(() => {
         setScanPhase('failed');
         setTimeLeft(0);
@@ -124,7 +125,7 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
   const handleClose = () => {
     setImage(null);
     setScanPhase('idle');
-    setProgressWidth(0);
+    setProgressPct(0);
     onClose();
   };
 
@@ -247,15 +248,15 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                   <Box sx={{ position: 'absolute', bottom: 20, left: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderLeft: '3px solid #0F6E56', borderRadius: '0 0 0 4px', zIndex: 5 }} />
                   <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 30, height: 30, borderBottom: '3px solid #0F6E56', borderRight: '3px solid #0F6E56', borderRadius: '0 0 4px 0', zIndex: 5 }} />
 
-                  {/* Laser Sweeps */}
+                  {/* Laser Sweep — bounces vertically inside camera feed */}
                   <motion.div
-                    initial={{ y: 0 }} 
-                    animate={{ y: 260 }} 
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', repeatType: 'reverse' }}
+                    initial={{ top: 0 }}
+                    animate={{ top: ['0%', '100%', '0%'] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                     style={{
-                      position: 'absolute', left: 20, right: 20, height: '3px',
-                      background: '#0F6E56',
-                      boxShadow: '0 0 15px #0F6E56, 0 0 30px #0F6E56',
+                      position: 'absolute', left: 0, right: 0, height: '3px',
+                      background: 'linear-gradient(to right, transparent, #00ff88, #0F6E56, #00ff88, transparent)',
+                      boxShadow: '0 0 12px #00ff88, 0 0 24px #0F6E56',
                       zIndex: 10
                     }}
                   />
@@ -290,17 +291,18 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
                    </Typography>
                 </Box>
                 
-                {/* Slim Progress Bar with Constant Animation */}
-                <Box sx={{ width: '100%', height: '6px', bgcolor: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden', mb: 3, position: 'relative' }}>
-                   {scanPhase !== 'results' ? (
-                     <Box sx={{ 
-                       width: '40%', height: '100%', bgcolor: '#0F6E56',
-                       animation: 'slideProgress 1.5s infinite linear',
-                       boxShadow: '0 0 15px #0F6E56'
-                     }} />
-                   ) : (
-                     <Box sx={{ width: '100%', height: '100%', bgcolor: '#0F6E56' }} />
-                   )}
+                {/* Slim Progress Bar — state-driven smooth fill */}
+                <Box sx={{ width: '100%', height: '6px', bgcolor: 'rgba(0,0,0,0.07)', borderRadius: '3px', overflow: 'hidden', mb: 3, position: 'relative' }}>
+                   <Box sx={{ 
+                     width: `${progressPct}%`,
+                     height: '100%', 
+                     bgcolor: '#0F6E56',
+                     borderRadius: '3px',
+                     transition: progressPct >= 100 
+                       ? 'width 0.4s ease' 
+                       : 'width 12s cubic-bezier(0.05, 0.6, 0.2, 1)',
+                     boxShadow: '0 0 12px #0F6E56'
+                   }} />
                 </Box>
 
                 {/* Steps */}
