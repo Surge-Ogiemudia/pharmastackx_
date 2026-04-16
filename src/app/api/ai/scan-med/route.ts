@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60; // Allow up to 60s for vision AI calls on Vercel
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
@@ -30,11 +32,10 @@ export async function POST(req: NextRequest) {
 
     // Handle base64 data (strip prefix if present)
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
+    console.log("📸 [ScanMed API] base64Data length:", base64Data.length);
 
-    // Use gemma-4-26b-a4b-it for consistency
     const generationModel = genAI.getGenerativeModel({ 
       model: "gemma-4-26b-a4b-it",
-      generationConfig: { responseMimeType: "application/json" }
     });
 
     const result = await generationModel.generateContent([
