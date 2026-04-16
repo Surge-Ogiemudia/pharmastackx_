@@ -62,12 +62,21 @@ export async function POST(req: NextRequest) {
         const nameIdx = stripped.indexOf('"name"');
         if (nameIdx === -1) throw new Error("No 'name' key found in AI response");
         
-        // Backtrack from "name" to find the enclosing [ or {
-        let startIdx = -1;
+        // Backtrack from "name" to find the immediate enclosing { 
+        let objStart = -1;
         for (let i = nameIdx; i >= 0; i--) {
-          if (stripped[i] === '[' || stripped[i] === '{') { startIdx = i; break; }
+          if (stripped[i] === '{') { objStart = i; break; }
         }
-        if (startIdx === -1) throw new Error("No opening bracket before 'name' key");
+        if (objStart === -1) throw new Error("No opening brace before 'name' key");
+        
+        // Now check if there's a [ before the { (for array of medicines)
+        // Skip whitespace backwards from objStart
+        let startIdx = objStart;
+        for (let i = objStart - 1; i >= 0; i--) {
+          const ch = stripped[i];
+          if (ch === '[') { startIdx = i; break; }         // found array wrapper
+          if (ch !== ' ' && ch !== '\n' && ch !== '\r' && ch !== '\t') break; // non-whitespace = no array wrapper
+        }
         
         const opener = stripped[startIdx];
         const closer = opener === '[' ? ']' : '}';
@@ -79,7 +88,7 @@ export async function POST(req: NextRequest) {
         if (endIdx === -1) throw new Error("Unbalanced JSON");
         
         const jsonString = stripped.substring(startIdx, endIdx + 1);
-        console.log("📸 [ScanRX API] Extracted JSON string (first 300 chars):", jsonString.substring(0, 300));
+        console.log("📸 [ScanRX API] Extracted JSON string (first 500 chars):", jsonString.substring(0, 500));
         const parsed = JSON.parse(jsonString);
         medicines = parsed.medicines || parsed;
     } catch (e) {
