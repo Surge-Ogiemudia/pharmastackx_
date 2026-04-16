@@ -87,6 +87,16 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-        '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths EXCEPT:
+     * - api routes (handled as function invocations, not edge)
+     * - _next/static (Next.js static assets)
+     * - _next/image (Next.js image optimization)
+     * - favicon.ico
+     * - All static file extensions (images, fonts, icons, manifests)
+     * This prevents middleware from firing on every image/icon on the page,
+     * which was the primary cause of high edge request counts.
+     */
+    '/((?!api|_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|otf|eot|json|xml|txt|mp4|mp3|pdf|zip)$).*)',
   ],
 };

@@ -3,7 +3,6 @@ import { dbConnect } from '../../../lib/mongoConnect';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
 
 // Helper to format the price into Nigerian Naira (NGN)
 const formatPrice = (price) => {
