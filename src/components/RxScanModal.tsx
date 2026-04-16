@@ -148,32 +148,70 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
               </Box>
             ) : (
               <Box sx={{ position: 'relative', width: '100%', borderRadius: '20px', overflow: 'hidden', mb: 1, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
-                <img src={image} alt="Prescription" style={{ width: '100%', height: '240px', objectFit: 'cover', display: 'block', filter: isScanning ? 'brightness(0.7)' : 'none' }} />
+                <style>
+                  {`
+                    @keyframes spinGlow {
+                      0% { transform: rotate(0deg); box-shadow: 0 0 10px #0F6E56(0,0,0,0); }
+                      50% { box-shadow: 0 0 25px #0F6E56; }
+                      100% { transform: rotate(360deg); box-shadow: 0 0 10px rgba(0,0,0,0); }
+                    }
+                    @keyframes pulseText {
+                      0%, 100% { opacity: 0.6; text-shadow: 0 0 5px rgba(255,255,255,0); }
+                      50% { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.8); }
+                    }
+                  `}
+                </style>
+
+                <img src={image} alt="Prescription" style={{ width: '100%', height: '280px', objectFit: 'cover', display: 'block', filter: isScanning ? 'brightness(0.3) contrast(1.2)' : 'none', transition: 'filter 0.5s ease' }} />
                 
                 <AnimatePresence>
                   {isScanning && (
-                    <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                    >
+                      {/* Viewfinder Corners */}
+                      <Box sx={{ position: 'absolute', top: 20, left: 20, width: 40, height: 40, borderTop: '4px solid #0F6E56', borderLeft: '4px solid #0F6E56', borderRadius: '4px 0 0 0' }} />
+                      <Box sx={{ position: 'absolute', top: 20, right: 20, width: 40, height: 40, borderTop: '4px solid #0F6E56', borderRight: '4px solid #0F6E56', borderRadius: '0 4px 0 0' }} />
+                      <Box sx={{ position: 'absolute', bottom: 20, left: 20, width: 40, height: 40, borderBottom: '4px solid #0F6E56', borderLeft: '4px solid #0F6E56', borderRadius: '0 0 0 4px' }} />
+                      <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 40, height: 40, borderBottom: '4px solid #0F6E56', borderRight: '4px solid #0F6E56', borderRadius: '0 0 4px 0' }} />
+
+                      {/* Sweeping Laser Line */}
                       <motion.div
-                        initial={{ top: '0%' }} 
-                        animate={{ top: '100%' }} 
-                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        initial={{ y: 0 }} 
+                        animate={{ y: 280 }} 
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear', repeatType: 'reverse' }}
                         style={{
                           position: 'absolute', left: 0, right: 0, height: '3px',
-                          background: 'linear-gradient(90deg, transparent, var(--green), transparent)',
-                          boxShadow: '0 0 20px var(--green), 0 0 40px var(--green)', zIndex: 3
+                          background: '#0F6E56',
+                          boxShadow: '0 0 15px #0F6E56, 0 0 30px #0F6E56',
+                          zIndex: 3
                         }}
-                      />
+                      >
+                        {/* Trail above the laser */}
+                        <Box sx={{ position: 'absolute', bottom: '100%', left: 0, right: 0, height: '60px', background: 'linear-gradient(to top, rgba(15,110,86,0.4), transparent)' }} />
+                      </motion.div>
+
+                      {/* Center Radar / Spinner Overlay */}
                       <Box sx={{
-                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        justifyContent: 'center', zIndex: 2, gap: 2
+                        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 4
                       }}>
-                         <CircularProgress size={44} thickness={4} sx={{ color: '#fff' }} />
-                         <Typography sx={{ color: '#fff', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                            Scanning...
+                         <Box sx={{
+                            width: '50px', height: '50px', borderRadius: '50%',
+                            border: '3px solid rgba(15,110,86,0.2)', borderTopColor: '#0F6E56',
+                            animation: 'spinGlow 1.2s linear infinite', mb: 2
+                         }} />
+                         <Typography sx={{ 
+                           color: '#fff', fontSize: '13px', fontWeight: 800, letterSpacing: '4px', 
+                           textTransform: 'uppercase', animation: 'pulseText 1.5s ease-in-out infinite' 
+                         }}>
+                            SCANNING
                          </Typography>
                       </Box>
-                    </>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </Box>
