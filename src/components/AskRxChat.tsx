@@ -20,7 +20,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [status, setStatus] = useState<'ai' | 'escalated' | 'resolved'>('ai');
+    const [status, setStatus] = useState<'ai' | 'pending_escalation' | 'escalated' | 'resolved'>('ai');
     const [consultationId, setConsultationId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +120,57 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                 sender: 'ai', 
                 timestamp: new Date() 
             }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    const handleEscalationConsent = async (consent: boolean) => {
+        if (!consultationId) return;
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/ai/ask-rx/escalate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ consultationId, consent })
+            });
+            const data = await res.json();
+            if (data.status) setStatus(data.status);
+            if (data.message) {
+                setMessages(prev => [...prev, { 
+                    id: Date.now().toString(), 
+                    text: data.message, 
+                    sender: 'ai', 
+                    timestamp: new Date() 
+                }]);
+            }
+        } catch (err) {
+            console.error("Escalation consent err:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSwitchToAI = async () => {
+        if (!consultationId) return;
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/ai/ask-rx/switch-to-ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ consultationId })
+            });
+            const data = await res.json();
+            if (data.status) setStatus(data.status);
+            if (data.message) {
+                setMessages(prev => [...prev, { 
+                    id: Date.now().toString(), 
+                    text: data.message, 
+                    sender: 'ai', 
+                    timestamp: new Date() 
+                }]);
+            }
+        } catch (err) {
+            console.error("Switch to AI err:", err);
         } finally {
             setIsLoading(false);
         }
@@ -224,32 +275,60 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                             </Box>
                         )}
                         {status === 'escalated' && !isLoading && (
-                            <Typography sx={{ fontSize: '11px', color: '#B45309', textAlign: 'center', p: 1, bgcolor: '#FFFBEB', borderRadius: '12px' }}>
-                                A pharmacist has been notified and will respond here soon.
-                            </Typography>
+                            <Box sx={{ alignSelf: 'center', bgcolor: '#FFFBEB', p: 1.5, borderRadius: '12px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Typography sx={{ fontSize: '11px', color: '#B45309' }}>
+                                    A pharmacist has been notified and will respond here soon.
+                                </Typography>
+                                <Box 
+                                    onClick={handleSwitchToAI}
+                                    sx={{ alignSelf: 'center', display: 'inline-block', px: 1.5, py: 0.5, border: '1px solid #B45309', color: '#B45309', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', fontWeight: 600, '&:hover': { bgcolor: '#FDE68A' } }}
+                                >
+                                    Switch back to AI
+                                </Box>
+                            </Box>
                         )}
                     </Box>
 
-                    {/* Input Area */}
-                    <Box sx={{ p: 2, bgcolor: '#fff', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 1 }}>
-                        <TextField
-                            fullWidth
-                            variant="standard"
-                            placeholder={!user ? "Login to chat..." : "Type a message..."}
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            disabled={!user || isLoading}
-                            InputProps={{ disableUnderline: true, sx: { fontSize: '14px', px: 1 } }}
-                        />
-                        <IconButton 
-                            onClick={handleSend} 
-                            disabled={!inputValue.trim() || !user || isLoading}
-                            sx={{ bgcolor: '#0F6E56', color: '#fff', '&:hover': { bgcolor: '#0B5E4A' }, '&.Mui-disabled': { bgcolor: '#eee' } }}
-                        >
-                            <SendIcon fontSize="small" />
-                        </IconButton>
-                    </Box>
+                    {/* Input Area or Consent Area */}
+                    {status === 'pending_escalation' ? (
+                        <Box sx={{ p: 2, bgcolor: '#FFFBEB', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 1, flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#B45309', mb: 1 }}>Connect to Pharmacist?</Typography>
+                            <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+                                <Box 
+                                    onClick={() => handleEscalationConsent(true)}
+                                    sx={{ flex: 1, p: 1, bgcolor: '#0F6E56', color: '#fff', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: 500, '&:hover': { bgcolor: '#0B5E4A' } }}
+                                >
+                                    Yes, connect me
+                                </Box>
+                                <Box 
+                                    onClick={() => handleEscalationConsent(false)}
+                                    sx={{ flex: 1, p: 1, bgcolor: '#f1f1f1', color: '#333', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: 500, '&:hover': { bgcolor: '#e0e0e0' } }}
+                                >
+                                    No, thanks
+                                </Box>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box sx={{ p: 2, bgcolor: '#fff', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 1 }}>
+                            <TextField
+                                fullWidth
+                                variant="standard"
+                                placeholder={!user ? "Login to chat..." : (status === 'resolved' ? "Session ended." : "Type a message...")}
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                disabled={!user || isLoading || status === 'resolved'}
+                                InputProps={{ disableUnderline: true, sx: { fontSize: '14px', px: 1 } }}
+                            />
+                            <IconButton 
+                                onClick={handleSend} 
+                                disabled={!inputValue.trim() || !user || isLoading || status === 'resolved'}
+                                sx={{ bgcolor: '#0F6E56', color: '#fff', '&:hover': { bgcolor: '#0B5E4A' }, '&.Mui-disabled': { bgcolor: '#eee' } }}
+                            >
+                                <SendIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
+                    )}
                 </Box>
             )}
         </AnimatePresence>

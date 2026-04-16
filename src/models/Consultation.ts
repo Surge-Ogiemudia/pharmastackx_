@@ -14,7 +14,7 @@ const consultationSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['ai', 'escalated', 'resolved'],
+    enum: ['ai', 'pending_escalation', 'escalated', 'resolved'],
     default: 'ai',
     index: true,
   },
