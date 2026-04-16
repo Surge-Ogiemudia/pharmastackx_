@@ -17,10 +17,12 @@ interface RxScanModalProps {
 }
 
 const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, mode = 'rx' }) => {
+  const [image, setImage] = useState<string | null>(null);
   const [scanPhase, setScanPhase] = useState<'idle' | 'uploading' | 'capture' | 'identify' | 'match' | 'results' | 'failed'>('idle');
   const [timeLeft, setTimeLeft] = useState(3);
   const [statusText, setStatusText] = useState('Extracting Visual Data');
   const [progressWidth, setProgressWidth] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isRx = mode === 'rx';
 
