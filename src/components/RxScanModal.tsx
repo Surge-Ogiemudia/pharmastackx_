@@ -23,17 +23,63 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
 
   const isRx = mode === 'rx';
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          } else if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG with 0.6 quality (60%)
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = reject;
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setImage(base64);
+      try {
         setIsScanning(true);
-        performScan(base64);
-      };
-      reader.readAsDataURL(file);
+        // Show low-latency preview
+        const tempReader = new FileReader();
+        tempReader.onloadend = () => setImage(tempReader.result as string);
+        tempReader.readAsDataURL(file);
+
+        const compressedBase64 = await compressImage(file);
+        performScan(compressedBase64);
+      } catch (err) {
+        console.error("Compression skipped, using original", err);
+        // Fallback to original
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          performScan(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -42,11 +88,8 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
       const endpoint = isRx ? '/api/ai/scan-rx' : '/api/ai/scan-med';
       const res = await axios.post(endpoint, { image: base64Image });
       if (res.data.medicines) {
-        // Subtle delay for the cute scanning animation effect
-        setTimeout(() => {
-          onScanResult(res.data.medicines, base64Image);
-          handleClose();
-        }, 2200);
+        onScanResult(res.data.medicines, base64Image);
+        handleClose();
       }
     } catch (err: any) {
       console.error('Scan error:', err);
