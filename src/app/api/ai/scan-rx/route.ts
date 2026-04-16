@@ -55,30 +55,14 @@ export async function POST(req: NextRequest) {
     const text = response.text();
     console.log("📸 [ScanRX API] AI Response text length:", text.length);
 
-    // Robust JSON parsing with balanced-brace extraction
     let medicines;
     try {
         let jsonString = text.replace(/```json|```/gi, "").trim();
-        const results: string[] = [];
-        let braceCount = 0;
-        let start = -1;
-        for (let i = 0; i < jsonString.length; i++) {
-            if (jsonString[i] === '{') {
-                if (braceCount === 0) start = i;
-                braceCount++;
-            } else if (jsonString[i] === '}') {
-                braceCount--;
-                if (braceCount === 0 && start !== -1) {
-                    results.push(jsonString.substring(start, i + 1));
-                    start = -1;
-                }
-            }
-        }
-        const finalJson = results.length > 0 ? results[results.length - 1] : jsonString;
-        const parsed = JSON.parse(finalJson);
+        // The model returns 'application/json', so we can parse directly
+        const parsed = JSON.parse(jsonString);
         medicines = parsed.medicines || parsed; // Handle wrapping if present
     } catch (e) {
-        console.error("📸 [ScanRX API] JSON Parse Error:", e);
+        console.error("📸 [ScanRX API] JSON Parse Error:", e, "Raw text:", text);
         throw new Error("Failed to parse AI response into valid JSON.");
     }
 
