@@ -87,6 +87,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
+                    style={{ paddingBottom: '100px' }}
                 >
                     <div className="back-btn" onClick={onBack} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
@@ -147,7 +148,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                                             <Typography className="fraunces" variant="h6" sx={{ fontWeight: 800, mb: 1, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.4em' }}>
                                                 {post.title}
                                             </Typography>
-                                            <Typography variant="body2" className="sora" sx={{ color: 'var(--gray)', mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '12px', lineHeight: 1.5 }}>
+                                            <Typography variant="body2" className="sora" sx={{ color: 'var(--gray)', mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '11px', lineHeight: 1.5 }}>
                                                 {post.content}
                                             </Typography>
                                             <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', color: 'var(--green)', fontWeight: 700, gap: 1, fontSize: '13px' }}>
@@ -167,7 +168,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, p: { xs: 2, sm: 4 }, overflowY: 'auto' }}
+                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, p: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 }, pb: { xs: 10, sm: 4 }, overflowY: 'auto' }}
                 >
                     <div className="back-btn" onClick={handleBackToFeed} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
@@ -212,7 +213,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             sx={{ 
                                 lineHeight: 1.6, 
                                 whiteSpace: 'pre-wrap', 
-                                fontSize: { xs: '15px', sm: '17px' }, 
+                                fontSize: { xs: '14px', sm: '16px' }, 
                                 color: '#333',
                                 mb: 6,
                                 textAlign: 'justify'
