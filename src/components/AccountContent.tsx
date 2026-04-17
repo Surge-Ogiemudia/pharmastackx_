@@ -90,19 +90,15 @@ const SubPageWrapper = ({ children, onBack, title }: { children: React.ReactNode
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
         sx={{ 
-            position: 'absolute', 
-            top: 0, 
-            width: '100%', 
-            height: '100%', 
-            bgcolor: '#fff', 
-            zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
             maxWidth: '1200px',
             margin: '0 auto',
             left: '50%',
             transform: 'translateX(-50%)',
-            boxShadow: { sm: '0 10px 40px rgba(0,0,0,0.1)' }
+            boxShadow: { sm: '0 10px 40px rgba(0,0,0,0.1)' },
+            minHeight: '100vh',
+            pb: 10
         }}
     >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
@@ -256,7 +252,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const accountUser = detailedUser;
 
     return (
-        <Box sx={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+        <Box sx={{ position: 'relative', width: '100%' }}>
             <AnimatePresence mode="wait">
                 {profileMode === 'list' && !showSubscription ? (
                     <Box 
@@ -266,8 +262,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         sx={{ 
-                            height: '100%', 
-                            overflowY: 'auto', 
                             p: { xs: 2, sm: 3 },
                             maxWidth: '1000px',
                             margin: '0 auto'
