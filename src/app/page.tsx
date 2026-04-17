@@ -12,7 +12,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/contexts/CartContext";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ActiveRequestOverlay from '@/components/ActiveRequestOverlay';
+import ReactiveQuoteOverlay from '@/components/ReactiveQuoteOverlay';
 import WhatsAppButton from "@/components/WhatsAppButton";
 import PremiumLanding from "@/components/PremiumLanding";
 import BottomNav from "@/components/BottomNav";
@@ -1254,7 +1254,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
        }} />
 
        {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'orderMedicines' && activeRequestId === activeRequest._id) && (
-          <ActiveRequestOverlay 
+          <ReactiveQuoteOverlay 
               request={activeRequest} 
               onClick={handleOverlayClick} 
               onDismiss={() => setShowOverlay(false)}
