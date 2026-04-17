@@ -52,6 +52,16 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
   const [prescriptionImage, setPrescriptionImage] = useState<string | null>(null);
   const [prescriptionImageFile, setPrescriptionImageFile] = useState<File | null>(null);
   const [scanMode, setScanMode] = useState<'rx' | 'med'>('rx');
+  const [confirmPhone, setConfirmPhone] = useState(user?.phoneNumber || '');
+  const [confirmState, setConfirmState] = useState(user?.state || '');
+
+  // Keep confirmation fields in sync with user if they arrive late
+  useEffect(() => {
+    if (user) {
+      if (!confirmPhone) setConfirmPhone(user.phoneNumber || '');
+      if (!confirmState) setConfirmState(user.state || '');
+    }
+  }, [user]);
 
   const handleScanResult = (medicines: any[], scanImage?: string) => {
     console.log("📸 [DispatchForm] handleScanResult triggered:", { medicinesCount: medicines.length, hasImage: !!scanImage, scanMode });
@@ -1217,16 +1227,26 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                     <label className="confirm-label">Confirm your phone number</label>
                     <div className="phone-wrap">
                       <div className="phone-prefix">🇳🇬 <span>+234</span></div>
-                      <input className="confirm-input" type="tel" placeholder="800 000 0000" defaultValue={user?.phoneNumber || ''} />
+                      <input 
+                        className="confirm-input" 
+                        type="tel" 
+                        placeholder="800 000 0000" 
+                        value={confirmPhone} 
+                        onChange={(e) => setConfirmPhone(e.target.value)}
+                      />
                     </div>
                   </div>
 
                   <div className="confirm-field">
                     <label className="confirm-label">Your state</label>
-                    <select className="confirm-select" defaultValue={user?.state || ""}>
+                    <select 
+                      className="confirm-select" 
+                      value={confirmState}
+                      onChange={(e) => setConfirmState(e.target.value)}
+                    >
                       <option value="" disabled>Select State</option>
                       {nigerianStates.map(st => (
-                        <option key={st}>{st}</option>
+                        <option key={st} value={st}>{st}</option>
                       ))}
                     </select>
                   </div>
@@ -1239,10 +1259,10 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                   <div>
                     <button
                       className="modal-btn-green"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !confirmPhone || !confirmState}
                       style={{
-                        opacity: isSubmitting ? 0.7 : 1,
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        opacity: (isSubmitting || !confirmPhone || !confirmState) ? 0.7 : 1,
+                        cursor: (isSubmitting || !confirmPhone || !confirmState) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1282,9 +1302,9 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                                   resolve(undefined);
                                 }
                               }),
-                              // Optional: phoneNumber and state from the modal
-                              phoneNumber: (document.querySelector('.confirm-input') as HTMLInputElement)?.value || user?.phoneNumber,
-                              state: (document.querySelector('.confirm-select') as HTMLSelectElement)?.value || user?.state
+                                // Optional: phoneNumber and state from the modal
+                                phoneNumber: confirmPhone,
+                                state: confirmState
                             })
                           });
 
