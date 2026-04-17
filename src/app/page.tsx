@@ -110,6 +110,8 @@ const [showContinueOnAppMessage, setShowContinueOnAppMessage] = useState(false);
 const [showAskRxChat, setShowAskRxChat] = useState(false);
 
 const [notificationError, setNotificationError] = useState<string | null>(null);
+const [wasNotificationDismissed, setWasNotificationDismissed] = useState(false);
+const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
     // Don't do anything until the user's session is loaded.
@@ -191,7 +193,12 @@ const requestPermission = async () => {
           // We WAIT for the user data to be fetched BEFORE setting success.
           await fetchDetailedUser(); 
           console.log('User data re-fetched. Sync complete.');
-          setNotificationSyncStatus('success'); // NOW we show the success message.
+          setNotificationSyncStatus('success'); 
+          // Dismiss the modal after a short delay so the user sees the success state
+          setTimeout(() => {
+            setShowNotificationPrompt(false);
+            setWasNotificationDismissed(true);
+          }, 1500);
         } else {
             const errorData = await response.json();
             console.error('Failed to save FCM token:', errorData.message);
@@ -384,9 +391,9 @@ useEffect(() => {
       // Show the prompt if the user is a target role and either:
       // 1. They haven't set a notification permission yet ('default').
       // 2. They have granted permission, but we don't have a token for them on the backend.
-      if (isTargetRole && currentPermission !== 'denied' && (currentPermission === 'default' || !hasFcmTokens)) {
+      if (!wasNotificationDismissed && isTargetRole && currentPermission !== 'denied' && (currentPermission === 'default' || !hasFcmTokens)) {
         setShowNotificationPrompt(true);
-      } else if (currentPermission === 'granted' && isTargetRole && !hasFcmTokens) {
+      } else if (!wasNotificationDismissed && currentPermission === 'granted' && isTargetRole && !hasFcmTokens) {
         // If permission is granted but the token is missing, try to sync it.
         console.log('Permission granted, but token missing. Syncing token...');
         requestPermission();
@@ -1137,6 +1144,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
         onClose={() => {
           if (notificationSyncStatus !== 'syncing') {
             setShowNotificationPrompt(false);
+            setWasNotificationDismissed(true);
           }
         }}
         closeAfterTransition
