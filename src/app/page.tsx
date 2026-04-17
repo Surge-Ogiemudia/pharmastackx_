@@ -110,7 +110,12 @@ const [showContinueOnAppMessage, setShowContinueOnAppMessage] = useState(false);
 const [showAskRxChat, setShowAskRxChat] = useState(false);
 
 const [notificationError, setNotificationError] = useState<string | null>(null);
-const [wasNotificationDismissed, setWasNotificationDismissed] = useState(false);
+const [wasNotificationDismissed, setWasNotificationDismissed] = useState(() => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('psx_notification_dismissed') === 'true';
+  }
+  return false;
+});
 const [showOverlay, setShowOverlay] = useState(false);
 const [lastQuoteCount, setLastQuoteCount] = useState(0);
 const [globalSettings, setGlobalSettings] = useState<any>(null);
@@ -196,10 +201,12 @@ const requestPermission = async () => {
           await fetchDetailedUser(); 
           console.log('User data re-fetched. Sync complete.');
           setNotificationSyncStatus('success'); 
+          localStorage.setItem('psx_fcm_synced', 'true');
           // Dismiss the modal after a short delay so the user sees the success state
           setTimeout(() => {
             setShowNotificationPrompt(false);
             setWasNotificationDismissed(true);
+            localStorage.setItem('psx_notification_dismissed', 'true');
           }, 1500);
         } else {
             const errorData = await response.json();
@@ -389,15 +396,23 @@ useEffect(() => {
   
       const hasFcmTokens = detailedUser.fcmTokens && detailedUser.fcmTokens.length > 0;
       const isTargetRole = ['pharmacist', 'pharmacy', 'clinic', 'admin'].includes(detailedUser.role);
+      const isDeviceSynced = typeof window !== 'undefined' && localStorage.getItem('psx_fcm_synced') === 'true';
   
       // Show the prompt if the user is a target role and either:
       // 1. They haven't set a notification permission yet ('default').
-      // 2. They have granted permission, but we don't have a token for them on the backend.
-      if (!wasNotificationDismissed && isTargetRole && currentPermission !== 'denied' && (currentPermission === 'default' || !hasFcmTokens)) {
+      // 2. They have granted permission, but we haven't synced a token *from this device* yet.
+      // But only if we haven't already dismissed it this "install/session" cycle.
+      
+      const shouldPrompt = !wasNotificationDismissed && 
+                           isTargetRole && 
+                           currentPermission !== 'denied' && 
+                           (currentPermission === 'default' || (!hasFcmTokens && !isDeviceSynced));
+
+      if (shouldPrompt) {
         setShowNotificationPrompt(true);
-      } else if (!wasNotificationDismissed && currentPermission === 'granted' && isTargetRole && !hasFcmTokens) {
-        // If permission is granted but the token is missing, try to sync it.
-        console.log('Permission granted, but token missing. Syncing token...');
+      } else if (!wasNotificationDismissed && currentPermission === 'granted' && isTargetRole && !hasFcmTokens && !isDeviceSynced) {
+        // If permission is granted but the token is missing and we haven't synced this device, try to sync it.
+        console.log('Permission granted, but device not synced. Syncing token...');
         requestPermission();
       }
     }
@@ -1163,6 +1178,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
           if (notificationSyncStatus !== 'syncing') {
             setShowNotificationPrompt(false);
             setWasNotificationDismissed(true);
+            localStorage.setItem('psx_notification_dismissed', 'true');
           }
         }}
         closeAfterTransition
