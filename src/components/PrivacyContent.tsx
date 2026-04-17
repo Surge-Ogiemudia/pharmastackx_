@@ -7,20 +7,25 @@ import {
 
 export default function PrivacyContent() {
   return (
-    <Box sx={{ p: 1 }}>
+    <Box sx={{ p: { xs: 1, sm: 2 } }}>
       <Typography variant="h5" sx={{ 
-        fontWeight: 700, 
-        mb: 2, 
+        fontWeight: 800, 
+        mb: 1, 
         color: '#006D5B',
-        fontFamily: 'Sora, sans-serif'
+        fontFamily: 'Fraunces, serif',
+        fontSize: '1.5rem'
       }}>
         Privacy Policy
       </Typography>
       
       <Typography variant="body2" sx={{ 
-        color: '#666', 
-        mb: 3,
-        fontWeight: 600
+        color: '#999', 
+        mb: 4,
+        fontWeight: 600,
+        fontFamily: 'Sora, sans-serif',
+        fontSize: '0.75rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em'
       }}>
         Last Updated: 3rd November 2025
       </Typography>
@@ -28,16 +33,17 @@ export default function PrivacyContent() {
       <Box sx={{ 
         '& h6': { 
           color: '#006D5B', 
-          fontWeight: 700, 
-          mt: 3, 
-          mb: 1,
-          fontFamily: 'Sora, sans-serif'
+          fontWeight: 800, 
+          mt: 4, 
+          mb: 1.5,
+          fontFamily: 'Sora, sans-serif',
+          fontSize: '1.1rem'
         },
         '& p': { 
-          mb: 2, 
-          lineHeight: 1.6, 
-          color: '#444',
-          fontSize: '0.9rem'
+          mb: 2.5, 
+          lineHeight: 1.7, 
+          color: '#555',
+          fontSize: '0.92rem'
         }
       }}>
         
@@ -73,14 +79,14 @@ export default function PrivacyContent() {
       </Box>
 
       <Box sx={{ 
-        mt: 4, 
+        mt: 6, 
         pt: 3, 
         borderTop: '1px solid rgba(0,0,0,0.05)',
         textAlign: 'center',
-        opacity: 0.7
+        opacity: 0.6
       }}>
-        <Typography variant="caption">
-          If you have any questions about this Privacy Policy, please contact us via WhatsApp at +234 905 006 6638
+        <Typography variant="caption" sx={{ fontFamily: 'Sora, sans-serif' }}>
+          Questions? Contact us via support in the App.
         </Typography>
       </Box>
     </Box>

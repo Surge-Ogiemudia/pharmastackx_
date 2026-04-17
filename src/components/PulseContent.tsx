@@ -93,8 +93,8 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                         <span>Dashboard</span>
                     </div>
 
-                    <Box sx={{ mb: 6, textAlign: 'center' }}>
-                        <Typography className="fraunces" variant="h3" sx={{ fontWeight: 900, color: 'var(--black)', letterSpacing: '-2px', mb: 1 }}>
+                    <Box sx={{ mb: 4, textAlign: 'center' }}>
+                        <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', letterSpacing: '-1.5px', mb: 1 }}>
                             PSX <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>Pulse</em>
                         </Typography>
                         <Typography variant="body1" className="sora" sx={{ color: 'var(--gray)', fontWeight: 300 }}>
@@ -161,19 +161,21 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     )}
                 </motion.div>
             ) : (
-                <motion.div
+                <Box 
+                    component={motion.div}
                     key="detail"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
+                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, p: { xs: 2, sm: 4 }, overflowY: 'auto' }}
                 >
                     <div className="back-btn" onClick={handleBackToFeed} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
                         <span>Back to Pulse feed</span>
                     </div>
 
-                    <Box sx={{ maxWidth: '800px', mx: 'auto', mt: 4 }}>
-                        <Typography className="fraunces" variant="h3" sx={{ fontWeight: 900, color: 'var(--black)', mb: 2 }}>
+                    <Box sx={{ maxWidth: '800px', mx: 'auto', mt: 2 }}>
+                        <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', mb: 2, fontSize: { xs: '24px', sm: '32px' } }}>
                             {selectedPost.title}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
@@ -208,9 +210,9 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             className="sora" 
                             variant="body1" 
                             sx={{ 
-                                lineHeight: 1.8, 
+                                lineHeight: 1.6, 
                                 whiteSpace: 'pre-wrap', 
-                                fontSize: '18px', 
+                                fontSize: { xs: '15px', sm: '17px' }, 
                                 color: '#333',
                                 mb: 6,
                                 textAlign: 'justify'
@@ -239,7 +241,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             </Button>
                         </Box>
                     </Box>
-                </motion.div>
+                </Box>
             )}
         </AnimatePresence>
     );
