@@ -478,17 +478,17 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         #search-screen-container .confirm-med-meta{font-size:10px;color:#bbb;white-space:nowrap}
         #search-screen-container .confirm-field{margin-bottom:14px}
         #search-screen-container .confirm-label{font-size:10px;color:var(--light-gray);letter-spacing:1px;text-transform:uppercase;font-weight:500;display:block;margin-bottom:6px}
-        #search-screen-container .confirm-input{width:100%;background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-radius:13px;padding:13px 16px;font-size:13px;color:var(--black);font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box}
+        #search-screen-container .confirm-input{width:100%;background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-radius:13px;padding:13px 16px;font-size:16px;color:var(--black);font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box}
         #search-screen-container .confirm-input:focus{border-color:var(--green);background:#fff}
         #search-screen-container .confirm-input::placeholder{color:#ccc}
-        #search-screen-container .confirm-select{width:100%;background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-radius:13px;padding:13px 16px;font-size:13px;color:var(--black);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23bbb' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;box-sizing:border-box}
+        #search-screen-container .confirm-select{width:100%;background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-radius:13px;padding:13px 16px;font-size:16px;color:var(--black);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23bbb' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;box-sizing:border-box}
         #search-screen-container .confirm-select:focus{border-color:var(--green)}
         #search-screen-container .search-scope-note{background:var(--green-pale);border:1px solid rgba(15,110,86,0.15);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start}
         #search-screen-container .scope-bar{width:3px;background:var(--green);border-radius:2px;flex-shrink:0;opacity:0.5;align-self:stretch}
         #search-screen-container .scope-text{font-size:11px;color:var(--gray);line-height:1.65;font-weight:300}
         #search-screen-container .scope-text strong{color:var(--green);font-weight:500}
         #search-screen-container .phone-wrap{display:flex;width:100%}
-        #search-screen-container .phone-prefix{background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-right:none;border-radius:13px 0 0 13px;padding:13px 14px;font-size:13px;color:var(--gray);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:4px}
+        #search-screen-container .phone-prefix{background:rgba(255,255,255,0.85);border:1px solid #ebebeb;border-right:none;border-radius:13px 0 0 13px;padding:13px 14px;font-size:16px;color:var(--gray);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:4px}
         #search-screen-container .phone-prefix span{font-size:10px}
         #search-screen-container .phone-wrap .confirm-input{border-radius:0 13px 13px 0}
         
