@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from "@/context/SessionProvider";
 import { Box, Typography, Avatar, Button, List, ListItem, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, Chip } from "@mui/material";
-import { Person, VpnKey, Info, ContactMail, Business, LocationOn, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive } from "@mui/icons-material";
+import { Person, VpnKey, Info, ContactMail, Business, LocationOn, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive, Security } from "@mui/icons-material";
 import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ const DataCentreContent = dynamic(() => import('./DataCentreContent'), { ssr: fa
 const AICommandCentreContent = dynamic(() => import('./AICommandCentreContent'), { ssr: false });
 const AboutContent = dynamic(() => import('./AboutContent'), { ssr: false });
 const PrivacyContent = dynamic(() => import('./PrivacyContent'), { ssr: false });
+const GodMode = dynamic(() => import('../app/admin/god-mode/page'), { ssr: false });
 
 interface DetailedUser {
     _id: string;
@@ -132,7 +133,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [accessUpdateResult, setAccessUpdateResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
     const [isPulseEnabled, setIsPulseEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'platform' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'platform' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre' | 'godmode'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -341,6 +342,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         {consultations.length > 0 && <Chip label={consultations.length} size="small" sx={{ ml: 1, bgcolor: '#B45309', color: '#fff' }} />}
                                         <span className="profile-chevron">›</span>
                                     </div>
+                                    <div className="profile-row-action" onClick={() => setProfileMode('godmode')}>
+                                        <Security style={{ color: '#D32F2F' }} />
+                                        <span className="profile-row-label">God Mode</span>
+                                        <span className="profile-chevron">›</span>
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -450,6 +456,12 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         </ListItem>
                                     </List>
                                 </Box>
+                            </SubPageWrapper>
+                        )}
+
+                        {profileMode === 'godmode' && (
+                            <SubPageWrapper onBack={() => setProfileMode('list')} title="God Mode Control">
+                                <GodMode />
                             </SubPageWrapper>
                         )}
 
