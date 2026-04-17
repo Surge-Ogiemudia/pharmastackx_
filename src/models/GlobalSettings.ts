@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGlobalSettings extends Document {
   isActivityCentreEnabled: boolean;
+  isPulseModuleEnabled: boolean;
   disabledWhatsAppStates: string[];
   updatedBy: mongoose.Types.ObjectId;
   updatedAt: Date;
@@ -9,6 +10,7 @@ export interface IGlobalSettings extends Document {
 
 const GlobalSettingsSchema: Schema = new Schema({
   isActivityCentreEnabled: { type: Boolean, default: true },
+  isPulseModuleEnabled: { type: Boolean, default: true },
   disabledWhatsAppStates: { type: [String], default: [] },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
