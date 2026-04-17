@@ -767,7 +767,31 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
         );
       
       case 'orders':
-        return renderPageView('Orders', 'orders-header', <OrdersContent setView={setView} setSelectedRequestId={setSelectedRequestId} />, true, false);
+        return (
+          <Box
+            key="orders-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ 
+                width: '100%', 
+                height: '100%', 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                pt: { xs: 8, sm: 10 }, 
+                pb: bottomPadding, 
+                bgcolor: '#fafaf8' 
+            }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <OrdersContent setView={setView} setSelectedRequestId={setSelectedRequestId} />
+            </Box>
+          </Box>
+        );
       case 'reviewRequest':
         if (selectedRequestId) {
             return (
@@ -789,7 +813,33 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
       case 'readPulse':
         return renderPageView('PSX Pulse', 'read-pulse-header', <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 2, sm: 4 }, pt: '80px', pb: { xs: '120px', sm: '140px' } }}><PulseContent onBack={() => setView('orders')} onFindMeds={() => setView('orderMedicines')} /></Box>, true, false);
       case 'learning':
-        return renderPageView('Activity Centre', 'learning-header', <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 0, sm: 2 }, pt: { xs: '40px', sm: '60px' }, pb: { xs: '120px', sm: '140px' } }}><LearningContent onBack={() => setView('orders')} /></Box>, true, false);
+        return (
+            <Box
+            key="learning-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ 
+                width: '100%', 
+                height: '100%', 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                pt: { xs: 8, sm: 10 }, 
+                pb: bottomPadding, 
+                bgcolor: '#fafaf8' 
+            }}
+            >
+                <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+                    <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 0, sm: 2 }, pt: { xs: '40px', sm: '60px' }, pb: { xs: '120px', sm: '140px' } }}>
+                        <LearningContent onBack={() => setView('orders')} />
+                    </Box>
+                </Box>
+            </Box>
+        );
       case 'medicineRestock':
           if (normalizedUser) {
               return renderPageView('Medicine Restock', 'medicine-restock-header', <MedicineRestock onBack={() => setView('default')} userId={normalizedUser._id} />);

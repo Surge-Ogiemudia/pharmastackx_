@@ -4,6 +4,7 @@ import {
   CircularProgress,
   Typography,
   Alert,
+  Container,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders, Order } from '../contexts/OrderContext';
@@ -426,11 +427,7 @@ export default function OrdersContent({ setView, setSelectedRequestId }: OrdersC
 
   return (
     <>
-      <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <DotCanvas />
-      </Box>
-
-      <div className="orders-page-container sora" style={{ position: 'relative', zIndex: 1, paddingTop: '80px', paddingBottom: '140px' }}>
+      <Container maxWidth="sm" className="sora" sx={{ position: 'relative', zIndex: 1, pt: 0, pb: '40px' }}>
         <AnimatePresence mode="wait">
           {viewMode === 'dashboard' ? (
             <ActivityDashboardView 
@@ -487,7 +484,7 @@ export default function OrdersContent({ setView, setSelectedRequestId }: OrdersC
             )
           )}
         </AnimatePresence>
-      </div>
+      </Container>
     </>
   );
 }
