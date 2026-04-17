@@ -111,6 +111,8 @@ const [showAskRxChat, setShowAskRxChat] = useState(false);
 
 const [notificationError, setNotificationError] = useState<string | null>(null);
 const [wasNotificationDismissed, setWasNotificationDismissed] = useState(false);
+const [showOverlay, setShowOverlay] = useState(false);
+const [lastQuoteCount, setLastQuoteCount] = useState(0);
 const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
@@ -417,7 +419,23 @@ useEffect(() => {
         
         // Backend now returns either a single object or an empty array/null
         const active = Array.isArray(data) ? data[0] : data;
-        setActiveRequest(active || null);
+        
+        if (active) {
+          const currentCount = active.quotes?.length || 0;
+          
+          // Only show overlay if the count has INCREASED
+          setLastQuoteCount(prevCount => {
+            if (currentCount > prevCount) {
+              setShowOverlay(true);
+            }
+            return currentCount;
+          });
+          
+          setActiveRequest(active);
+        } else {
+          setActiveRequest(null);
+          setLastQuoteCount(0);
+        }
       } catch (e) {
         // Silent fail for polling
       }
@@ -1235,10 +1253,11 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
          setViewWithPrev(v);
        }} />
 
-      {activeRequest && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'orderMedicines' && activeRequestId === activeRequest._id) && (
+       {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'orderMedicines' && activeRequestId === activeRequest._id) && (
           <ActiveRequestOverlay 
               request={activeRequest} 
               onClick={handleOverlayClick} 
+              onDismiss={() => setShowOverlay(false)}
           />
       )}
 
