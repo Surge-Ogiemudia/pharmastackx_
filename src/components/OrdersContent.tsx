@@ -42,6 +42,7 @@ const ActivityDashboardView = ({
   pendingQuotesCount, 
   onBack,
   isActivityCentreEnabled,
+  isPulseEnabled,
 }: { 
   onSelectPersonal: () => void, 
   onSelectProfessional: () => void, 
