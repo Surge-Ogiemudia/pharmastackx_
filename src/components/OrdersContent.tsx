@@ -56,7 +56,8 @@ const ActivityDashboardView = ({
   isAdmin: boolean,
   pendingQuotesCount: number, 
   onBack: () => void,
-  isActivityCentreEnabled: boolean;
+  isActivityCentreEnabled: boolean,
+  isPulseEnabled: boolean,
 }) => {
   return (
     <motion.div
@@ -126,14 +127,16 @@ const ActivityDashboardView = ({
         </div>
       )}
 
-      <div className="activity-widget" onClick={onSelectReadPulse}>
-        <div className="widget-icon-box">📰</div>
-        <div className="widget-content">
-          <div className="widget-title">PSX Pulse</div>
-          <div className="widget-desc">Read the latest medical trends, articles, and vlogs.</div>
+      {isPulseEnabled && (
+        <div className="activity-widget" onClick={onSelectReadPulse}>
+          <div className="widget-icon-box">📰</div>
+          <div className="widget-content">
+            <div className="widget-title">PSX Pulse</div>
+            <div className="widget-desc">Read the latest medical trends, articles, and vlogs.</div>
+          </div>
+          <div className="widget-arrow">→</div>
         </div>
-        <div className="widget-arrow">→</div>
-      </div>
+      )}
 
       {isAdmin && (
         <div className="activity-widget pulse-card" onClick={onSelectPulseAdmin}>
@@ -344,7 +347,8 @@ export default function OrdersContent({ setView, setSelectedRequestId }: OrdersC
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin'>('dashboard');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
+  const [isActivityCentreEnabled, setIsActivityCenterEnabled] = useState(true);
+  const [isPulseEnabled, setIsPulseEnabled] = useState(true);
 
   const isPharmacist = !!(user?.role && ['admin', 'pharmacist', 'pharmacists', 'pharmacy', 'vendor'].includes(user.role));
   const isClinic = !!(user?.role && ['clinic'].includes(user.role));
@@ -395,7 +399,8 @@ export default function OrdersContent({ setView, setSelectedRequestId }: OrdersC
         const response = await fetch('/api/admin/settings');
         if (response.ok) {
           const data = await response.json();
-          setIsActivityCentreEnabled(data.isActivityCentreEnabled);
+          setIsActivityCenterEnabled(data.isActivityCentreEnabled !== false);
+          setIsPulseEnabled(data.isPulseModuleEnabled !== false);
         }
       } catch (err) {
         console.error("Error fetching global settings:", err);
@@ -445,6 +450,7 @@ export default function OrdersContent({ setView, setSelectedRequestId }: OrdersC
               onSelectLearning={() => setView ? setView('learning') : console.error('No setView')}
               onBack={() => setView ? setView('home') : window.history.back()}
               isActivityCentreEnabled={isActivityCentreEnabled}
+              isPulseEnabled={isPulseEnabled}
             />
           ) : viewMode === 'list' ? (
             <div key="personal-activity">
