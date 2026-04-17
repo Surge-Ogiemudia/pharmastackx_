@@ -98,7 +98,12 @@ const SubPageWrapper = ({ children, onBack, title }: { children: React.ReactNode
             bgcolor: '#fff', 
             zIndex: 100,
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            boxShadow: { sm: '0 10px 40px rgba(0,0,0,0.1)' }
         }}
     >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
@@ -261,7 +266,13 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        sx={{ height: '100%', overflowY: 'auto', p: { xs: 2, sm: 3 } }}
+                        sx={{ 
+                            height: '100%', 
+                            overflowY: 'auto', 
+                            p: { xs: 2, sm: 3 },
+                            maxWidth: '1000px',
+                            margin: '0 auto'
+                        }}
                     >
                         <div className="profile-top-bar">
                             <div className="profile-role-tag">{accountUser.role}</div>
