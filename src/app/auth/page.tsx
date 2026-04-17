@@ -97,7 +97,7 @@ export default function AuthPage() {
           mobile: formData.phoneNumber, 
           licenseNumber: formData.licenseNumber, 
           stateOfPractice: formData.state, 
-          pharmacy: selectedPharmacy?._id || formData.pharmacy 
+          pharmacy: formData.pharmacy 
         };
       } else if (role === 'pharmacy' || role === 'clinic') {
         payload = { 
@@ -123,53 +123,7 @@ export default function AuthPage() {
     }
   };
 
-  // Pharmacist Specific State
-  const [pharmacySearchQuery, setPharmacySearchQuery] = useState('');
-  const [pharmacyResults, setPharmacyResults] = useState<any[]>([]);
-  const [isSearchingPharmacies, setIsSearchingPharmacies] = useState(false);
-  const [showAddPharmacyForm, setShowAddPharmacyForm] = useState(false);
-  const [showPharmacyDropdown, setShowPharmacyDropdown] = useState(false);
-  const [selectedPharmacy, setSelectedPharmacy] = useState<any>(null); // To lock selection
-
-  useEffect(() => {
-    // Only search if length >= 2 and we haven't locked a selection
-    if (pharmacySearchQuery.length < 2 || selectedPharmacy) {
-      setPharmacyResults([]);
-      setShowPharmacyDropdown(false);
-      return;
-    }
-    
-    const timeoutId = setTimeout(async () => {
-      setIsSearchingPharmacies(true);
-      try {
-        const res = await fetch(`/api/pharmacies?search=${encodeURIComponent(pharmacySearchQuery)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setPharmacyResults(data.pharmacies || []);
-          setShowPharmacyDropdown(true);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsSearchingPharmacies(false);
-      }
-    }, 400); 
-    
-    return () => clearTimeout(timeoutId);
-  }, [pharmacySearchQuery, selectedPharmacy]);
-
-  const handlePharmacySelect = (pharmacy: any) => {
-    setSelectedPharmacy(pharmacy);
-    setPharmacySearchQuery(pharmacy.businessName);
-    setShowPharmacyDropdown(false);
-    setShowAddPharmacyForm(false);
-  };
-
-  const handleOpenAddForm = () => {
-    setShowAddPharmacyForm(true);
-    setShowPharmacyDropdown(false);
-    setSelectedPharmacy(null);
-  };
+  // States for pharmacist search removed
 
   const inputSx = {
     width: '100%',
@@ -238,7 +192,7 @@ export default function AuthPage() {
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 16px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
           onClick={() => router.push('/')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -381,7 +335,7 @@ export default function AuthPage() {
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 20px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
           onClick={() => setStep('role')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -542,7 +496,7 @@ export default function AuthPage() {
               component={motion.div} 
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }} 
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 20px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
               onClick={() => setStep('role')}
             >
               <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -678,124 +632,19 @@ export default function AuthPage() {
                 </Box>
             </Box>
 
-            {renderSectionDivider('Your pharmacy')}
+            {renderSectionDivider('Your workplace')}
 
             <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-                    <Typography sx={labelSx}>Search your pharmacy</Typography>
-                    <Box sx={{ position: 'relative' }}>
-                        <InputBase 
-                            placeholder="Type to search pharmacies..." 
-                            value={pharmacySearchQuery}
-                            onChange={(e) => {
-                                setPharmacySearchQuery(e.target.value);
-                                setSelectedPharmacy(null);
-                            }}
-                            sx={{ ...inputPinkSx, pr: 5 }} 
-                        />
-                        <Box sx={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {isSearchingPharmacies ? <CircularProgress size={16} sx={{ color: '#C84B8F' }} /> : <SearchIcon sx={{ fontSize: 20, color: '#bbb' }} />}
-                        </Box>
-                    </Box>
-
-                    {showPharmacyDropdown && !selectedPharmacy && (
-                        <Box sx={{ bgcolor: '#fff', border: '1px solid #ebebeb', borderRadius: '12px', mt: 1, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                            <Box 
-                                onClick={handleOpenAddForm}
-                                sx={{ p: 1.5, fontSize: 12, color: '#C84B8F', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1 }}
-                            >
-                                <Typography sx={{ fontSize: 14, fontWeight: 700 }}>+</Typography> Add your pharmacy if not on the list
-                            </Box>
-                            {pharmacyResults.map((pharmacy) => (
-                                <Box 
-                                    key={pharmacy._id}
-                                    onClick={() => handlePharmacySelect(pharmacy)}
-                                    sx={{ p: '11px 14px', fontSize: 12, color: '#111', borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer', transition: 'background 0.15s', '&:last-child': { borderBottom: 'none' }, '&:hover': { bgcolor: '#fdf0f6' } }}
-                                >
-                                    {pharmacy.businessName}
-                                    <Typography sx={{ fontSize: 10, color: '#bbb', mt: 0.5, display: 'block' }}>{pharmacy.businessAddress}, {pharmacy.city}</Typography>
-                                </Box>
-                            ))}
-                            {pharmacyResults.length === 0 && !isSearchingPharmacies && pharmacySearchQuery.length >= 2 && (
-                                <Box sx={{ p: '11px 14px', fontSize: 12, color: '#888' }}>No pharmacies found. Add yours above.</Box>
-                            )}
-                        </Box>
-                    )}
-
-                    {showAddPharmacyForm && (
-                        <Box sx={{ bgcolor: '#fdf0f6', border: '1px solid rgba(200,75,143,0.12)', borderRadius: '14px', p: 2, mt: 1 }}>
-                            <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#111', fontFamily: 'var(--font-sora), sans-serif', mb: 1.5, letterSpacing: '-0.2px' }}>Add your pharmacy</Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                <Box>
-                                    <Typography sx={labelSx}>Pharmacy name</Typography>
-                                    <InputBase 
-                                        name="businessName"
-                                        value={formData.businessName}
-                                        onChange={handleInputChange}
-                                        placeholder="What's your pharmacy called?" 
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography sx={labelSx}>State</Typography>
-                                    <NativeSelect 
-                                        disableUnderline 
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleSelectChange}
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                        defaultValue=""
-                                    >
-                                        <option value="" disabled>Select state</option>
-                                        {nigerianStates.map(state => (
-                                            <option key={state} value={state}>{state}</option>
-                                        ))}
-                                    </NativeSelect>
-                                </Box>
-                                <Box>
-                                    <Typography sx={labelSx}>City</Typography>
-                                    <InputBase 
-                                        name="city"
-                                        value={formData.city}
-                                        onChange={handleInputChange}
-                                        placeholder="City" 
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography sx={labelSx}>Address</Typography>
-                                    <InputBase 
-                                        name="businessAddress"
-                                        value={formData.businessAddress}
-                                        onChange={handleInputChange}
-                                        placeholder="Full pharmacy address" 
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography sx={labelSx}>Pharmacy phone number</Typography>
-                                    <InputBase 
-                                        name="phoneNumber"
-                                        value={formData.phoneNumber}
-                                        onChange={handleInputChange}
-                                        placeholder="+234 000 000 0000" 
-                                        type="tel" 
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography sx={labelSx}>Pharmacy licence (optional)</Typography>
-                                    <InputBase 
-                                        name="licenseNumber"
-                                        value={formData.licenseNumber}
-                                        onChange={handleInputChange}
-                                        placeholder="PCN licence number" 
-                                        sx={{ ...inputPinkSx, bgcolor: '#fff', borderColor: '#f0d5e8' }} 
-                                    />
-                                </Box>
-                            </Box>
-                        </Box>
-                    )}
+                    <Typography sx={labelSx}>Place of Work</Typography>
+                    <InputBase 
+                        placeholder="e.g. General Hospital" 
+                        name="pharmacy"
+                        value={formData.pharmacy}
+                        onChange={handleInputChange}
+                        required
+                        sx={inputPinkSx} 
+                    />
                 </Box>
             </Box>
 
@@ -863,7 +712,7 @@ export default function AuthPage() {
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 20px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
           onClick={() => setStep('role')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1046,7 +895,7 @@ export default function AuthPage() {
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 20px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
           onClick={() => setStep('role')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1184,7 +1033,7 @@ export default function AuthPage() {
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '24px 24px 20px', cursor: 'pointer', mt: { xs: 2, sm: 4 } }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
           onClick={() => setStep('role')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1285,13 +1134,13 @@ export default function AuthPage() {
       minHeight: '100vh', 
       bgcolor: '#fafaf8', 
       display: 'flex', 
-      justifyContent: 'center', 
+      justifyContent: 'flex-start', 
       fontFamily: 'var(--font-dm-sans), sans-serif',
       position: 'relative',
       overflow: 'hidden'
     }}>
       <Container maxWidth="lg" sx={{ 
-          pt: { xs: '80px', sm: '120px' }, 
+          pt: { xs: '64px', sm: '80px' }, 
           p: 0, 
           display: 'flex', 
           flexDirection: 'column', 
