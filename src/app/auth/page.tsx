@@ -70,7 +70,17 @@ export default function AuthPage() {
       });
       setSuccess('Login successful! Redirecting...');
       await refreshSession();
-      window.location.href = '/';
+      
+      const requestId = searchParams?.get('requestId');
+      const view = searchParams?.get('view');
+      let redirectUrl = '/';
+      const params = new URLSearchParams();
+      if (requestId) params.append('requestId', requestId);
+      if (view) params.append('view', view);
+      const queryString = params.toString();
+      if (queryString) redirectUrl += '?' + queryString;
+      
+      window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
       setLoading(false);
@@ -116,7 +126,17 @@ export default function AuthPage() {
       
       setSuccess('Signup successful! Redirecting...');
       await refreshSession();
-      window.location.href = '/';
+
+      const requestId = searchParams?.get('requestId');
+      const view = searchParams?.get('view');
+      let redirectUrl = '/';
+      const params = new URLSearchParams();
+      if (requestId) params.append('requestId', requestId);
+      if (view) params.append('view', view);
+      const queryString = params.toString();
+      if (queryString) redirectUrl += '?' + queryString;
+
+      window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Signup failed. Please try again.');
       setLoading(false);

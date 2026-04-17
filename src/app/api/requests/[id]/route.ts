@@ -157,6 +157,12 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
                break;
            }
 
+            case 'claim-request': {
+                // Allows a guest-created request to be linked to a logged-in user
+                originalRequest.user = session.userId;
+                break;
+            }
+
             case 'update-quote-items': {
                 const { items } = body;
                 if (originalRequest.user.toString() !== session.userId) {
