@@ -4,7 +4,9 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from "@/context/SessionProvider";
 import { Box, Typography, Avatar, Button, List, ListItem, Divider, CircularProgress, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel } from "@mui/material";
-import { Person, VpnKey, Logout, Info, ContactMail, Business, LocationOn, VerifiedUser, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy } from "@mui/icons-material";
+import { Person, VpnKey, Logout, Info, ContactMail, Business, LocationOn, VerifiedUser, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive } from "@mui/icons-material";
+import { messaging } from '../lib/firebase';
+import { getToken } from 'firebase/messaging';
 import FileUpload from './FileUpload';
 // Dynamically import SubscriptionContent to avoid "window is not defined" SSR error
 const SubscriptionContent = dynamic(() => import('./SubscriptionContent'), { ssr: false });
@@ -343,7 +345,48 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [rxFile, setRxFile] = useState<File | null>(null);
     const [isUploadingRx, setIsUploadingRx] = useState(false);
     const [rxUploadError, setRxUploadError] = useState<string | null>(null);
+    const [isPushSyncing, setIsPushSyncing] = useState(false);
+    const [isPWA, setIsPWA] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsPWA(window.matchMedia('(display-mode: standalone)').matches);
+        }
+    }, []);
+
+    const handleResyncNotifications = async () => {
+        setIsPushSyncing(true);
+        try {
+            const permissionResult = await Notification.requestPermission();
+            if (permissionResult === 'granted') {
+                const vapidKey = "BJRiF8tiN4l1QHCuKQ3ePrLsSMBlyDIJcKdnU5TWQK2bhjpmEckbqgUjsm3cYgYr4xMqRDAF1QOHyw7xJ8L3Gqc";
+                const fcmToken = await getToken(messaging(), { vapidKey });
+                if (fcmToken) {
+                    const response = await fetch('/api/save-fcm-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: fcmToken }),
+                        credentials: 'include',
+                    });
+                    if (response.ok) {
+                        alert('Notifications resynced successfully!');
+                    } else {
+                        alert('Failed to save notification token.');
+                    }
+                } else {
+                    alert('Could not retrieve notification token.');
+                }
+            } else {
+                alert('Notification permission was denied.');
+            }
+        } catch (err) {
+            console.error('Error resyncing notifications:', err);
+            alert('An error occurred while resyncing.');
+        } finally {
+            setIsPushSyncing(false);
+        }
+    };
 
     useEffect(() => {
         const fetchGlobalSettings = async () => {
@@ -1030,6 +1073,17 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         </Box>
                                         <span className="profile-chevron">›</span>
                                     </div>
+                                    {isPWA && (
+                                        <div className="profile-row-action" onClick={handleResyncNotifications} style={{ opacity: isPushSyncing ? 0.6 : 1, pointerEvents: isPushSyncing ? 'none' : 'auto' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <NotificationsActive style={{ color: 'var(--primary-green)' }} />
+                                                <Typography className="profile-row-label">
+                                                    {isPushSyncing ? 'Syncing...' : 'Resync Notifications'}
+                                                </Typography>
+                                            </Box>
+                                            <span className="profile-chevron">›</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="account-signout" onClick={handleLogout}>Sign out</div>
