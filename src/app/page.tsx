@@ -916,48 +916,15 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
         return <CircularProgress />;
       case 'readPulse':
         return (
-          <Box
-            key="read-pulse-view"
-            component={motion.div}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
-          >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 2, sm: 4 }, pt: '40px', pb: '140px' }}>
+            <AnimatePresence mode="wait">
                 <PulseContent onBack={() => setView('orders')} onFindMeds={() => setView('orderMedicines')} />
-              </Box>
-            </Box>
-          </Box>
+            </AnimatePresence>
         );
       case 'learning':
         return (
-            <Box
-            key="learning-view"
-            component={motion.div}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            sx={{ 
-                width: '100%', 
-                height: '100%', 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                pt: { xs: 8, sm: 10 }, 
-                pb: bottomPadding, 
-                bgcolor: '#fafaf8' 
-            }}
-            >
-                <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-                    <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 0, sm: 2 }, pt: { xs: '40px', sm: '60px' }, pb: { xs: '120px', sm: '140px' } }}>
-                        <LearningContent onBack={() => setView('orders')} />
-                    </Box>
-                </Box>
-            </Box>
+            <AnimatePresence mode="wait">
+                <LearningContent onBack={() => setView('orders')} />
+            </AnimatePresence>
         );
       case 'medicineRestock':
           if (normalizedUser) {

@@ -350,7 +350,25 @@ const LearningContent = ({ onBack }: { onBack: () => void }) => {
     }
 
     return (
-        <Box className="sora" sx={{ width: '100%', maxWidth: '900px', mx: 'auto', pt: { xs: 10, sm: 8 }, px: { xs: 2, sm: 4 }, pb: 12 }}>
+        <Box 
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="sora" 
+            sx={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                width: '100%', 
+                height: '100%', 
+                overflowY: 'auto',
+                bgcolor: '#fafaf8',
+                pt: { xs: 10, sm: 12 }, 
+                px: { xs: 2, sm: 4 }, 
+                pb: { xs: 12, sm: 8 } 
+            }}
+        >
             <style dangerouslySetInnerHTML={{ __html: `
                 :root {
                     --green-pale: #E1F5EE;
@@ -373,160 +391,162 @@ const LearningContent = ({ onBack }: { onBack: () => void }) => {
                 onComplete={handleQuizComplete} 
             />
 
-            {/* Top Bar */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box 
-                    onClick={onBack} 
-                    sx={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: 1.5, 
-                        cursor: 'pointer',
-                        color: 'var(--black)',
-                        '&:hover': { transform: 'translateX(-4px)' },
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    <Box sx={{ bgcolor: 'var(--green)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(15, 110, 86, 0.2)' }}>
-                        <ArrowBackIcon sx={{ fontSize: 18 }} />
-                    </Box>
-                    <Typography sx={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>DASHBOARD</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'var(--amber-pale)', border: '1px solid rgba(186,117,23,0.1)', borderRadius: '100px', px: 2, py: 0.8 }}>
-                    <Typography sx={{ fontSize: '16px' }}>🔥</Typography>
-                    <Typography sx={{ fontSize: '11px', fontWeight: 800, color: 'var(--amber)' }}>{progress?.streak || 0} DAY STREAK</Typography>
-                </Box>
-            </Box>
-
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Typography className="fraunces" variant="h3" sx={{ fontWeight: 900, color: 'var(--black)', mb: 3, letterSpacing: '-1.5px', lineHeight: 1 }}>
-                    Learn &<br /><em style={{ color: 'var(--green)' }}>Play.</em>
-                </Typography>
-                
-                <Box sx={{ bgcolor: 'var(--green-pale)', borderRadius: '24px', p: 3, border: '1px solid rgba(15, 110, 86, 0.1)' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                            <Typography sx={{ fontSize: '11px', color: 'var(--green)', opacity: 0.7, fontWeight: 800, mb: 0.5, letterSpacing: '1px' }}>TOTAL XP</Typography>
-                            <Typography sx={{ fontSize: '28px', fontWeight: 900, color: 'var(--green)', lineHeight: 1 }}>{progress?.xp?.toLocaleString() || 0}</Typography>
+            <Box sx={{ maxWidth: '900px', mx: 'auto' }}>
+                {/* Top Bar */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Box 
+                        onClick={onBack} 
+                        sx={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 1.5, 
+                            cursor: 'pointer',
+                            color: 'var(--black)',
+                            '&:hover': { transform: 'translateX(-4px)' },
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <Box sx={{ bgcolor: 'var(--green)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(15, 110, 86, 0.2)' }}>
+                            <ArrowBackIcon sx={{ fontSize: 18 }} />
                         </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end', mb: 0.5 }}>
-                                <Typography sx={{ fontSize: '13px', fontWeight: 900, color: 'var(--green)' }}>
-                                    Global Rank: #{progress?.globalRank || '-'}
-                                </Typography>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase' }}>DASHBOARD</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'var(--amber-pale)', border: '1px solid rgba(186,117,23,0.1)', borderRadius: '100px', px: 2, py: 0.8 }}>
+                        <Typography sx={{ fontSize: '16px' }}>🔥</Typography>
+                        <Typography sx={{ fontSize: '11px', fontWeight: 800, color: 'var(--amber)' }}>{progress?.streak || 0} DAY STREAK</Typography>
+                    </Box>
+                </Box>
+
+                {/* Header */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                    <Typography className="fraunces" variant="h3" sx={{ fontWeight: 900, color: 'var(--black)', mb: 3, letterSpacing: '-1.5px', lineHeight: 1 }}>
+                        Learn &<br /><em style={{ color: 'var(--green)' }}>Play.</em>
+                    </Typography>
+                    
+                    <Box sx={{ bgcolor: 'var(--green-pale)', borderRadius: '24px', p: 3, border: '1px solid rgba(15, 110, 86, 0.1)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', color: 'var(--green)', opacity: 0.7, fontWeight: 800, mb: 0.5, letterSpacing: '1px' }}>TOTAL XP</Typography>
+                                <Typography sx={{ fontSize: '28px', fontWeight: 900, color: 'var(--green)', lineHeight: 1 }}>{progress?.xp?.toLocaleString() || 0}</Typography>
                             </Box>
-                            {progress?.cityRank && (
-                                <Typography sx={{ fontSize: '12px', color: 'var(--green)', opacity: 0.8, fontWeight: 700 }}>
-                                    {progress.city} Rank: #{progress.cityRank}
-                                </Typography>
-                            )}
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end', mb: 0.5 }}>
+                                    <Typography sx={{ fontSize: '13px', fontWeight: 900, color: 'var(--green)' }}>
+                                        Global Rank: #{progress?.globalRank || '-'}
+                                    </Typography>
+                                </Box>
+                                {progress?.cityRank && (
+                                    <Typography sx={{ fontSize: '12px', color: 'var(--green)', opacity: 0.8, fontWeight: 700 }}>
+                                        {progress.city} Rank: #{progress.cityRank}
+                                    </Typography>
+                                )}
+                            </Box>
                         </Box>
-                    </Box>
-                </Box>
-            </motion.div>
-
-            {/* Daily Challenge */}
-            <Box sx={{ mt: 6 }}>
-                <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 2.5 }}>TODAY'S CHALLENGE</Typography>
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
-                    <Box sx={{ bgcolor: 'var(--black)', borderRadius: '32px', p: 4, position: 'relative', overflow: 'hidden', color: '#fff' }}>
-                        <Box sx={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.03)' }} />
-                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(255,255,255,0.08)', px: 1.5, py: 0.6, borderRadius: '100px', mb: 2.5 }}>
-                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'var(--amber)', animation: 'pulse 2s infinite' }} />
-                            <Typography sx={{ fontSize: '10px', color: 'var(--amber)', fontWeight: 800 }}>
-                                {isCustomer ? 'DAILY · WELLNESS TRIVIA' : 'DAILY · DRUG KNOWLEDGE'}
-                            </Typography>
-                        </Box>
-                        <Typography className="fraunces" variant="h5" sx={{ fontWeight: 900, mb: 1, lineHeight: 1.2 }}>
-                            {isCustomer ? (
-                                <>Test your everyday<br /><em style={{ color: '#9FE1CB' }}>health and wellness</em> knowledge.</>
-                            ) : (
-                                <>Test your clinical<br /><em style={{ color: '#9FE1CB' }}>pharmacology and interactions</em> knowledge.</>
-                            )}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', mb: 3, fontWeight: 300, maxWidth: '80%' }}>
-                            {isCustomer ? 'Randomized questions on healthy habits, nutrition, and everyday wellness.' : 'Randomized MCQs focusing on mechanisms, interactions, and specific counseling points.'}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mb: 4 }}>
-                            <Chip label="Up to +30 XP" size="small" sx={{ bgcolor: 'rgba(15, 110, 86, 0.4)', color: '#9FE1CB', fontWeight: 800, fontSize: '10px' }} />
-                            <Chip label="3 questions" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: '10px' }} />
-                        </Box>
-                        <Button 
-                            fullWidth 
-                            variant="contained" 
-                            onClick={() => setQuizState({ open: true, type: isCustomer ? 'patient' : 'pharmacist' })}
-                            sx={{ 
-                                bgcolor: 'var(--green)', 
-                                borderRadius: '16px', 
-                                py: 2, 
-                                textTransform: 'none', 
-                                fontWeight: 800,
-                                '&:hover': { bgcolor: '#0b5643' }
-                            }}
-                        >
-                            Start challenge →
-                        </Button>
                     </Box>
                 </motion.div>
-            </Box>
 
-            {/* General Health Grid (Patients & Everyone) */}
-            <Box sx={{ mt: 6 }}>
-                <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 3 }}>HEALTH & LIFESTYLE</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={6} sm={4}><ActivityCard onClick={() => setQuizState({ open: true, type: 'patient' })} title="Wellness Trivia" sub="Everyday health and lifestyle tips." xp="+10 XP per Q" color="blue" badge="New" delay={0} /></Grid>
-                    <Grid item xs={6} sm={4}><ActivityCard title="Clinical Skills" sub="Test your diagnostic and clinical logic." xp="+50 XP per case" color="dark" badge="Coming Soon" delay={0.1} /></Grid>
-                </Grid>
-            </Box>
-
-            {/* Specialist Activities Grid */}
-            {!isCustomer && (
+                {/* Daily Challenge */}
                 <Box sx={{ mt: 6 }}>
-                    <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 3 }}>CLINICAL SKILLS</Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={6} sm={4}><ActivityCard onClick={() => setQuizState({ open: true, type: 'pharmacist' })} title="Drug Knowledge" sub="MCQ on pharmacology and interactions." xp="+10 XP per Q" color="green" badge="Popular" delay={0} /></Grid>
-                        <Grid item xs={6} sm={4}><ActivityCard title="Read a Prescription" sub="Interpret real digital scripts." xp="+25 XP per Round" color="pink" badge="Coming Soon" delay={1} /></Grid>
-                        <Grid item xs={6} sm={4}><ActivityCard title="Identify This Drug" sub="Identify pills or packs from images." xp="+15 XP per Correct" color="amber" badge="Coming Soon" delay={2} /></Grid>
-                    </Grid>
-                </Box>
-            )}
-
-            {/* Leaderboard */}
-            <Box sx={{ mt: 8 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase' }}>
-                        {isCustomer ? 'TOP USERS' : 'TOP PHARMACISTS'}
-                    </Typography>
-                </Box>
-                <Box sx={{ bgcolor: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-                    {leaderboard.length === 0 ? (
-                        <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
-                    ) : leaderboard.map((row, idx) => {
-                        const isMe = user?.username === row.username;
-                        const medalColor = idx === 0 ? '#BA7517' : idx === 1 ? '#888' : idx === 2 ? '#A0522D' : '#bbb';
-                        
-                        return (
-                        <Box key={row._id} sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 2.5, 
-                            p: 2.5, 
-                            bgcolor: isMe ? 'rgba(15, 110, 86, 0.05)' : 'transparent',
-                            borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.04)'
-                        }}>
-                            <Typography className="fraunces" sx={{ width: 25, textAlign: 'center', fontWeight: 950, fontSize: '18px', color: isMe ? 'var(--green)' : medalColor }}>{idx + 1}</Typography>
-                            <Avatar sx={{ bgcolor: 'var(--green-pale)', color: 'var(--green)', fontWeight: 800, fontSize: '12px', width: 40, height: 40, border: isMe ? '2px solid var(--green)' : 'none' }}>
-                                {row.username.substring(0, 2).toUpperCase()}
-                            </Avatar>
-                            <Box sx={{ flexGrow: 1 }}>
-                                <Typography sx={{ fontSize: '14px', fontWeight: 700, color: isMe ? 'var(--green)' : 'var(--black)' }}>
-                                    {row.username} {isMe && <Box component="span" sx={{ fontSize: '11px', opacity: 0.6, ml: 1 }}>(you)</Box>}
+                    <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 2.5 }}>TODAY'S CHALLENGE</Typography>
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+                        <Box sx={{ bgcolor: 'var(--black)', borderRadius: '32px', p: 4, position: 'relative', overflow: 'hidden', color: '#fff' }}>
+                            <Box sx={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.03)' }} />
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(255,255,255,0.08)', px: 1.5, py: 0.6, borderRadius: '100px', mb: 2.5 }}>
+                                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'var(--amber)', animation: 'pulse 2s infinite' }} />
+                                <Typography sx={{ fontSize: '10px', color: 'var(--amber)', fontWeight: 800 }}>
+                                    {isCustomer ? 'DAILY · WELLNESS TRIVIA' : 'DAILY · DRUG KNOWLEDGE'}
                                 </Typography>
                             </Box>
-                            <Typography sx={{ fontWeight: 800, fontSize: '15px' }}>{row.xp?.toLocaleString() || 0} <Box component="span" sx={{ fontSize: '10px', color: 'var(--gray)', fontWeight: 400 }}>XP</Box></Typography>
+                            <Typography className="fraunces" variant="h5" sx={{ fontWeight: 900, mb: 1, lineHeight: 1.2 }}>
+                                {isCustomer ? (
+                                    <>Test your everyday<br /><em style={{ color: '#9FE1CB' }}>health and wellness</em> knowledge.</>
+                                ) : (
+                                    <>Test your clinical<br /><em style={{ color: '#9FE1CB' }}>pharmacology and interactions</em> knowledge.</>
+                                )}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', mb: 3, fontWeight: 300, maxWidth: '80%' }}>
+                                {isCustomer ? 'Randomized questions on healthy habits, nutrition, and everyday wellness.' : 'Randomized MCQs focusing on mechanisms, interactions, and specific counseling points.'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mb: 4 }}>
+                                <Chip label="Up to +30 XP" size="small" sx={{ bgcolor: 'rgba(15, 110, 86, 0.4)', color: '#9FE1CB', fontWeight: 800, fontSize: '10px' }} />
+                                <Chip label="3 questions" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: '10px' }} />
+                            </Box>
+                            <Button 
+                                fullWidth 
+                                variant="contained" 
+                                onClick={() => setQuizState({ open: true, type: isCustomer ? 'patient' : 'pharmacist' })}
+                                sx={{ 
+                                    bgcolor: 'var(--green)', 
+                                    borderRadius: '16px', 
+                                    py: 2, 
+                                    textTransform: 'none', 
+                                    fontWeight: 800,
+                                    '&:hover': { bgcolor: '#0b5643' }
+                                }}
+                            >
+                                Start challenge →
+                            </Button>
                         </Box>
-                    )})}
+                    </motion.div>
+                </Box>
+
+                {/* General Health Grid (Patients & Everyone) */}
+                <Box sx={{ mt: 6 }}>
+                    <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 3 }}>HEALTH & LIFESTYLE</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6} sm={4}><ActivityCard onClick={() => setQuizState({ open: true, type: 'patient' })} title="Wellness Trivia" sub="Everyday health and lifestyle tips." xp="+10 XP per Q" color="blue" badge="New" delay={0} /></Grid>
+                        <Grid item xs={6} sm={4}><ActivityCard title="Clinical Skills" sub="Test your diagnostic and clinical logic." xp="+50 XP per case" color="dark" badge="Coming Soon" delay={0.1} /></Grid>
+                    </Grid>
+                </Box>
+
+                {/* Specialist Activities Grid */}
+                {!isCustomer && (
+                    <Box sx={{ mt: 6 }}>
+                        <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase', mb: 3 }}>CLINICAL SKILLS</Typography>
+                        <Grid container spacing={2}>
+                            <Grid item xs={6} sm={4}><ActivityCard onClick={() => setQuizState({ open: true, type: 'pharmacist' })} title="Drug Knowledge" sub="MCQ on pharmacology and interactions." xp="+10 XP per Q" color="green" badge="Popular" delay={0} /></Grid>
+                            <Grid item xs={6} sm={4}><ActivityCard title="Read a Prescription" sub="Interpret real digital scripts." xp="+25 XP per Round" color="pink" badge="Coming Soon" delay={1} /></Grid>
+                            <Grid item xs={6} sm={4}><ActivityCard title="Identify This Drug" sub="Identify pills or packs from images." xp="+15 XP per Correct" color="amber" badge="Coming Soon" delay={2} /></Grid>
+                        </Grid>
+                    </Box>
+                )}
+
+                {/* Leaderboard */}
+                <Box sx={{ mt: 8 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography sx={{ fontSize: '11px', fontWeight: 900, letterSpacing: '2px', color: 'var(--gray)', textTransform: 'uppercase' }}>
+                            {isCustomer ? 'TOP USERS' : 'TOP PHARMACISTS'}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ bgcolor: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                        {leaderboard.length === 0 ? (
+                            <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
+                        ) : leaderboard.map((row, idx) => {
+                            const isMe = user?.username === row.username;
+                            const medalColor = idx === 0 ? '#BA7517' : idx === 1 ? '#888' : idx === 2 ? '#A0522D' : '#bbb';
+                            
+                            return (
+                            <Box key={row._id} sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 2.5, 
+                                p: 2.5, 
+                                bgcolor: isMe ? 'rgba(15, 110, 86, 0.05)' : 'transparent',
+                                borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(0,0,0,0.04)'
+                            }}>
+                                <Typography className="fraunces" sx={{ width: 25, textAlign: 'center', fontWeight: 950, fontSize: '18px', color: isMe ? 'var(--green)' : medalColor }}>{idx + 1}</Typography>
+                                <Avatar sx={{ bgcolor: 'var(--green-pale)', color: 'var(--green)', fontWeight: 800, fontSize: '12px', width: 40, height: 40, border: isMe ? '2px solid var(--green)' : 'none' }}>
+                                    {row.username.substring(0, 2).toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ flexGrow: 1 }}>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 700, color: isMe ? 'var(--green)' : 'var(--black)' }}>
+                                        {row.username} {isMe && <Box component="span" sx={{ fontSize: '11px', opacity: 0.6, ml: 1 }}>(you)</Box>}
+                                    </Typography>
+                                </Box>
+                                <Typography sx={{ fontWeight: 800, fontSize: '15px' }}>{row.xp?.toLocaleString() || 0} <Box component="span" sx={{ fontSize: '10px', color: 'var(--gray)', fontWeight: 400 }}>XP</Box></Typography>
+                            </Box>
+                        )})}
+                    </Box>
                 </Box>
             </Box>
         </Box>
