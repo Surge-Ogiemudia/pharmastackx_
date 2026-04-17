@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     (async () => {
       try {
         const requester = await UserModel.findById(userId);
-        const userName = requester?.name || requester?.username || 'Unknown User';
+        const userName = requester?.username || 'Unknown User';
         const drugListHtml = (items || []).map((it: any) => 
           `<li><strong>${it.name}</strong> ${it.strength ? `(${it.strength})` : ''} - ${it.quantity} ${it.unit || ''}</li>`
         ).join('');
@@ -182,7 +182,7 @@ export async function GET(req: NextRequest) {
     if (source === 'dispatch' && userId) {
       try {
         const requests = await RequestModel.find({ user: userId })
-          .populate('user', 'name email')
+          .populate('user', 'username email')
           .sort({ createdAt: -1 })
           .limit(limit)
           .skip(skip);
@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
 
         let queryBuilder = RequestModel.find(query, projection);
         if (!activeOnly) {
-           queryBuilder = queryBuilder.populate('user', 'name email');
+           queryBuilder = queryBuilder.populate('user', 'username email');
         }
 
         const requests = await queryBuilder
