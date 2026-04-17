@@ -82,19 +82,30 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
     return (
         <AnimatePresence mode="wait">
             {!selectedPost ? (
-                <motion.div
+                <Box
+                    component={motion.div}
                     key="list"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    style={{ paddingBottom: '100px' }}
+                    sx={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        overflowY: 'auto',
+                        p: { xs: 2, sm: 4 },
+                        pt: { xs: 10, sm: 12 },
+                        pb: { xs: 12, sm: 8 }
+                    }}
                 >
                     <div className="back-btn" onClick={onBack} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
                         <span>Dashboard</span>
                     </div>
 
-                    <Box sx={{ mb: 4, textAlign: 'center' }}>
+                    <Box sx={{ mb: 4, textAlign: 'center', maxWidth: '800px', mx: 'auto' }}>
                         <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', letterSpacing: '-1.5px', mb: 1 }}>
                             PSX <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>Pulse</em>
                         </Typography>
@@ -106,7 +117,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress sx={{ color: 'var(--green)' }} /></Box>
                     ) : (
-                        <Grid container spacing={4}>
+                        <Grid container spacing={4} sx={{ maxWidth: '1200px', mx: 'auto' }}>
                             {posts.map((post) => (
                                 <Grid item xs={12} md={6} lg={4} key={post._id}>
                                     <Card 
@@ -160,7 +171,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             ))}
                         </Grid>
                     )}
-                </motion.div>
+                </Box>
             ) : (
                 <Box 
                     component={motion.div}
@@ -168,7 +179,19 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, p: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 }, pb: { xs: 10, sm: 4 }, overflowY: 'auto' }}
+                    sx={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        bgcolor: '#fff', 
+                        zIndex: 10, 
+                        p: { xs: 2, sm: 4 }, 
+                        pt: { xs: 10, sm: 12 }, 
+                        pb: { xs: 12, sm: 8 }, 
+                        overflowY: 'auto' 
+                    }}
                 >
                     <div className="back-btn" onClick={handleBackToFeed} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
@@ -222,7 +245,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             {selectedPost.content}
                         </Typography>
 
-                        <Box sx={{ clear: 'both' }} />
+                        <Box sx={{ sx: { clear: 'both' } }} />
 
                         <Divider sx={{ mb: 4 }} />
 
