@@ -99,11 +99,48 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
     if (initialRequestId) {
       setRequestId(initialRequestId);
       setIsSearching(true);
+      
+      const fetchRequestDetails = async () => {
+        try {
+          const res = await fetch(`/api/requests/${initialRequestId}`);
+          if (res.ok) {
+            const data = await res.json();
+            // Map medicines back to requestList format
+            if (data.items && data.items.length > 0) {
+              const items = data.items.map((it: any, idx: number) => ({
+                id: it._id || 'fetched_' + idx,
+                name: it.name,
+                strength: it.strength,
+                form: it.form,
+                quantity: it.quantity,
+                unit: it.unit,
+                notes: it.notes,
+                image: it.image
+              }));
+              setRequestList(items);
+            }
+            
+            // Transfer ownership if logged in and currently a guest request
+            if (user && data.user && data.user.toString().startsWith('guest_')) {
+              console.log('[DispatchForm] Claiming guest request for user:', user._id);
+              fetch(`/api/requests/${initialRequestId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'claim-request' })
+              }).catch(err => console.error('Failed to claim request:', err));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch initial request details:', err);
+        }
+      };
+      
+      fetchRequestDetails();
     }
     if (initialScanRx) {
       setIsScanModalOpen(true);
     }
-  }, [initialRequestId, initialScanRx]);
+  }, [initialRequestId, initialScanRx, user?._id]);
 
   useEffect(() => {
     if (isSearching && !user) {
@@ -626,8 +663,8 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                 <div className="guest-gate-icon"><div className="guest-gate-icon-inner"></div></div>
                 <div className="guest-gate-title">Login to view<br /><em>responses.</em></div>
                 <div className="guest-gate-sub">Your request has been sent. When a pharmacist responds you'll need to be logged in to <span>view and accept their quote.</span></div>
-                <button className="guest-gate-btn-primary" onClick={() => window.location.href = '/auth?mode=login'}>Sign in</button>
-                <button className="guest-gate-btn-green" onClick={() => window.location.href = '/auth'}>Create account</button>
+                <button className="guest-gate-btn-primary" onClick={() => window.location.href = `/auth?mode=login&requestId=${requestId}&view=orderMedicines`}>Sign in</button>
+                <button className="guest-gate-btn-green" onClick={() => window.location.href = `/auth?requestId=${requestId}&view=orderMedicines`}>Create account</button>
                 <div className="guest-gate-note" style={{ paddingTop: '8px' }}>Your request is saved and will still receive responses</div>
                 <div
                   onClick={() => { setIsSearching(false); setModalState('confirm'); }}

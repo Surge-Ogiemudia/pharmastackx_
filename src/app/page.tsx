@@ -283,12 +283,16 @@ useEffect(() => {
 
   const viewParam = searchParams.get('view');
   const verificationParam = searchParams.get('verification');
+  const requestIdParam = searchParams.get('requestId');
 
   if (verificationParam === 'success') {
     setShowNotification(true);
   }
 
-  if (viewParam === 'orderMedicines') {
+  if (requestIdParam) {
+    setActiveRequestId(requestIdParam);
+    setView('orderMedicines');
+  } else if (viewParam === 'orderMedicines') {
     setView('orderMedicines');
   }
 
