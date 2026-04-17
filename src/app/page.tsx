@@ -717,11 +717,50 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
           </Box>
         );
         case 'storeManagement':
-          return renderPageView('Store Management', 'store-management-header', <StoreManagement />);
-  case 'orderRequests':
-        return renderPageView('Order Requests', 'order-requests-header', <OrderRequestsContent />);
+          return (
+            <Box
+              key="store-management-view"
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            >
+              <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+                <StoreManagement />
+              </Box>
+            </Box>
+          );
+        case 'orderRequests':
+          return (
+            <Box
+              key="order-requests-view"
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            >
+              <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+                <OrderRequestsContent onRespond={() => setView('orders')} />
+              </Box>
+            </Box>
+          );
         case 'findPharmacy':
-          return renderPageView('Find a Pharmacy', 'find-pharmacy-header', <FindPharmacyContent />);
+          return (
+            <Box
+              key="find-pharmacy-view"
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            >
+              <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+                <FindPharmacyContent />
+              </Box>
+            </Box>
+          );
         case 'findMedicines':
         return (
           <Box
@@ -738,16 +777,81 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
           </Box>
         );
 
-          case 'about':
-        return renderPageView('About Us', 'about-us-header', <AboutContent />);
+      case 'about':
+        return (
+          <Box
+            key="about-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <AboutContent />
+            </Box>
+          </Box>
+        );
       case 'contact':
-        return renderPageView('Contact Us', 'contact-us-header', <ContactContent />);
+        return (
+          <Box
+            key="contact-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <ContactContent />
+            </Box>
+          </Box>
+        );
       case 'consult':
-        return renderPageView('Consult a Pharmacist', 'consult-header', <FindPharmacistContent onPharmacistSelect={handleUserSelect} />);
+        return (
+          <Box
+            key="consult-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <FindPharmacistContent onPharmacistSelect={handleUserSelect} />
+            </Box>
+          </Box>
+        );
       case 'conversations':
-        return renderPageView('Conversations', 'consult-header', <ConversationsContent onUserSelect={handleUserSelect} />);
+        return (
+          <Box
+            key="conversations-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <ConversationsContent onUserSelect={handleUserSelect} />
+            </Box>
+          </Box>
+        );
       case 'account':
-        return renderPageView('Account', 'account-header', <AccountContent setView={setView} onBack={() => setViewWithPrev(prevView)} />);
+        return (
+          <Box
+            key="account-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+               <AccountContent setView={setView} onBack={() => setViewWithPrev(prevView)} />
+            </Box>
+          </Box>
+        );
       case 'confirmOrder':
         return (
           <Box
@@ -811,7 +915,22 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
         }
         return <CircularProgress />;
       case 'readPulse':
-        return renderPageView('PSX Pulse', 'read-pulse-header', <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 2, sm: 4 }, pt: '80px', pb: { xs: '120px', sm: '140px' } }}><PulseContent onBack={() => setView('orders')} onFindMeds={() => setView('orderMedicines')} /></Box>, true, false);
+        return (
+          <Box
+            key="read-pulse-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <Box sx={{ width: '100%', maxWidth: '1200px', mx: 'auto', px: { xs: 2, sm: 4 }, pt: '40px', pb: '140px' }}>
+                <PulseContent onBack={() => setView('orders')} onFindMeds={() => setView('orderMedicines')} />
+              </Box>
+            </Box>
+          </Box>
+        );
       case 'learning':
         return (
             <Box
@@ -842,7 +961,20 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
         );
       case 'medicineRestock':
           if (normalizedUser) {
-              return renderPageView('Medicine Restock', 'medicine-restock-header', <MedicineRestock onBack={() => setView('default')} userId={normalizedUser._id} />);
+              return (
+                <Box
+                  key="medicine-restock-view"
+                  component={motion.div}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+                >
+                  <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+                    <MedicineRestock onBack={() => setView('default')} userId={normalizedUser._id} />
+                  </Box>
+                </Box>
+              );
           }
           return <CircularProgress />;
   
