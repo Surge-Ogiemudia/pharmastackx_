@@ -39,7 +39,7 @@ interface DetailedUser {
     phoneNumber?: string;
     stateOfPractice?: string;
     licenseNumber?: string;
-    pharmacy?: { _id: string; businessName: string; city?: string };
+    pharmacy?: string | { _id: string; businessName: string; city?: string };
     canManageStore?: boolean;
 }
 
@@ -65,11 +65,7 @@ interface EditDialogProps {
     value: any;
 }
 
-interface SwitchPharmacyDialogProps {
-    open: boolean;
-    onClose: () => void;
-    onSwitch: (pharmacyId: string) => void;
-}
+
 
 interface EditableListItemProps {
     fieldName: string;
@@ -220,99 +216,7 @@ const EditDialog = ({ open, onClose, onSave, fieldName, value }: EditDialogProps
     );
 };
 
-const SwitchPharmacyDialog = ({ open, onClose, onSwitch }: SwitchPharmacyDialogProps) => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [pharmacies, setPharmacies] = useState<DetailedUser[]>([]);
-    const [selectedPharmacy, setSelectedPharmacy] = useState<DetailedUser | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const search = async () => {
-            if (!searchQuery.trim()) {
-                setPharmacies([]);
-                return;
-            }
-            setIsSearching(true);
-            setError(null);
-            try {
-                const response = await fetch(`/api/pharmacies?search=${searchQuery}`);
-                if (!response.ok) {
-                    throw new Error('Failed to search for pharmacies.');
-                }
-                const data = await response.json();
-                const pharmaciesData = Array.isArray(data) ? data : data.pharmacies || [];
-                setPharmacies(pharmaciesData);
-            } catch (err: any) {
-                setError(err.message);
-                setPharmacies([]);
-            } finally {
-                setIsSearching(false);
-            }
-        };
-
-        const timerId = setTimeout(() => {
-            search();
-        }, 500);
-
-        return () => clearTimeout(timerId);
-    }, [searchQuery]);
-
-    const handleSwitch = () => {
-        if (selectedPharmacy) {
-            onSwitch(selectedPharmacy._id);
-        }
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitle>Switch Pharmacy</DialogTitle>
-            <DialogContent>
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Search for a pharmacy by name or address"
-                    type="text"
-                    fullWidth
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {isSearching && <CircularProgress size={24} sx={{ display: 'block', margin: 'auto', mt: 2 }} />}
-                {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
-                <List sx={{ mt: 2 }}>
-                    {pharmacies.map((pharmacy) => (
-                        <ListItem
-                            key={pharmacy._id}
-                            onClick={() => setSelectedPharmacy(pharmacy)}
-                            sx={{
-                                p: 2,
-                                border: '1px solid',
-                                borderColor: selectedPharmacy?._id === pharmacy._id ? '#0F6E56' : 'rgba(0,0,0,0.06)',
-                                borderRadius: '12px',
-                                mb: 1,
-                                cursor: 'pointer',
-                                background: selectedPharmacy?._id === pharmacy._id ? 'rgba(15, 110, 86, 0.05)' : 'transparent',
-                                '&:hover': { background: 'rgba(0,0,0,0.02)' }
-                            }}
-                        >
-                            <Box>
-                                <Typography sx={{ fontWeight: 600 }}>{pharmacy.businessName}</Typography>
-                                <Typography variant="caption" sx={{ color: '#666' }}>{pharmacy.businessAddress}</Typography>
-                            </Box>
-                        </ListItem>
-                    ))}
-                    {pharmacies.length === 0 && searchQuery.length > 0 && !isSearching && (
-                        <Typography sx={{ textAlign: 'center', mt: 2 }}>No pharmacies found.</Typography>
-                    )}
-                </List>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSwitch} disabled={!selectedPharmacy}>Confirm Switch</Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
 
 
 const AccountContent = ({ setView, onBack }: AccountContentProps) => {
@@ -325,7 +229,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [editingField, setEditingField] = useState<string | null>(null);
     const [fieldValue, setFieldValue] = useState<any>(null);
     const [showSubscription, setShowSubscription] = useState(false);
-    const [isSwitchingPharmacy, setIsSwitchingPharmacy] = useState(false);
     const [pharmacists, setPharmacists] = useState<Pharmacist[]>([]);
     const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
     const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
@@ -593,28 +496,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
         }
     };
 
-    const handleSwitchPharmacy = async (pharmacyId: string) => {
-        try {
-            const response = await fetch('/api/account/switch-pharmacy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pharmacyId }),
-            });
-            if (!response.ok) throw new Error('Failed to switch pharmacy.');
-            setDetailedUser(null);
-            setIsLoading(true);
-            setIsSwitchingPharmacy(false);
-            const refreshRes = await fetch('/api/account');
-            if (refreshRes.ok) {
-                const refreshedData = await refreshRes.json();
-                setDetailedUser(refreshedData.user);
-            }
-            setIsLoading(false);
-            refreshSession();
-        } catch (err: any) {
-            setError(err.message);
-        }
-    };
+
 
     const handleSubscriptionSuccess = () => {
         refreshSession();
@@ -786,6 +668,14 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                                 <EditableListItem fieldName={phoneFieldName} label="Phone Number" value={phoneValue} icon={<Phone fontSize="small" />} />
                                                 <EditableListItem fieldName={stateFieldName} label="State" value={stateValue} icon={<LocationOn fontSize="small" />} />
                                                 <EditableListItem fieldName="city" label="City" value={accountUser.city} icon={<LocationOn fontSize="small" />} />
+                                                {isPharmacist && (
+                                                    <EditableListItem 
+                                                        fieldName="pharmacy" 
+                                                        label="Place of Work" 
+                                                        value={typeof accountUser.pharmacy === 'string' ? accountUser.pharmacy : accountUser.pharmacy?.businessName} 
+                                                        icon={<Business fontSize="small" />} 
+                                                    />
+                                                )}
                                             </>
                                         );
                                     })()}
@@ -969,7 +859,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                     <>
                                         <div className="sec-tag">Pharmacy Management</div>
                                         <div className="glass-card" style={{ padding: '8px' }}>
-                                            {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
+                                            {['pharmacy', 'admin'].includes(accountUser.role) && (
                                                 <div className="profile-row-action" onClick={() => setProfileMode('store')}>
                                                     <Business style={{ color: 'var(--primary-green)' }} />
                                                     <span className="profile-row-label">Store Management</span>
@@ -1188,11 +1078,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
 
                 {editingField && <EditDialog open={!!editingField} onClose={handleCloseDialog} onSave={handleSave} fieldName={editingField} value={fieldValue} />}
                 
-                <SwitchPharmacyDialog 
-                    open={isSwitchingPharmacy} 
-                    onClose={() => setIsSwitchingPharmacy(false)} 
-                    onSwitch={handleSwitchPharmacy} 
-                />
+
 
                 <Dialog open={isAccessModalOpen} onClose={handleCloseAccessModal} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
                     <DialogTitle sx={{ textAlign: 'center', pb: 1, fontFamily: 'var(--font-sora), sans-serif', fontWeight: 700 }}>

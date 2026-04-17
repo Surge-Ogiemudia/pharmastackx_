@@ -48,35 +48,12 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
   const [showPassword, setShowPassword] = useState(false);
   const [showProviderStep, setShowProviderStep] = useState(false);
   const [providerType, setProviderType] = useState("");
-  const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
-  const [pharmacySearch, setPharmacySearch] = useState("");
-  const [isCreatePharmacyModalOpen, setCreatePharmacyModalOpen] = useState(false);
-  const [newlyCreatedPharmacy, setNewlyCreatedPharmacy] = useState<Pharmacy | null>(null);
-
   const [unclaimedPharmacies, setUnclaimedPharmacies] = useState<Pharmacy[]>([]);
   const [isClaimModalOpen, setClaimModalOpen] = useState(false);
   const [isPharmacyClaimed, setIsPharmacyClaimed] = useState(false);
   const [hasDeclinedClaim, setHasDeclinedClaim] = useState(false);
 
-  const fetchPharmacies = useCallback(async () => {
-    try {
-      const { data } = await axios.get('/api/pharmacies?all=true');
-      if (data && Array.isArray(data.pharmacies)) {
-        setPharmacies(data.pharmacies);
-      } else {
-        setError("Failed to load pharmacies list.");
-      }
-    } catch (error) {
-      console.error("Failed to fetch pharmacies", error);
-      setError("Failed to load pharmacies list.");
-    }
-  }, [setError]);
 
-  useEffect(() => {
-    if (providerType === 'pharmacist') {
-      fetchPharmacies();
-    }
-  }, [providerType, fetchPharmacies]);
 
   useEffect(() => {
     const searchUnclaimed = async () => {
@@ -107,20 +84,10 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
   }, [form.businessName, providerType, isPharmacyClaimed, hasDeclinedClaim]);
   
 
-  const handlePharmacySearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPharmacySearch(event.target.value);
-  };
 
-  const filteredPharmacies = pharmacies.filter(
-    (p) => p && p.businessName && p.businessName.toLowerCase().includes(pharmacySearch.toLowerCase())
-  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
     const { name, value } = e.target;
-    if (name === 'pharmacy' && value === 'create-new') {
-      setCreatePharmacyModalOpen(true);
-      return;
-    }
     setForm((prevForm) => ({ ...prevForm, [name as string]: value }));
     if (name === 'businessName') {
       setHasDeclinedClaim(false);
@@ -204,13 +171,7 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
     }
   };
 
-  const handlePharmacyCreated = async (newPharmacy: Pharmacy) => {
-    setCreatePharmacyModalOpen(false);
-    setForm((prevForm) => ({ ...prevForm, pharmacy: newPharmacy._id }));
-    setPharmacySearch("");
-    setNewlyCreatedPharmacy(newPharmacy);
-    await fetchPharmacies();
-  };
+
 
   const handleSelectPharmacyToClaim = (pharmacy: Pharmacy) => {
     setForm(prev => ({
@@ -340,13 +301,7 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
                 <TextField select label="State of Practice" name="stateOfPractice" value={form.stateOfPractice || ""} onChange={handleChange} fullWidth margin="normal" required >
                   {nigerianStates.map((state) => <MenuItem key={state} value={state}>{state}</MenuItem>)}
                 </TextField>
-                <TextField select label="Pharmacy" name="pharmacy" value={form.pharmacy} onChange={handleChange} fullWidth margin="normal" required >
-                  <ListSubheader>
-                    <TextField size="small" autoFocus placeholder="Type to search..." fullWidth value={pharmacySearch} onChange={handlePharmacySearchChange} onKeyDown={(e) => e.stopPropagation()} variant="standard" />
-                  </ListSubheader>
-                  <MenuItem value="create-new" sx={{ fontWeight: 'bold', color: 'darkmagenta' }}>+ Add your pharmacy info if not on the list</MenuItem>
-                  {filteredPharmacies.map((p) => <MenuItem key={p._id} value={p._id}>{p.businessName}</MenuItem>)}
-                </TextField>
+                <TextField label="Place of Work (e.g. General Hospital)" name="pharmacy" value={form.pharmacy} onChange={handleChange} fullWidth margin="normal" required />
               </>
             )}
 
@@ -383,12 +338,7 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
               Back
             </Button>
           </form>
-          <CreatePharmacyModal
-            open={isCreatePharmacyModalOpen}
-            onClose={() => setCreatePharmacyModalOpen(false)}
-            onPharmacyCreated={handlePharmacyCreated}
-            setError={setError}
-          />
+
           <ClaimPharmacyModal 
             open={isClaimModalOpen}
             onClose={handleDeclineClaim}
