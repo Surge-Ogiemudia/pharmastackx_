@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import RequestModel from '@/models/Request';
 import UserModel from '@/models/User';
 import jwt from 'jsonwebtoken';
+import { transporter } from '@/lib/nodemailer';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -97,6 +98,44 @@ export async function POST(req: NextRequest) {
     await newRequest.save();
 
     console.log('[LOG] Save successful! Document ID:', newRequest._id);
+
+    // --- Start Email Notification Async ---
+    (async () => {
+      try {
+        const requester = await UserModel.findById(userId);
+        const userName = requester?.name || requester?.username || 'Unknown User';
+        const drugListHtml = (items || []).map((it: any) => 
+          `<li><strong>${it.name}</strong> ${it.strength ? `(${it.strength})` : ''} - ${it.quantity} ${it.unit || ''}</li>`
+        ).join('');
+
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: 'pharmastackx@gmail.com',
+          subject: `✨ New Request from ${userName}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; color: #333;">
+              <h2 style="color: #0F6E56;">New Drug Request Received</h2>
+              <p>A new request has been submitted on PharmaStackX.</p>
+              <hr style="border: none; border-top: 1px solid #eee;" />
+              <p><strong>User:</strong> ${userName}</p>
+              <p><strong>Phone:</strong> ${phoneNumber || 'Not provided'}</p>
+              <p><strong>State:</strong> ${state || 'Not provided'}</p>
+              <p><strong>Items:</strong></p>
+              <ul>${drugListHtml || '<li>No items listed</li>'}</ul>
+              ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+              <hr style="border: none; border-top: 1px solid #eee;" />
+              <p style="font-size: 12px; color: #777;">Request ID: ${newRequest._id}</p>
+            </div>
+          `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log('[LOG] Notification email sent to pharmastackx@gmail.com');
+      } catch (emailErr) {
+        console.error('[ERROR] Failed to send notification email:', emailErr);
+      }
+    })();
+    // --- End Email Notification ---
     
     const response = NextResponse.json(newRequest, { status: 201 });
     
