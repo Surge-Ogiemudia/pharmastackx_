@@ -5,13 +5,15 @@ import { motion } from "framer-motion";
 interface BottomNavProps {
   currentView: string;
   onTabClick: (id: string) => void;
+  isPulseEnabled?: boolean;
+  isActivityEnabled?: boolean;
 }
 
-const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
+const BottomNav = ({ currentView, onTabClick, isPulseEnabled = true, isActivityEnabled = true }: BottomNavProps) => {
   const tabs = [
     { id: 'home', label: 'HOME' },
-    { id: 'orderMedicines', label: 'SEARCH' },
-    { id: 'orders', label: 'ACTIVITY' },
+    ...(isPulseEnabled ? [{ id: 'orderMedicines', label: 'SEARCH' }] : []),
+    ...(isActivityEnabled ? [{ id: 'orders', label: 'ACTIVITY' }] : []),
     { id: 'account', label: 'ACCOUNT' }
   ];
 

@@ -26,7 +26,7 @@ export async function GET() {
     let settings = await GlobalSettings.findOne();
     
     if (!settings) {
-      settings = await GlobalSettings.create({ isActivityCentreEnabled: true });
+      settings = await GlobalSettings.create({ isActivityCentreEnabled: true, isPulseModuleEnabled: true });
     }
     
     return NextResponse.json(settings);
@@ -43,14 +43,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { isActivityCentreEnabled } = await request.json();
+    const { isActivityCentreEnabled, isPulseModuleEnabled } = await request.json();
     await dbConnect();
     
     let settings = await GlobalSettings.findOne();
     if (!settings) {
-      settings = new GlobalSettings({ isActivityCentreEnabled });
+      settings = new GlobalSettings({ isActivityCentreEnabled, isPulseModuleEnabled });
     } else {
       settings.isActivityCentreEnabled = isActivityCentreEnabled;
+      settings.isPulseModuleEnabled = isPulseModuleEnabled;
     }
     
     settings.updatedBy = session.userId;
