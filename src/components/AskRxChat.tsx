@@ -338,7 +338,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                                 disabled={!user || isLoading || status === 'resolved'}
-                                InputProps={{ disableUnderline: true, sx: { fontSize: '14px', px: 1 } }}
+                                InputProps={{ disableUnderline: true, sx: { fontSize: '16px', px: 1 } }}
                             />
                             <IconButton 
                                 onClick={handleSend} 
