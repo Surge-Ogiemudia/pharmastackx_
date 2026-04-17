@@ -613,11 +613,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const accountUser = detailedUser as DetailedUser;
 
     return (
-        <Box className="account-page-wrapper" sx={{ position: 'relative', width: '100%', pt: 2 }}>
-            <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
-                <DotCanvas />
-            </Box>
-
+        <Box className="account-page-wrapper" sx={{ position: 'relative', width: '100%', pt: 0 }}>
             <div className="account-container" style={{ position: 'relative', zIndex: 1 }}>
                 
                 {/* Unified Top Bar */}
