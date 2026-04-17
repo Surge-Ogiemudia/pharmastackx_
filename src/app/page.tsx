@@ -102,11 +102,9 @@ export default function HomePage() {
         const timer = setTimeout(() => setNotificationSyncStatus('idle'), 3000); // Revert to idle after 3 seconds
         return () => clearTimeout(timer);
     }
-}, [notificationSyncStatus]);
+  }, [notificationSyncStatus]);
 
-
-
-const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 const [showMiniPrompt, setShowMiniPrompt] = useState(false);
 const [showContinueOnAppMessage, setShowContinueOnAppMessage] = useState(false);
 const [showAskRxChat, setShowAskRxChat] = useState(false);
@@ -121,7 +119,7 @@ const [notificationError, setNotificationError] = useState<string | null>(null);
     const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
   
     // Determine if the user has a role that should be prompted.
-    const isTargetRole = ['pharmacist', 'pharmacy', 'clinic'].includes(user.role);
+    const isTargetRole = ['pharmacist', 'pharmacy', 'clinic', 'admin'].includes(user.role);
   
     if (isTargetRole && !isPWA) {
       // 1. Show the full modal only once per session, and only on the home view
@@ -377,7 +375,7 @@ useEffect(() => {
       setPermission(currentPermission);
   
       const hasFcmTokens = detailedUser.fcmTokens && detailedUser.fcmTokens.length > 0;
-      const isTargetRole = ['pharmacist', 'pharmacy'].includes(detailedUser.role);
+      const isTargetRole = ['pharmacist', 'pharmacy', 'clinic', 'admin'].includes(detailedUser.role);
   
       // Show the prompt if the user is a target role and either:
       // 1. They haven't set a notification permission yet ('default').
@@ -709,6 +707,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                 isNavigating={isNavigating}
                 initialRequestId={activeRequestId || undefined}
                 initialScanRx={shouldTriggerScan}
+                onInstallPWA={() => setShowInstallPrompt(true)}
               />
             </Box>
           </Box>
