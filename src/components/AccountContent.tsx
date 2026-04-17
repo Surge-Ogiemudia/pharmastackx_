@@ -131,8 +131,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
     const [accessUpdateResult, setAccessUpdateResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
-    const [isPulseEnabled, setIsPulseEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'platform' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -168,7 +167,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                 if (settingsRes?.ok) {
                     const s = await settingsRes.json();
                     setIsActivityCentreEnabled(s.isActivityCentreEnabled);
-                    setIsPulseEnabled(s.isPulseModuleEnabled);
                 }
                 if (consultRes?.ok) setConsultations(await consultRes.json());
             } catch (err: any) {
@@ -215,25 +213,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
             }
         } catch (err) { console.error(err); }
         finally { setIsReplying(false); }
-    };
-
-    const handleUpdatePlatformSettings = async (field: 'activity' | 'pulse', value: boolean) => {
-        const payload = {
-            isActivityCentreEnabled: field === 'activity' ? value : isActivityCentreEnabled,
-            isPulseModuleEnabled: field === 'pulse' ? value : isPulseEnabled
-        };
-        
-        try {
-            const res = await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                if (field === 'activity') setIsActivityCentreEnabled(value);
-                else setIsPulseEnabled(value);
-            }
-        } catch (err) { console.error(err); }
     };
 
     const EditableListItem = ({ fieldName, label, value, icon }: any) => (
@@ -311,11 +290,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             <>
                                 <div className="sec-tag">Administration</div>
                                 <div className="glass-card" style={{ padding: '8px' }}>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('platform')}>
-                                        <Assignment style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Platform Controls</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
                                     <div className="profile-row-action" onClick={() => setProfileMode('whatsapp')}>
                                         <WhatsAppIcon style={{ color: '#25D366' }} />
                                         <span className="profile-row-label">WhatsApp Management</span>
@@ -424,29 +398,6 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             </SubPageWrapper>
                         )}
 
-                        {profileMode === 'platform' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Platform Administration">
-                                <Box sx={{ mb: 4 }}>
-                                    <Typography variant="subtitle2" sx={{ color: 'var(--gray)', fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '1px' }}>Module Visibility</Typography>
-                                    <List className="glass-card" sx={{ p: 0 }}>
-                                        <ListItem sx={{ display: 'flex', justifyContent: 'space-between', p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <Box>
-                                                <Typography sx={{ fontWeight: 700, color: 'var(--black)' }}>Activity Centre Hub</Typography>
-                                                <Typography variant="caption" sx={{ color: 'var(--gray)' }}>Toggle the visibility of the "Activity" tab for all users.</Typography>
-                                            </Box>
-                                            <Switch checked={isActivityCentreEnabled} onChange={(e) => handleUpdatePlatformSettings('activity', e.target.checked)} color="success" />
-                                        </ListItem>
-                                        <ListItem sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
-                                            <Box>
-                                                <Typography sx={{ fontWeight: 700, color: 'var(--black)' }}>PSX Pulse (Articles & Insights)</Typography>
-                                                <Typography variant="caption" sx={{ color: 'var(--gray)' }}>Toggle the visibility of the "Search" (Pulse) tab for all users.</Typography>
-                                            </Box>
-                                            <Switch checked={isPulseEnabled} onChange={(e) => handleUpdatePlatformSettings('pulse', e.target.checked)} color="success" />
-                                        </ListItem>
-                                    </List>
-                                </Box>
-                            </SubPageWrapper>
-                        )}
 
                         {profileMode === 'aicentre' && (
                             <SubPageWrapper onBack={() => setProfileMode('list')} title="AI Centre">

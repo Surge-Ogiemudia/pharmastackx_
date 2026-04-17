@@ -110,7 +110,6 @@ const [showContinueOnAppMessage, setShowContinueOnAppMessage] = useState(false);
 const [showAskRxChat, setShowAskRxChat] = useState(false);
 
 const [notificationError, setNotificationError] = useState<string | null>(null);
-const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
     // Don't do anything until the user's session is loaded.
@@ -248,12 +247,6 @@ const [detailedUser, setDetailedUser] = useState<UnifiedUser | null>(null);
   // This hook calls the function when the component loads or the function changes
   useEffect(() => {
     fetchDetailedUser();
-    
-    // Fetch global settings for module visibility
-    fetch('/api/admin/settings')
-      .then(res => res.json())
-      .then(data => setGlobalSettings(data))
-      .catch(err => console.error("Error loading global settings:", err));
   }, [fetchDetailedUser]);
 
 
@@ -465,25 +458,7 @@ useEffect(() => {
 
   const renderWelcomeView = () => {
     return (
-      <Box 
-        key="welcome" 
-        component={motion.div} 
-        initial="hidden" 
-        animate="visible" 
-        exit="exit" 
-        variants={containerVariants} 
-        sx={{ 
-            width: '100%', 
-            height: '100%',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            overflowY: 'auto',
-            pt: { xs: 12, sm: 14 }, 
-            pb: bottomPadding,
-            px: { xs: 0, sm: 2 } 
-        }}
-      >
+      <Box key="welcome" component={motion.div} initial="hidden" animate="visible" exit="exit" variants={containerVariants} sx={{ width: '100%', mx: 'auto', p: { xs: 0, sm: 2 }, position: 'relative' }}>
         <AnimatePresence>
             {showMiniPrompt && (
                 <Box 
@@ -885,7 +860,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 12, sm: 14 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
               <Suspense fallback={<Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>}>
@@ -1025,9 +1000,6 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             </Grid>
           </Box>
         );
-
-      case 'home':
-        return renderWelcomeView();
 
       default:
         return renderWelcomeView();
@@ -1250,12 +1222,10 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav 
-        currentView={view} 
-        onTabClick={setViewWithPrev} 
-        isPulseEnabled={globalSettings?.isPulseModuleEnabled !== false}
-        isActivityEnabled={globalSettings?.isActivityCentreEnabled !== false}
-      />
+       <BottomNav currentView={view} onTabClick={(v) => {
+         if (v === 'orderMedicines') setActiveRequestId(null);
+         setViewWithPrev(v);
+       }} />
 
       {activeRequest && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'orderMedicines' && activeRequestId === activeRequest._id) && (
           <ActiveRequestOverlay 
