@@ -13,6 +13,7 @@ interface DispatchFormProps {
   isNavigating?: boolean;
   initialRequestId?: string;
   initialScanRx?: boolean;
+  onInstallPWA?: () => void;
 }
 
 const nigerianStates = [
@@ -26,7 +27,8 @@ const nigerianStates = [
 const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView, setSelectedRequestId, onViewResponses,
   isNavigating = false,
   initialRequestId,
-  initialScanRx = false
+  initialScanRx = false,
+  onInstallPWA
 }) => {
   const [searchQuery, setSearchQuery] = useState(initialSearchValue || '');
   const [isAddFormActive, setIsAddFormActive] = useState(false);
@@ -52,16 +54,39 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
   const [scanMode, setScanMode] = useState<'rx' | 'med'>('rx');
 
   const handleScanResult = (medicines: any[], scanImage?: string) => {
-    const newItems = medicines.map((m, index) => ({
-      id: 'scan_' + Date.now() + index,
-      name: m.name || (scanMode === 'med' ? 'Identified Medicine' : 'Scanned Medicine'),
-      strength: m.strength || '',
-      form: m.form || 'Tablet',
-      quantity: m.quantity || 1,
-      unit: m.unit || 'Packs',
-      image: scanMode === 'med' ? scanImage : undefined
-    }));
-    setRequestList(prev => [...prev, ...newItems]);
+    console.log("📸 [DispatchForm] handleScanResult triggered:", { medicinesCount: medicines.length, hasImage: !!scanImage, scanMode });
+    let newItems: any[] = [];
+
+    if (medicines.length === 0 && scanImage) {
+      console.log("📸 [DispatchForm] Using fallback image placeholder");
+      // Fallback: AI failed to read it, but we have the image. Create a placeholder item.
+      newItems = [{
+        id: 'scan_fallback_' + Date.now(),
+        name: scanMode === 'rx' ? 'Unread Prescription (Image attached)' : 'Unidentified Medicine (Image attached)',
+        strength: '',
+        form: 'Other',
+        quantity: 1,
+        unit: 'Pieces',
+        image: scanImage
+      }];
+    } else {
+      console.log("📸 [DispatchForm] Adding identified medicines:", medicines.map(m => m.name));
+      newItems = medicines.map((m, index) => ({
+        id: 'scan_' + Date.now() + index,
+        name: m.name || (scanMode === 'med' ? 'Identified Medicine' : 'Scanned Medicine'),
+        strength: m.strength || '',
+        form: m.form || 'Tablet',
+        quantity: m.quantity || 1,
+        unit: m.unit || 'Packs',
+        image: scanMode === 'med' ? scanImage : undefined
+      }));
+    }
+
+    setRequestList(prev => {
+      const updated = [...prev, ...newItems];
+      console.log("📸 [DispatchForm] Updated requestList length:", updated.length);
+      return updated;
+    });
     if (scanImage && scanMode === 'rx') {
       setPrescriptionImage(scanImage);
     }
@@ -131,7 +156,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
 
     screen.addEventListener('scroll', checkReveals);
     window.addEventListener('scroll', checkReveals);
-    
+
     // Multiple attempts to ensure newly rendered elements are caught
     checkReveals();
     const t1 = setTimeout(checkReveals, 100);
@@ -372,19 +397,19 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         #search-screen-container .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,15,12,0.6);display:flex;align-items:flex-end;justify-content:center;z-index:9000;backdrop-filter:blur(3px)}
 
         /* LOGIN MODAL */
-        #search-screen-container .login-modal{background:var(--bg);border-radius:28px 28px 0 0;padding:24px;padding-bottom:110px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1)}
-        #search-screen-container .modal-handle{width:36px;height:4px;border-radius:2px;background:#ddd;margin:0 auto 20px}
-        #search-screen-container .modal-title{font-family:'Fraunces',serif;font-size:22px;font-weight:900;color:var(--black);letter-spacing:-0.8px;line-height:1.2;margin-bottom:6px}
+        #search-screen-container .login-modal{background:#fff;border-radius:28px 28px 0 0;padding:24px;padding-bottom:110px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);box-shadow:0 -10px 40px rgba(0,0,0,0.2)}
+        #search-screen-container .modal-handle{width:36px;height:4px;border-radius:2px;background:#eee;margin:0 auto 20px}
+        #search-screen-container .modal-title{font-family:'Fraunces',serif;font-size:22px;font-weight:900;color:#111;letter-spacing:-0.8px;line-height:1.2;margin-bottom:6px}
         #search-screen-container .modal-title em{color:var(--green);font-style:italic}
-        #search-screen-container .modal-sub{font-size:12px;color:var(--gray);font-weight:300;line-height:1.65;margin-bottom:22px}
+        #search-screen-container .modal-sub{font-size:12px;color:#666;font-weight:400;line-height:1.65;margin-bottom:22px}
         #search-screen-container .modal-btn-primary{width:100%;background:var(--black);color:#fff;border-radius:13px;padding:15px;font-size:13px;font-weight:600;text-align:center;font-family:'Sora',sans-serif;letter-spacing:-0.2px;border:none;cursor:pointer;margin-bottom:10px}
         #search-screen-container .modal-btn-green{width:100%;background:var(--green);color:#fff;border-radius:13px;padding:15px;font-size:13px;font-weight:600;text-align:center;font-family:'Sora',sans-serif;letter-spacing:-0.2px;border:none;cursor:pointer;margin-bottom:10px}
-        #search-screen-container .modal-btn-outline{width:100%;background:transparent;border:1px solid #ebebeb;color:var(--gray);border-radius:13px;padding:14px;font-size:13px;font-weight:600;text-align:center;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:0}
+        #search-screen-container .modal-btn-outline{width:100%;background:transparent;border:1px solid #ebebeb;color:#666;border-radius:13px;padding:14px;font-size:13px;font-weight:600;text-align:center;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:0}
         #search-screen-container .modal-divider{display:flex;align-items:center;gap:10px;margin:14px 0}
         #search-screen-container .modal-divider-line{flex:1;height:1px;background:var(--border)}
-        #search-screen-container .modal-divider-text{font-size:10px;color:#ccc;letter-spacing:0.5px;text-transform:uppercase}
-        #search-screen-container .modal-note{text-align:center;font-size:11px;color:#bbb;margin-top:12px;font-weight:300;line-height:1.6}
-        #search-screen-container .modal-note span{color:var(--green);font-weight:500}
+        #search-screen-container .modal-divider-text{font-size:10px;color:#999;letter-spacing:0.5px;text-transform:uppercase}
+        #search-screen-container .modal-note{text-align:center;font-size:11px;color:#777;margin-top:12px;font-weight:400;line-height:1.6}
+        #search-screen-container .modal-note span{color:var(--green);font-weight:600}
 
         /* BENEFITS LIST */
         #search-screen-container .benefits{background:var(--green-pale);border:1px solid rgba(15,110,86,0.12);border-radius:14px;padding:14px;margin-bottom:20px}
@@ -392,11 +417,11 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         #search-screen-container .benefit-item:last-child{margin-bottom:0}
         #search-screen-container .benefit-dot{width:16px;height:16px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
         #search-screen-container .benefit-dot-inner{width:5px;height:5px;border-radius:50%;background:#fff}
-        #search-screen-container .benefit-text{font-size:11px;color:var(--gray);line-height:1.55;font-weight:300}
-        #search-screen-container .benefit-text strong{color:var(--green);font-weight:500}
+        #search-screen-container .benefit-text{font-size:11px;color:#555;line-height:1.55;font-weight:400}
+        #search-screen-container .benefit-text strong{color:var(--green);font-weight:700}
 
         /* CONFIRM MODAL */
-        #search-screen-container .confirm-modal{background:var(--bg);border-radius:28px 28px 0 0;padding:24px;padding-bottom:110px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1)}
+        #search-screen-container .confirm-modal{background:#fff;border-radius:28px 28px 0 0;padding:24px;padding-bottom:110px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);box-shadow:0 -10px 40px rgba(0,0,0,0.2)}
         #search-screen-container .confirm-request-summary{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:18px;max-height:180px;overflow-y:auto}
         #search-screen-container .confirm-summary-label{font-size:10px;color:var(--light-gray);letter-spacing:1px;text-transform:uppercase;font-weight:500;margin-bottom:10px}
         #search-screen-container .confirm-med{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -471,7 +496,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         /* GUEST GATE OVERLAY */
         #search-screen-container .guest-gate{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;display:flex;flex-direction:column;justify-content:flex-end;animation:slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1)}
         #search-screen-container .guest-gate-blur{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(250,250,248,0.75);backdrop-filter:blur(8px)}
-        #search-screen-container .guest-gate-sheet{position:relative;z-index:1;background:var(--bg);border-radius:28px 28px 0 0;padding:28px 24px;padding-bottom:110px;box-shadow:0 -8px 40px rgba(0,0,0,0.1);width:100%;max-width:500px;margin:0 auto}
+        #search-screen-container .guest-gate-sheet{position:relative;z-index:1;background:#fff;border-radius:28px 28px 0 0;padding:28px 24px;padding-bottom:110px;box-shadow:0 -10px 40px rgba(0,0,0,0.2);width:100%;max-width:500px;margin:0 auto}
         #search-screen-container .guest-gate-handle{width:36px;height:4px;border-radius:2px;background:#ddd;margin:0 auto 22px}
         #search-screen-container .guest-gate-icon{width:52px;height:52px;border-radius:16px;background:var(--green-pale);margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
         #search-screen-container .guest-gate-icon-inner{width:22px;height:22px;border-radius:50%;border:3px solid var(--green)}
@@ -577,12 +602,12 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
             </div>
           </div>
 
-          <div className="notif-prompt reveal visible d4">
+          <div className="notif-prompt reveal visible d4" onClick={onInstallPWA} style={{ cursor: onInstallPWA ? 'pointer' : 'default' }}>
             <div className="notif-icon"><div className="notif-icon-inner"></div></div>
             <div className="notif-body">
               <div className="notif-title">Get instant alerts</div>
               <div className="notif-sub">Add PharmaStackX to your home screen to receive push notifications when a pharmacist responds.</div>
-              <button className="notif-btn">Add to home screen</button>
+              <button className="notif-btn" onClick={onInstallPWA}>Add to home screen</button>
             </div>
           </div>
 
@@ -632,12 +657,12 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
             <div className="header">
               <div className="header-top reveal visible" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h1 className="header-title">Find a medicine</h1>
-                <div 
+                <div
                   onClick={() => setView('findMedicines')}
-                  style={{ 
-                    fontSize: '10px', 
-                    color: 'var(--green)', 
-                    fontWeight: 800, 
+                  style={{
+                    fontSize: '10px',
+                    color: 'var(--green)',
+                    fontWeight: 800,
                     cursor: 'pointer',
                     padding: '6px 14px',
                     background: 'var(--green-pale)',
@@ -977,18 +1002,18 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                 <div className="notes-section reveal d1 visible" style={{ marginBottom: '24px', padding: '0 24px', marginTop: '24px' }}>
                   <div className="sec-label" style={{ marginBottom: '8px', fontSize: '10px', color: 'var(--light-gray)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 500 }}>Your Prescription / General Notes</div>
                   <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '20px', padding: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-                    <textarea 
-                      className="notes-field" 
+                    <textarea
+                      className="notes-field"
                       placeholder="Add manual notes or attach a prescription for the pharmacist..."
                       value={generalNotes}
                       onChange={(e) => setGeneralNotes(e.target.value)}
                       style={{ background: 'transparent', border: 'none', padding: 0, height: '70px', width: '100%', outline: 'none', fontSize: '13px', color: 'var(--black)', fontFamily: "'DM Sans', sans-serif", resize: 'none', marginBottom: prescriptionImage ? '16px' : '0' }}
                     ></textarea>
-                    
+
                     {prescriptionImage && (
                       <div style={{ position: 'relative', width: 'fit-content', marginBottom: '16px' }}>
                         <img src={prescriptionImage} alt="Prescription" style={{ width: '100px', height: '100px', borderRadius: '14px', objectFit: 'cover', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                        <button 
+                        <button
                           onClick={() => { setPrescriptionImage(null); setPrescriptionImageFile(null); }}
                           style={{ position: 'absolute', top: -10, right: -10, width: 24, height: 24, borderRadius: '50%', background: '#ff4d4d', color: '#fff', border: '2px solid #fff', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                         >×</button>
@@ -1011,7 +1036,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                         }}
                       />
                       <div className="upload-img-icon" style={{ width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: prescriptionImage ? 'var(--green-pale)' : 'rgba(0,0,0,0.03)' }}>
-                         <div className="upload-img-icon-inner" style={{ width: '12px', height: '12px', border: prescriptionImage ? '2px solid var(--green)' : '2px solid #ccc', borderRadius: '3px' }}></div>
+                        <div className="upload-img-icon-inner" style={{ width: '12px', height: '12px', border: prescriptionImage ? '2px solid var(--green)' : '2px solid #ccc', borderRadius: '3px' }}></div>
                       </div>
                       <span style={{ color: prescriptionImage ? 'var(--green)' : '#888', fontWeight: 600, fontSize: '12px' }}>
                         {prescriptionImage ? 'Prescription attached (Tap to change)' : 'Attach prescription image'}
@@ -1023,7 +1048,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                 <div className={`send-section reveal d1 ${requestList.length > 0 ? 'visible' : ''}`}>
                   <button className="send-btn" onClick={handleSendRequest}>
                     <div className="send-arrow">→</div>
-                    Send request to nearby pharmacists
+                    Start search
                   </button>
                   <div className="send-hint">Pharmacists within <span>5km</span> will be notified instantly</div>
                 </div>
@@ -1178,8 +1203,8 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                     <button
                       className="modal-btn-green"
                       disabled={isSubmitting}
-                      style={{ 
-                        opacity: isSubmitting ? 0.7 : 1, 
+                      style={{
+                        opacity: isSubmitting ? 0.7 : 1,
                         cursor: isSubmitting ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1281,9 +1306,9 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
           )}
         </>
       )}
-      <RxScanModal 
-        open={isScanModalOpen} 
-        onClose={() => setIsScanModalOpen(false)} 
+      <RxScanModal
+        open={isScanModalOpen}
+        onClose={() => setIsScanModalOpen(false)}
         onScanResult={handleScanResult}
         mode={scanMode}
       />
