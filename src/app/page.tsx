@@ -92,6 +92,7 @@ export default function HomePage() {
   const [prevView, setPrevView] = useState('home');
   const [shouldTriggerScan, setShouldTriggerScan] = useState(false);
   const [ordersInitialViewMode, setOrdersInitialViewMode] = useState<'dashboard' | 'list' | 'requests-list' | 'orders-list'>('dashboard');
+  const [ordersViewMode, setOrdersViewMode] = useState<string>('dashboard');
   const [ordersBackView, setOrdersBackView] = useState<string | undefined>(undefined);
 
   const setViewWithPrev = (newView: string) => {
@@ -941,6 +942,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                 setSelectedRequestId={setSelectedRequestId} 
                 initialViewMode={ordersInitialViewMode}
                 backToView={ordersBackView}
+                onViewModeChange={setOrdersViewMode}
               />
             </Box>
           </Box>
@@ -1273,10 +1275,11 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav currentView={view} onTabClick={(v) => {
+       <BottomNav currentView={(view === 'orders' && ordersViewMode === 'requests-list') ? 'orderMedicines' : view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
          if (v === 'requests-list') setActiveRequestId(null);
          setOrdersInitialViewMode('dashboard');
+         setOrdersViewMode('dashboard');
          setOrdersBackView(undefined);
          setViewWithPrev(v);
        }} />

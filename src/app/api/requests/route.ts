@@ -202,17 +202,18 @@ export async function GET(req: NextRequest) {
   
     try {
         const own = searchParams.get('own') === 'true';
+        const forPharmacist = searchParams.get('forPharmacist') === 'true';
         let query: any = {};
         const pharmacistRoles = ['pharmacist', 'pharmacy'];
 
         if (own || activeOnly) {
-            // Filter by current user
+            // Explicitly requesting own or active requests
             query = { user: session.userId };
             if (activeOnly) {
                 query.status = { $in: ['pending', 'quoted'] };
             }
-        } else if (pharmacistRoles.includes(session.role)) {
-            // Pharmacists see open requests or requests where their quote was accepted.
+        } else if (forPharmacist && pharmacistRoles.includes(session.role)) {
+            // Professional Portal: Pharmacists see open requests from all users
             query = {
                 $or: [
                     { status: { $in: ['pending', 'quoted'] } },
@@ -223,7 +224,7 @@ export async function GET(req: NextRequest) {
             // Admins see all requests.
             query = {};
         } else {
-            // Regular users see their own requests.
+            // DEFAULT: Regular users (and pharmacists when acting as patients) see their own requests.
             query = { user: session.userId };
         }
 

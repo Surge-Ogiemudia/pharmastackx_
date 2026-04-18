@@ -27,6 +27,7 @@ interface OrdersContentProps {
   setSelectedRequestId?: (id: string) => void;
   initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list' | 'requests-list';
   backToView?: string;
+  onViewModeChange?: (mode: string) => void;
 }
 
 const ActivityDashboardView = ({ 
@@ -351,7 +352,7 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
   );
 };
 
-export default function OrdersContent({ setView, setSelectedRequestId, initialViewMode, backToView }: OrdersContentProps) {
+export default function OrdersContent({ setView, setSelectedRequestId, initialViewMode, backToView, onViewModeChange }: OrdersContentProps) {
   const { user } = useSession();
   const { orders, loading: ordersLoading } = useOrders();
   const [requests, setRequests] = useState<any[]>([]);
@@ -360,6 +361,10 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActivityCentreEnabled, setIsActivityCenterEnabled] = useState(true);
   const [isPulseEnabled, setIsPulseEnabled] = useState(true);
+
+  useEffect(() => {
+    onViewModeChange?.(viewMode);
+  }, [viewMode, onViewModeChange]);
 
   const isPharmacist = !!(user?.role && ['admin', 'pharmacist', 'pharmacists', 'pharmacy', 'vendor'].includes(user.role));
   const isClinic = !!(user?.role && ['clinic'].includes(user.role));
@@ -370,7 +375,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
   useEffect(() => {
     // Phase 1: Instant Hydration from localStorage
     if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('psx_cached_requests');
+      const cached = localStorage.getItem('psx_cached_requests_own');
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -386,7 +391,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
 
     const fetchRequests = async () => {
       try {
-        const response = await fetch('/api/requests');
+        const response = await fetch('/api/requests?own=true');
         if (response.ok) {
           const data = await response.json();
           const cleanData = Array.isArray(data) ? data : [];
@@ -394,7 +399,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
           
           // Phase 2: Update Cache
           if (typeof window !== 'undefined') {
-            localStorage.setItem('psx_cached_requests', JSON.stringify(cleanData));
+            localStorage.setItem('psx_cached_requests_own', JSON.stringify(cleanData));
           }
         }
       } catch (error) {
