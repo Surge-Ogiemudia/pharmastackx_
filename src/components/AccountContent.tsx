@@ -17,7 +17,7 @@ const MedicineRestock = dynamic(() => import('./MedicineRestock'), { ssr: false 
 const WhatsAppManagement = dynamic(() => import('./WhatsAppManagement'), { ssr: false });
 const DataCentreContent = dynamic(() => import('./DataCentreContent'), { ssr: false });
 const AICommandCentreContent = dynamic(() => import('./AICommandCentreContent'), { ssr: false });
-const TopContactsContent = dynamic(() => import('./TopContactsContent'), { ssr: false });
+const TopContactsContent = dynamic(() => import('@/components/TopContactsContent'), { ssr: false });
 const AboutContent = dynamic(() => import('./AboutContent'), { ssr: false });
 const PrivacyContent = dynamic(() => import('./PrivacyContent'), { ssr: false });
 const GodMode = dynamic(() => import('../app/admin/god-mode/page'), { ssr: false });
