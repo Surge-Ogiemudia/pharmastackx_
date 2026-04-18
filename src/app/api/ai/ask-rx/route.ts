@@ -192,31 +192,35 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("AI Consultation Error:", error);
     
-    try {
-        const settings = await AISettings.findOne();
-        if (settings?.isAlertingEnabled && settings?.alertEmail) {
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: settings.alertEmail,
-                subject: '🚨 URGENT: AI System Error / Fault in Ask Rx',
-                html: `
-                    <div style="font-family: sans-serif; padding: 20px;">
-                        <h2>AI Consultation Error Detected</h2>
-                        <p>The system encountered a critical error while trying to process a user's health query.</p>
-                        <p><strong>Error Details:</strong></p>
-                        <pre style="background: #f4f4f4; padding: 10px; border-radius: 6px;">${error.message}</pre>
-                    </div>
-                `
-            });
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+    
+    if (!isRateLimit) {
+        try {
+            const settings = await AISettings.findOne();
+            if (settings?.isAlertingEnabled && settings?.alertEmail) {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: settings.alertEmail,
+                    subject: '🚨 URGENT: AI System Error / Fault in Ask Rx',
+                    html: `
+                        <div style="font-family: sans-serif; padding: 20px;">
+                            <h2>AI Consultation Error Detected</h2>
+                            <p>The system encountered a critical error while trying to process a user's health query.</p>
+                            <p><strong>Error Details:</strong></p>
+                            <pre style="background: #f4f4f4; padding: 10px; border-radius: 6px;">${error.message}</pre>
+                        </div>
+                    `
+                });
+            }
+        } catch (emailErr) {
+            console.error("Failed to send AI fault alert:", emailErr);
         }
-    } catch (emailErr) {
-        console.error("Failed to send AI fault alert:", emailErr);
     }
 
     return NextResponse.json({ 
-        error: "Consultation failed: " + (error.message || "Unknown AI error"),
+        error: isRateLimit ? "AI_BUSY" : ("Consultation failed: " + (error.message || "Unknown AI error")),
         details: error.stack 
-    }, { status: 500 });
+    }, { status: isRateLimit ? 429 : 500 });
   }
 }
 
