@@ -93,18 +93,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryCity, setDeliveryCity] = useState('');
   const [deliveryState, setDeliveryState] = useState('');
-  const [deliveryCoords, setDeliveryCoords] = useState<[number, number] | undefined>(undefined);
-  const [coordsInput, setCoordsInput] = useState('');
-  const [coordsError, setCoordsError] = useState('');
-
-  const parseCoords = (raw: string): [number, number] | null => {
-    const cleaned = raw.trim().replace(/[()]/g, '');
-    const parts = cleaned.split(',').map(p => parseFloat(p.trim()));
-    if (parts.length !== 2 || parts.some(isNaN)) return null;
-    const [lat, lng] = parts; // Google Maps uses "lat, lng"
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-    return [lng, lat]; // GeoJSON is [lng, lat]
-  };
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
 
@@ -256,7 +244,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       quoteId,
       patientPhone: deliveryPhone,
       deliveryAddress,
-      deliveryCoords,
     };
     
     const result = await addOrder(orderData);
@@ -266,11 +253,10 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
         fetch(`/api/requests/${requestId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             action: 'confirm-request',
             patientPhone: deliveryPhone,
-            deliveryAddress: deliveryAddress,
-            deliveryCoords: deliveryCoords
+            deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
           }),
         }).catch(err => console.error('Failed to confirm request:', err));
       }
@@ -447,26 +433,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
               <input className="co-address-field" style={{flex: 1}} type="text" placeholder="City" value={deliveryCity} onChange={e => setDeliveryCity(e.target.value)} />
               <input className="co-address-field" style={{flex: 1}} type="text" placeholder="State" value={deliveryState} onChange={e => setDeliveryState(e.target.value)} />
             </div>
-            <input 
-              className="co-address-field" 
-              type="text" 
-              placeholder="Paste coordinates (e.g. 6.5244, 3.3792)" 
-              value={coordsInput} 
-              onChange={e => {
-                setCoordsInput(e.target.value);
-                const parsed = parseCoords(e.target.value);
-                if (parsed) {
-                  setDeliveryCoords(parsed);
-                  setCoordsError('');
-                } else if (e.target.value.trim()) {
-                  setCoordsError('Invalid coordinates format');
-                } else {
-                  setCoordsError('');
-                  setDeliveryCoords(undefined);
-                }
-              }} 
-            />
-            {coordsError && <div style={{color: 'red', fontSize: '10px', marginTop: '-4px', marginLeft: '12px'}}>{coordsError}</div>}
           </div>
         )}
         <div style={{marginTop: 10, fontSize: 10, color: '#bbb', fontWeight: 300}}>

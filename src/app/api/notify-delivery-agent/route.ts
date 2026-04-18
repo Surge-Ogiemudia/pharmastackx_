@@ -91,9 +91,12 @@ export async function POST(req: NextRequest) {
       pharmacistName = contact?.name || 'Pharmacist';
     }
 
-    if (!dropoffCoords || !pickupCoords) {
-      console.warn(`[notify-agent] MISSING COORDS - Pickup: ${!!pickupCoords}, Dropoff: ${!!dropoffCoords}`);
-      return NextResponse.json({ error: 'Missing coordinates for pickup or dropoff' }, { status: 400 });
+    if (!pickupCoords) {
+      console.warn(`[notify-agent] MISSING PICKUP COORDS - cannot locate delivery agents`);
+      return NextResponse.json({ error: 'Missing coordinates for pickup location' }, { status: 400 });
+    }
+    if (!dropoffCoords) {
+      console.warn(`[notify-agent] Missing dropoff coords - will proceed with text address only`);
     }
 
     // 2. Sorting Agents
@@ -124,7 +127,8 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     for (const agent of sorted) {
-      const message = `🚴 *PharmaStackX Delivery Request*\n\nYou have a new delivery nearby!\n\n📦 *Pickup (Pharmacy):*\n${pharmacistName}\n📍 ${pickupAddress}\n🗺️ ${googleMapsLink(pickupCoords)}\n📞 Pharmacist: ${pharmacistPhone}\n\n🏠 *Dropoff (Patient):*\n📍 ${dropoffAddress}\n🗺️ ${googleMapsLink(dropoffCoords)}\n📞 Patient: ${patientPhone}\n\n📏 Distance from you to pickup: ~${agent.distanceKm.toFixed(1)} km\n\nReply *ACCEPT* to take this delivery or *DECLINE* to pass.\nThis offer expires in 2 hours.`;
+      const dropoffMapLine = dropoffCoords ? `🗺️ ${googleMapsLink(dropoffCoords)}\n` : '';
+      const message = `🚴 *PharmaStackX Delivery Request*\n\nYou have a new delivery nearby!\n\n📦 *Pickup (Pharmacy):*\n${pharmacistName}\n📍 ${pickupAddress}\n🗺️ ${googleMapsLink(pickupCoords)}\n📞 Pharmacist: ${pharmacistPhone}\n\n🏠 *Dropoff (Patient):*\n📍 ${dropoffAddress}\n${dropoffMapLine}📞 Patient: ${patientPhone}\n\n📏 Distance from you to pickup: ~${agent.distanceKm.toFixed(1)} km\n\nReply *ACCEPT* to take this delivery or *DECLINE* to pass.\nThis offer expires in 2 hours.`;
 
       await sendWhatsAppMessage(agent.phone, message);
 
