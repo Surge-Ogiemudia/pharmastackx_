@@ -50,8 +50,8 @@ interface RequestData {
   quotes: Quote[];
 }
 
-const STANDARD_DELIVERY_FEE = 900;
-const EXPRESS_DELIVERY_FEE = 2000;
+const STANDARD_DELIVERY_FEE = 100;
+const EXPRESS_DELIVERY_FEE = 200;
 
 export default function ConfirmOrderContent({ setView }: { setView: (view: string) => void }) {
   const { items, updateQuantity, removeFromCart, clearCart, requestId, quoteId, fetchCartFromDB } = useCart();
@@ -313,6 +313,15 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     }
   }, [searchParams, postPaymentStatus, items.length, createOrderFromCart]);
 
+  useEffect(() => {
+    if (postPaymentStatus === 'success') {
+      const timer = setTimeout(() => {
+        setView('orders');
+      }, 4000); // 4 seconds delay.
+      return () => clearTimeout(timer);
+    }
+  }, [postPaymentStatus, setView]);
+
   if (items.length === 0 && postPaymentStatus === 'idle') {
     return (
       <div className="co-container" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px'}}>
@@ -344,7 +353,11 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
                     {postPaymentStatus === 'processing' ? 'Processing...' : postPaymentStatus === 'success' ? 'Success!' : 'An Error Occurred'}
                 </Typography>
 
-                <Typography sx={{ mb: 3 }}>{postPaymentMessage}</Typography>
+                <Typography sx={{ mb: 3 }}>
+                    {postPaymentStatus === 'success' 
+                        ? 'Your order has been placed. You will be redirected to your orders shortly...' 
+                        : postPaymentMessage}
+                </Typography>
 
                 <button className="co-proceed-btn" onClick={() => setView('orders')} disabled={postPaymentStatus !== 'success'}>
                     View Orders

@@ -91,6 +91,7 @@ export default function HomePage() {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [prevView, setPrevView] = useState('home');
   const [shouldTriggerScan, setShouldTriggerScan] = useState(false);
+  const [ordersInitialViewMode, setOrdersInitialViewMode] = useState<'dashboard' | 'list'>('dashboard');
 
   const setViewWithPrev = (newView: string) => {
     setPrevView(view);
@@ -480,6 +481,7 @@ useEffect(() => {
         setSelectedRequestId(activeRequests[0]._id);
         setView('reviewRequest');
       } else {
+        setOrdersInitialViewMode('list');
         setView('orders');
       }
     } catch (err) {
@@ -932,7 +934,11 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             }}
           >
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              <OrdersContent setView={setView} setSelectedRequestId={setSelectedRequestId} />
+              <OrdersContent 
+                setView={setView} 
+                setSelectedRequestId={setSelectedRequestId} 
+                initialViewMode={ordersInitialViewMode}
+              />
             </Box>
           </Box>
         );
@@ -1266,6 +1272,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
        <BottomNav currentView={view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
+         setOrdersInitialViewMode('dashboard');
          setViewWithPrev(v);
        }} />
 
