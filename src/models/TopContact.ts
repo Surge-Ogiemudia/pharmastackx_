@@ -2,9 +2,18 @@ import mongoose, { Schema } from 'mongoose';
 
 const ContactSchema = new Schema({
     name: { type: String, required: true },
-    phone: { type: String, required: true }, // international format e.g. 2348012345678
-    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null }, // optional — if they're an app user
-    isActive: { type: Boolean, default: true }
+    phone: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    isActive: { type: Boolean, default: true },
+    address: { type: String, default: '' },
+    coordinates: {
+        type: [Number], // [longitude, latitude] — GeoJSON order
+        default: undefined,
+        validate: {
+            validator: (v: number[]) => !v || v.length === 2,
+            message: 'Coordinates must be [longitude, latitude]'
+        }
+    }
 }, { _id: true });
 
 const TopContactSchema = new Schema({

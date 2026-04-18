@@ -16,8 +16,17 @@ export default function TopContactsContent() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState('');
-    const [newName, setNewName] = useState('');
-    const [newPhone, setNewPhone] = useState('');
+    const [draft, setDraft] = useState({ name: '', phone: '', address: '', coordsInput: '' });
+    const [coordsError, setCoordsError] = useState('');
+
+    const parseCoordsInput = (raw: string): { lng: number; lat: number } | null => {
+        const cleaned = raw.trim().replace(/[()]/g, '');
+        const parts = cleaned.split(',').map(p => parseFloat(p.trim()));
+        if (parts.length !== 2 || parts.some(isNaN)) return null;
+        const [lat, lng] = parts; // Google Maps copies as "lat, lng"
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+        return { lat, lng };
+    };
 
     useEffect(() => {
         fetchContacts();
@@ -39,18 +48,33 @@ export default function TopContactsContent() {
     };
 
     const handleAddContact = () => {
-        if (!newName.trim() || !newPhone.trim()) return;
+        setCoordsError('');
+        if (!draft.name.trim() || !draft.phone.trim()) return;
         if (contacts.length >= 10) return;
 
-        // Normalize phone: strip spaces, ensure starts with 234
-        let phone = newPhone.trim().replace(/\s+/g, '');
+        let phone = draft.phone.trim().replace(/\s+/g, '');
         if (phone.startsWith('0')) phone = '234' + phone.slice(1);
         if (phone.startsWith('+')) phone = phone.slice(1);
-        if (!phone.startsWith('234')) phone = '234' + phone;
 
-        setContacts(prev => [...prev, { name: newName.trim(), phone, isActive: true }]);
-        setNewName('');
-        setNewPhone('');
+        let coordinates: number[] | undefined = undefined;
+        if (draft.coordsInput.trim()) {
+            const parsed = parseCoordsInput(draft.coordsInput);
+            if (!parsed) {
+                setCoordsError('Invalid coordinates. Paste directly from Google Maps (e.g. 6.5244, 3.3792)');
+                return;
+            }
+            coordinates = [parsed.lng, parsed.lat]; // Store as [lng, lat] — GeoJSON
+        }
+
+        setContacts(prev => [...prev, {
+            name: draft.name.trim(),
+            phone,
+            address: draft.address.trim(),
+            coordinates,
+            isActive: true
+        }]);
+        setDraft({ name: '', phone: '', address: '', coordsInput: '' });
+        setCoordsError('');
     };
 
     const handleRemove = (index: number) => {
@@ -147,6 +171,14 @@ export default function TopContactsContent() {
                                 <Box sx={{ flex: 1 }}>
                                     <Typography sx={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</Typography>
                                     <Typography sx={{ fontSize: '11px', color: '#888' }}>+{c.phone}</Typography>
+                                    {c.address && (
+                                        <Typography sx={{ fontSize: '11px', color: '#aaa' }}>📍 {c.address}</Typography>
+                                    )}
+                                    {c.coordinates && (
+                                        <Typography sx={{ fontSize: '10px', color: '#0F6E56', fontFamily: 'monospace' }}>
+                                            {c.coordinates[1].toFixed(4)}, {c.coordinates[0].toFixed(4)}
+                                        </Typography>
+                                    )}
                                 </Box>
                                 {c.userId && (
                                     <Chip label="App User" size="small" sx={{ fontSize: '10px', bgcolor: '#F0FDF4', color: '#166534' }} />
@@ -160,16 +192,16 @@ export default function TopContactsContent() {
                 )}
             </Box>
 
-            {/* Add new contact */}
             {contacts.length < 10 && (
                 <Box sx={{ bgcolor: '#fff', border: '1px dashed #ccc', borderRadius: '16px', p: 2 }}>
                     <Typography sx={{ fontSize: '13px', fontWeight: 700, mb: 1.5 }}>Add Contact</Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                         <TextField
                             size="small"
                             label="Name"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            value={draft.name}
+                            onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
                             sx={{ flex: 1, minWidth: 140 }}
                             InputProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
                             InputLabelProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
@@ -177,23 +209,55 @@ export default function TopContactsContent() {
                         <TextField
                             size="small"
                             label="WhatsApp Number"
-                            value={newPhone}
-                            onChange={(e) => setNewPhone(e.target.value)}
-                            placeholder="08012345678"
+                            value={draft.phone}
+                            onChange={(e) => setDraft(prev => ({ ...prev, phone: e.target.value }))}
                             sx={{ flex: 1, minWidth: 160 }}
                             InputProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
                             InputLabelProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
                         />
-                        <Button
-                            onClick={handleAddContact}
-                            disabled={!newName.trim() || !newPhone.trim()}
-                            variant="contained"
-                            startIcon={<Add />}
-                            sx={{ bgcolor: '#0F6E56', '&:hover': { bgcolor: '#0B5E4A' }, '&.Mui-disabled': { bgcolor: '#eee' }, borderRadius: '8px', textTransform: 'none', fontWeight: 700, fontFamily: 'Sora, sans-serif', whiteSpace: 'nowrap' }}
-                        >
-                            Add
-                        </Button>
                     </Box>
+
+                    <TextField
+                        size="small"
+                        label="Address (optional)"
+                        value={draft.address}
+                        onChange={(e) => setDraft(prev => ({ ...prev, address: e.target.value }))}
+                        fullWidth
+                        sx={{ mb: 1 }}
+                        InputProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
+                        InputLabelProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
+                    />
+
+                    <TextField
+                        size="small"
+                        label="Coordinates (paste from Google Maps)"
+                        value={draft.coordsInput}
+                        onChange={(e) => { setDraft(prev => ({ ...prev, coordsInput: e.target.value })); setCoordsError(''); }}
+                        fullWidth
+                        error={!!coordsError}
+                        helperText={coordsError || 'Right-click any location on Google Maps → "Copy coordinates" → paste here'}
+                        sx={{ mb: 1.5 }}
+                        InputProps={{ sx: { fontSize: '13px', fontFamily: 'monospace' } }}
+                        InputLabelProps={{ sx: { fontSize: '13px', fontFamily: 'Sora, sans-serif' } }}
+                    />
+
+                    <Button
+                        onClick={handleAddContact}
+                        disabled={!draft.name.trim() || !draft.phone.trim()}
+                        variant="contained"
+                        startIcon={<Add />}
+                        sx={{
+                            bgcolor: '#0F6E56',
+                            '&:hover': { bgcolor: '#0B5E4A' },
+                            '&.Mui-disabled': { bgcolor: '#eee' },
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontFamily: 'Sora, sans-serif'
+                        }}
+                    >
+                        Add Contact
+                    </Button>
                 </Box>
             )}
         </Box>
