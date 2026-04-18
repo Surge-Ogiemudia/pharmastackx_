@@ -40,6 +40,7 @@ import { useSession } from '../context/SessionProvider';
 import dynamicImport from "next/dynamic";
 import { event } from '../lib/gtag';
 import { Business } from '@/types';
+import DeliveryStatusModal from './DeliveryStatusModal';
 
 const PaystackButton = dynamicImport(
   () => import("./PaystackButton"),
@@ -81,6 +82,8 @@ export default function CartContent({ setView }: { setView?: (view: string) => v
 
   const [postPaymentStatus, setPostPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [postPaymentMessage, setPostPaymentMessage] = useState('');
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryRequestId, setDeliveryRequestId] = useState<string | null>(null);
 
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
@@ -236,33 +239,39 @@ const createOrderFromCart = useCallback(async () => {
     const result = await addOrder(orderData);
 
     if (result.success) {
-            // If the order was created from a request, confirm it
-            if (requestId) {
-              try {
-                await fetch(`/api/requests/${requestId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    action: 'confirm-request',
-                    patientPhone: deliveryPhone,
-                    deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
-                  }),
-                });
-              } catch (error) {
-                console.error('Failed to confirm request:', error);
-              }
-            }
-      
-      setPostPaymentStatus('success');
-      setPostPaymentMessage('Order successfully created!');
-      clearCart(); // Clear the cart on success
-      removePromo(); // Clear any active promo
+      const capturedRequestId = requestId;
+      if (capturedRequestId) {
+        try {
+          await fetch(`/api/requests/${capturedRequestId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'confirm-request',
+              patientPhone: deliveryPhone,
+              deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to confirm request:', error);
+        }
+        clearCart();
+        removePromo();
+        router.replace(window.location.pathname, { scroll: false });
+        setPostPaymentStatus('idle');
+        setDeliveryRequestId(capturedRequestId);
+        setShowDeliveryModal(true);
+      } else {
+        setPostPaymentStatus('success');
+        setPostPaymentMessage('Order successfully created!');
+        clearCart();
+        removePromo();
+        router.replace(window.location.pathname, { scroll: false });
+      }
     } else {
       setPostPaymentStatus('error');
       setPostPaymentMessage(`Order creation failed: ${result.message}`);
+      router.replace(window.location.pathname, { scroll: false });
     }
-    // Clean the "?redirect_status=success" from the URL without reloading the page
-    router.replace(window.location.pathname, { scroll: false });
 }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router]);
 
 useEffect(() => {
@@ -385,6 +394,15 @@ useEffect(() => {
         </Box>
     )}
     {/* END: Add this entire Box */}
+
+    {deliveryRequestId && (
+      <DeliveryStatusModal
+        open={showDeliveryModal}
+        requestId={deliveryRequestId}
+        onDone={() => { setShowDeliveryModal(false); navigate('orders'); }}
+      />
+    )}
+
         {items.length === 0 ? (
           <Paper elevation={1} sx={{ p: 6, textAlign: 'center', borderRadius: '16px' }}>
             <ShoppingCart sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />

@@ -23,6 +23,7 @@ import { useSession } from '../context/SessionProvider';
 import { event } from '../lib/gtag';
 import { Business } from '@/types';
 import './ConfirmOrder.css';
+import DeliveryStatusModal from './DeliveryStatusModal';
 
 const PaystackButton = dynamic(
   () => import("./PaystackButton"),
@@ -79,6 +80,8 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   
   const [postPaymentStatus, setPostPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [postPaymentMessage, setPostPaymentMessage] = useState('');
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryRequestId, setDeliveryRequestId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'pickup'>('standard');
@@ -249,8 +252,9 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     const result = await addOrder(orderData);
 
     if (result.success) {
-      if (requestId) {
-        fetch(`/api/requests/${requestId}`, {
+      const capturedRequestId = requestId;
+      if (capturedRequestId) {
+        fetch(`/api/requests/${capturedRequestId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -260,16 +264,18 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           }),
         }).catch(err => console.error('Failed to confirm request:', err));
       }
-      
-      setPostPaymentStatus('success');
-      setPostPaymentMessage('Order successfully created!');
+
       clearCart();
       removePromo();
+      router.replace(window.location.pathname, { scroll: false });
+      setPostPaymentStatus('idle');
+      setDeliveryRequestId(capturedRequestId ?? null);
+      setShowDeliveryModal(!!capturedRequestId);
     } else {
       setPostPaymentStatus('error');
       setPostPaymentMessage(`Order creation failed: ${result.message}`);
+      router.replace(window.location.pathname, { scroll: false });
     }
-    router.replace(window.location.pathname, { scroll: false });
   }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router]);
 
   useEffect(() => {
@@ -290,6 +296,14 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
   return (
     <div className="co-container">
+      {deliveryRequestId && (
+        <DeliveryStatusModal
+          open={showDeliveryModal}
+          requestId={deliveryRequestId}
+          onDone={() => { setShowDeliveryModal(false); setView('orders'); }}
+        />
+      )}
+
       {/* POST-PAYMENT OVERLAY */}
       {postPaymentStatus !== 'idle' && (
         <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255, 255, 255, 0.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, p: 2 }}>
