@@ -190,24 +190,24 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
   const imageUrl = getImageUrl();
 
   return (
-    <div className="sora" style={{ paddingBottom: '40px' }}>
-      <div className="back-btn" onClick={onBack} style={{ marginBottom: '20px' }}>
-        <div className="back-arrow">←</div>
-        <span>Back to requests</span>
-      </div>
+    <div className="sora" style={{ padding: '0 20px 80px' }}>
+        <div className="back-btn-pill" onClick={onBack} style={{ marginBottom: '24px', display: 'inline-flex', cursor: 'pointer' }}>
+          <ArrowBackIcon style={{ fontSize: '16px' }} />
+          <span>Back</span>
+        </div>
 
-      <div className="fraunces" style={{ fontSize: '24px', fontWeight: 900, color: 'var(--black)', letterSpacing: '-1px', marginBottom: '6px' }}>
-        Manage <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>Request</em>
-      </div>
-      <div style={{ fontSize: '13px', color: 'var(--gray)', marginBottom: '24px', fontWeight: 300 }}>
-        ID: {request._id.slice(-8).toUpperCase()} · {new Date(request.createdAt).toLocaleDateString()}
-      </div>
+        <div className="fraunces" style={{ fontSize: '24px', fontWeight: 900, color: 'var(--black)', letterSpacing: '-1px', marginBottom: '6px' }}>
+          Manage <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>Request</em>
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--gray)', marginBottom: '24px', fontWeight: 500 }}>
+          ID: {request._id.slice(-8).toUpperCase()} · {new Date(request.createdAt).toLocaleDateString()}
+        </div>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+            {error}
+          </Alert>
+        )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
         {request.requestType === 'image-upload' && (
@@ -283,32 +283,33 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
 
         {request.requestType === 'drug-list' && (request.items as ExistingItemDetail[]).map((item, index) => (
           <div key={index} className="glass-card" style={{ opacity: item.isAvailable ? 1 : 0.6, cursor: 'default', padding: '24px' }}>
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>
               {item.image ? (
-                <img src={item.image} style={{ width: 64, height: 64, borderRadius: '16px', objectFit: 'cover', border: '1px solid var(--border)' }} onClick={() => setSelectedImage(item.image)} />
+                <img src={item.image} style={{ width: 68, height: 68, borderRadius: '20px', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} onClick={() => setSelectedImage(item.image)} />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: '16px', background: 'var(--green-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>💊</div>
+                <div style={{ width: 68, height: 68, borderRadius: '20px', background: 'var(--green-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', border: '2px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>💊</div>
               )}
               <div style={{ flex: 1 }}>
-                <div className="fraunces" style={{ fontSize: '17px', fontWeight: 900, color: 'var(--black)', letterSpacing: '-0.5px' }}>{item.name}</div>
-                <div style={{ fontSize: '11px', color: 'var(--gray)', marginTop: '4px', fontWeight: 300 }}>{item.strength} · {item.form} · Needs {item.quantity}</div>
+                <div className="fraunces" style={{ fontSize: '18px', fontWeight: 900, color: 'var(--black)', letterSpacing: '-0.5px' }}>{item.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '4px', fontWeight: 500 }}>{item.strength} · {item.form} · Needs {item.quantity}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                 <label style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '8px', 
-                  padding: '6px 14px', 
+                  padding: '8px 16px', 
                   borderRadius: '100px', 
-                  background: item.isAvailable ? 'var(--green-pale)' : '#eee',
-                  color: item.isAvailable ? 'var(--green)' : 'var(--gray)',
+                  background: item.isAvailable ? 'rgba(15, 110, 86, 0.08)' : '#F3F4F6',
+                  color: item.isAvailable ? '#0F6E56' : '#6B7280',
                   fontSize: '11px', 
-                  fontWeight: 700, 
+                  fontWeight: 800, 
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: `1px solid ${item.isAvailable ? 'rgba(15, 110, 86, 0.15)' : 'rgba(0,0,0,0.05)'}`
                 }}>
-                  <input type="checkbox" checked={item.isAvailable} onChange={e => handleExistingItemChange(index, 'isAvailable', e.target.checked)} style={{ width: 14, height: 14 }} />
-                  {item.isAvailable ? 'IN STOCK' : 'UNAVAILABLE'}
+                  <input type="checkbox" checked={item.isAvailable} onChange={e => handleExistingItemChange(index, 'isAvailable', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0F6E56' }} />
+                  {item.isAvailable ? 'IN STOCK' : 'OUT OF STOCK'}
                 </label>
               </div>
             </div>
@@ -344,14 +345,23 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
           </div>
         ))}
 
-        <div className="glass-card" style={{ cursor: 'default', background: 'var(--green-pale)', border: '1px dashed var(--green)', opacity: 0.9 }}>
-          <div className="sec-tag" style={{ marginTop: 0, color: 'var(--green)', fontSize: '11px', letterSpacing: '1px' }}>IMPORTANT PHARMACY NOTES</div>
+        {request.notes && (
+          <div className="glass-card" style={{ cursor: 'default', background: 'rgba(255,165,0,0.03)', border: '1px solid rgba(255,165,0,0.1)' }}>
+            <div className="sec-tag" style={{ marginTop: 0, color: '#B45309', fontSize: '10px', letterSpacing: '1px', fontWeight: 900 }}>PATIENT REQUIREMENTS</div>
+            <Typography sx={{ fontSize: '14px', color: '#1a1a1a', fontWeight: 500, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {request.notes}
+            </Typography>
+          </div>
+        )}
+
+        <div className="glass-card" style={{ cursor: 'default', background: 'rgba(15, 110, 86, 0.03)', border: '1px solid rgba(15, 110, 86, 0.1)', minHeight: '160px' }}>
+          <div className="sec-tag" style={{ marginTop: 0, color: 'var(--primary-green)', fontSize: '10px', letterSpacing: '1.2px', fontWeight: 900 }}>YOUR RESPONSE NOTES</div>
           <textarea 
             className="form-notes" 
-            placeholder="Mention substitutions (e.g. tablet vs. syrup), partial availability, or usage advice..." 
+            placeholder="Mention substitutions (e.g. tablet vs. syrup), partial availability, or dosage advice..." 
             value={notes} 
             onChange={(e) => setNotes(e.target.value)} 
-            style={{ height: '110px', background: 'transparent', color: 'var(--green)', fontWeight: 600, border: 'none', padding: 0, fontSize: '13px', lineHeight: 1.6 }}
+            style={{ minHeight: '120px', background: 'transparent', color: 'var(--black)', fontWeight: 500, border: 'none', padding: 0, fontSize: '14px', lineHeight: 1.6, outline: 'none', width: '100%', resize: 'none' }}
           />
         </div>
       </div>
@@ -374,9 +384,9 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
           onClick={handleInitialSubmit} 
           disabled={isSubmitting}
           style={{ 
-            background: 'var(--black)', 
+            background: 'linear-gradient(135deg, #111 0%, #333 100%)', 
             color: '#fff', 
-            height: '52px',
+            height: '56px',
             width: '100%',
             borderRadius: '100px',
             display: 'flex', 
@@ -384,11 +394,11 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
             justifyContent: 'center', 
             gap: '12px',
             margin: 0,
-            fontSize: '13px',
+            fontSize: '14px',
             fontWeight: 800,
-            letterSpacing: '0.8px',
+            letterSpacing: '1px',
             opacity: isSubmitting ? 0.7 : 1,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             border: 'none',
             cursor: 'pointer'
@@ -396,14 +406,14 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
         >
           {isSubmitting ? (
             <>
-              <CircularProgress size={18} sx={{ color: '#fff' }} />
+              <CircularProgress size={20} sx={{ color: '#fff' }} />
               TRANSMITTING...
             </>
           ) : (
             <>
               <span>SUBMIT QUOTE TO PATIENT</span>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                <span style={{ fontSize: '14px' }}>→</span>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 10px rgba(15,110,86,0.3)' }}>
+                <span style={{ fontSize: '16px', fontWeight: 900 }}>→</span>
               </div>
             </>
           )}
