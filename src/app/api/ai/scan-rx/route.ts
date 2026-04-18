@@ -102,9 +102,12 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("📸 [ScanRX API] Fatal Error:", error);
+    
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+
     return NextResponse.json({ 
-      error: "Failed to read prescription. Please ensure the image is clear and contains a valid prescription.",
+      error: isRateLimit ? "AI_BUSY" : "Failed to read prescription. Please ensure the image is clear and contains a valid prescription.",
       details: error.message 
-    }, { status: 500 });
+    }, { status: isRateLimit ? 429 : 500 });
   }
 }

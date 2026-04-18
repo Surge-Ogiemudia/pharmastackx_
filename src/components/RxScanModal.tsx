@@ -114,10 +114,12 @@ const RxScanModal: React.FC<RxScanModalProps> = ({ open, onClose, onScanResult, 
       }
     } catch (err: any) {
       console.error('Scan error:', err);
+      const isRateLimit = err.response?.status === 429 || err.message?.includes('429') || err.response?.data?.error === 'AI_BUSY';
+      
       setTimeout(() => {
         setScanPhase('failed');
         setTimeLeft(0);
-        setStatusText('Extraction Failed');
+        setStatusText(isRateLimit ? 'AI Experts Busy' : 'Extraction Failed');
       }, 1500);
     }
   };

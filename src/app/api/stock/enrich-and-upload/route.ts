@@ -157,6 +157,12 @@ async function enrichProduct(product: IProduct, genAI: GoogleGenerativeAI): Prom
         }
     } catch (aiError: any) {
         console.warn(`[Enrich-Single] AI enrichment failed for "${itemName}". Error: ${aiError.message}`);
+        
+        // If it's a rate limit, throw it so the caller can stop the batch
+        if (aiError.message?.includes('429') || aiError.status === 429) {
+            throw aiError;
+        }
+
         return { enrichmentStatus: 'completed', category: 'Enrichment-Failed' };
     }
     return { ...updateData, enrichmentStatus: 'completed' };
@@ -217,6 +223,12 @@ export async function GET(req: NextRequest) {
 
     } catch (error: any) {
         console.error('[Gatekeeper-GET] Fatal error during batch processing:', error);
+        
+        const isRateLimit = error.message?.includes('429') || error.status === 429;
+        if (isRateLimit) {
+            return NextResponse.json({ message: 'AI_BUSY', error: 'Rate limit reached' }, { status: 429 });
+        }
+
         return NextResponse.json({ message: 'An error occurred during batch processing.' }, { status: 500 });
 
     } finally {
@@ -283,8 +295,14 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error('[POST-Manual] Fatal error in manual enrichment:', error);
-        return new NextResponse(JSON.stringify({ message: 'An internal server error occurred.' }), {
-            status: 500,
+        
+        const isRateLimit = error.message?.includes('429') || error.status === 429;
+
+        return new NextResponse(JSON.stringify({ 
+            message: isRateLimit ? 'AI_BUSY' : 'An internal server error occurred.',
+            error: error.message 
+        }), {
+            status: isRateLimit ? 429 : 500,
             headers: { 'Content-Type': 'application/json' },
         });
     }
