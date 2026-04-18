@@ -23,11 +23,11 @@ const DeliverySessionSchema = new Schema<IDeliverySession>({
   agentName: { type: String, required: true },
   status: { type: String, enum: ['waiting', 'accepted', 'declined', 'expired'], default: 'waiting' },
   pickupAddress: { type: String, required: true },
-  pickupCoords: { type: [Number], required: true },
-  dropoffAddress: { type: String, required: true },
-  dropoffCoords: { type: [Number], required: true },
-  pharmacistPhone: { type: String, required: true },
-  patientPhone: { type: String, required: true },
+  pickupCoords: { type: [Number], required: false },
+  dropoffAddress: { type: String, required: false, default: '' },
+  dropoffCoords: { type: [Number], required: false },
+  pharmacistPhone: { type: String, required: false, default: '' },
+  patientPhone: { type: String, required: false, default: '' },
   expiresAt: { type: Date, required: true },
 }, { timestamps: true });
 
