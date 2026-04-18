@@ -91,7 +91,7 @@ export default function HomePage() {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [prevView, setPrevView] = useState('home');
   const [shouldTriggerScan, setShouldTriggerScan] = useState(false);
-  const [ordersInitialViewMode, setOrdersInitialViewMode] = useState<'dashboard' | 'list'>('dashboard');
+  const [ordersInitialViewMode, setOrdersInitialViewMode] = useState<'dashboard' | 'list' | 'requests-list' | 'orders-list'>('dashboard');
   const [ordersBackView, setOrdersBackView] = useState<string | undefined>(undefined);
 
   const setViewWithPrev = (newView: string) => {

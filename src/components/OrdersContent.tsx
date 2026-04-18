@@ -25,7 +25,7 @@ const BlogCenter = dynamic(() => import('./BlogCenter'), {
 interface OrdersContentProps {
   setView?: (view: string) => void;
   setSelectedRequestId?: (id: string) => void;
-  initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list';
+  initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list' | 'requests-list';
   backToView?: string;
 }
 
