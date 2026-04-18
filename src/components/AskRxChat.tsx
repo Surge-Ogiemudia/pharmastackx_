@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import MedicationIcon from '@mui/icons-material/Medication';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import ImageIcon from '@mui/icons-material/Image';
 import { useSession } from '@/context/SessionProvider';
 
 interface Message {
@@ -13,6 +16,7 @@ interface Message {
     text: string;
     sender: 'user' | 'ai' | 'pharmacist';
     timestamp: Date;
+    image?: string;
 }
 
 export default function AskRxChat({ open, onClose }: { open: boolean, onClose: () => void }) {
@@ -23,6 +27,33 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
     const [status, setStatus] = useState<'ai' | 'pending_escalation' | 'escalated' | 'resolved'>('ai');
     const [consultationId, setConsultationId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    const recognitionRef = useRef<any>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [voiceError, setVoiceError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [attachedImage, setAttachedImage] = useState<{ base64: string; preview: string } | null>(null);
+
+    const compressImage = (dataUrl: string): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const MAX_WIDTH = 1024;
+                let { width, height } = img;
+                if (width > MAX_WIDTH) {
+                    height = Math.round((height * MAX_WIDTH) / width);
+                    width = MAX_WIDTH;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d')!;
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = dataUrl;
+        });
+    };
 
     // Initial Load: Fetch existing consultation
     useEffect(() => {
@@ -76,26 +107,37 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
     }, [messages]);
 
     const handleSend = async () => {
-        if (!inputValue.trim() || !user) return;
+        if ((!inputValue.trim() && !attachedImage) || !user) return;
 
         const text = inputValue;
+        const image = attachedImage?.base64 || null;
         setInputValue('');
-        
-        // Optimistic update
+        setAttachedImage(null);
+
         const tempId = Date.now().toString();
-        setMessages(prev => [...prev, { id: tempId, text, sender: 'user', timestamp: new Date() }]);
+        setMessages(prev => [...prev, { 
+            id: tempId, 
+            text, 
+            sender: 'user', 
+            timestamp: new Date(),
+            image: image || undefined
+        }]);
         setIsLoading(true);
 
         try {
             const res = await fetch('/api/ai/ask-rx', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text, userId: user._id || (user as any).id, consultationId })
+                body: JSON.stringify({ 
+                    message: text || 'What can you tell me about this?', 
+                    userId: user._id || (user as any).id, 
+                    consultationId,
+                    image
+                })
             });
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                console.error("AskRx API Error:", errorData);
                 throw new Error(errorData.error || 'API request failed');
             }
 
@@ -112,11 +154,12 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
             } else {
                 throw new Error('Empty response');
             }
-        } catch (err) {
-            console.error("Send err:", err);
+        } catch (err: any) {
             setMessages(prev => [...prev, { 
                 id: Date.now().toString(), 
-                text: "I'm having trouble connecting to my knowledge base right now. Please try again or wait for a pharmacist.", 
+                text: err.message?.includes('Image too large') 
+                    ? 'That image is too large to process. Please try a smaller or clearer photo.'
+                    : "I'm having trouble connecting to my knowledge base right now. Please try again or wait for a pharmacist.", 
                 sender: 'ai', 
                 timestamp: new Date() 
             }]);
@@ -175,6 +218,73 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
             setIsLoading(false);
         }
     };
+
+    const handleVoiceToggle = () => {
+        if (isRecording) {
+            recognitionRef.current?.stop();
+            setIsRecording(false);
+            return;
+        }
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setVoiceError('Voice input is not supported in this browser. Please use Chrome or Edge.');
+            setTimeout(() => setVoiceError(null), 4000);
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-NG';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+            setVoiceError(null);
+            setIsRecording(true);
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = Array.from(event.results)
+                .map((r: any) => r[0].transcript)
+                .join('');
+            setInputValue(transcript);
+        };
+
+        recognition.onend = () => setIsRecording(false);
+
+        recognition.onerror = (event: any) => {
+            setIsRecording(false);
+            if (event.error === 'not-allowed') {
+                setVoiceError('Microphone access was denied. Please allow it in your browser settings.');
+            } else if (event.error === 'no-speech') {
+                setVoiceError(null);
+            } else {
+                setVoiceError('Voice input failed. Please try again.');
+            }
+            if (event.error !== 'no-speech') {
+                setTimeout(() => setVoiceError(null), 4000);
+            }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+    };
+
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const raw = reader.result as string;
+            const compressed = await compressImage(raw);
+            setAttachedImage({ base64: compressed, preview: compressed });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveImage = () => setAttachedImage(null);
 
     return (
         <AnimatePresence>
@@ -248,24 +358,48 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                         }}
                     >
                         {messages.map((m) => (
-                            <Box 
-                                key={m.id} 
-                                sx={{ 
+                            <Box
+                                key={m.id}
+                                sx={{
                                     alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
                                     maxWidth: '85%',
-                                    p: 1.5,
-                                    borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                    bgcolor: m.sender === 'user' ? '#0F6E56' : (m.sender === 'pharmacist' ? '#FFFBEB' : '#fff'),
-                                    color: m.sender === 'user' ? '#fff' : '#333',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                                    border: m.sender === 'user' ? 'none' : (m.sender === 'pharmacist' ? '1px solid #FDE68A' : '1px solid rgba(0,0,0,0.08)')
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: m.sender === 'user' ? 'flex-end' : 'flex-start',
+                                    gap: 0.5
                                 }}
                             >
-                                {m.sender === 'pharmacist' && <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#B45309', mb: 0.5 }}>PHARMACIST</Typography>}
-                                <Typography sx={{ fontSize: '13px', lineHeight: 1.5 }}>{m.text}</Typography>
-                                <Typography sx={{ fontSize: '9px', opacity: 0.5, textAlign: 'right', mt: 0.5 }}>
-                                    {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Typography>
+                                {m.image && (
+                                    <Box sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)' }}>
+                                        <img
+                                            src={m.image}
+                                            alt="attached"
+                                            style={{ width: 180, height: 140, objectFit: 'cover', display: 'block' }}
+                                        />
+                                    </Box>
+                                )}
+                                {m.text && (
+                                    <Box
+                                        sx={{
+                                            p: 1.5,
+                                            borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                            bgcolor: m.sender === 'user' ? '#0F6E56' : (m.sender === 'pharmacist' ? '#FFFBEB' : '#fff'),
+                                            color: m.sender === 'user' ? '#fff' : '#333',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                                            border: m.sender === 'user' ? 'none' : (m.sender === 'pharmacist' ? '1px solid #FDE68A' : '1px solid rgba(0,0,0,0.08)')
+                                        }}
+                                    >
+                                        {m.sender === 'pharmacist' && (
+                                            <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#B45309', mb: 0.5 }}>
+                                                PHARMACIST
+                                            </Typography>
+                                        )}
+                                        <Typography sx={{ fontSize: '13px', lineHeight: 1.5 }}>{m.text}</Typography>
+                                        <Typography sx={{ fontSize: '9px', opacity: 0.5, textAlign: 'right', mt: 0.5 }}>
+                                            {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </Typography>
+                                    </Box>
+                                )}
                             </Box>
                         ))}
                         {isLoading && (
@@ -329,24 +463,108 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                             </Box>
                         </Box>
                     ) : (
-                        <Box sx={{ p: 2, bgcolor: '#fff', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 1 }}>
-                            <TextField
-                                fullWidth
-                                variant="standard"
-                                placeholder={!user ? "Login to chat..." : (status === 'resolved' ? "Session ended." : "Type a message...")}
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                disabled={!user || isLoading || status === 'resolved'}
-                                InputProps={{ disableUnderline: true, sx: { fontSize: '16px', px: 1 } }}
-                            />
-                            <IconButton 
-                                onClick={handleSend} 
-                                disabled={!inputValue.trim() || !user || isLoading || status === 'resolved'}
-                                sx={{ bgcolor: '#0F6E56', color: '#fff', '&:hover': { bgcolor: '#0B5E4A' }, '&.Mui-disabled': { bgcolor: '#eee' } }}
-                            >
-                                <SendIcon fontSize="small" />
-                            </IconButton>
+                        <Box sx={{ bgcolor: '#fff', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                            {/* Voice error banner */}
+                            {voiceError && (
+                                <Box sx={{ px: 2, py: 1, bgcolor: '#FEF2F2', borderBottom: '1px solid #FECACA' }}>
+                                    <Typography sx={{ fontSize: '11px', color: '#DC2626' }}>{voiceError}</Typography>
+                                </Box>
+                            )}
+
+                            {/* Image preview */}
+                            {attachedImage && (
+                                <Box sx={{ px: 2, pt: 1.5 }}>
+                                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                        <img
+                                            src={attachedImage.preview}
+                                            alt="preview"
+                                            style={{ height: 56, width: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #e0e0e0', display: 'block' }}
+                                        />
+                                        <IconButton
+                                            onClick={handleRemoveImage}
+                                            size="small"
+                                            sx={{
+                                                position: 'absolute', top: -6, right: -6,
+                                                bgcolor: '#ef4444', color: '#fff',
+                                                width: 18, height: 18,
+                                                '&:hover': { bgcolor: '#dc2626' }
+                                            }}
+                                        >
+                                            <CloseIcon sx={{ fontSize: 10 }} />
+                                        </IconButton>
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {/* Input row */}
+                            <Box sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={fileInputRef}
+                                    onChange={handleImageSelect}
+                                    style={{ display: 'none' }}
+                                />
+
+                                <IconButton
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={!user || isLoading || status === 'resolved'}
+                                    size="small"
+                                    sx={{ color: attachedImage ? '#0F6E56' : '#bbb', flexShrink: 0, '&:hover': { color: '#0F6E56' } }}
+                                >
+                                    <ImageIcon fontSize="small" />
+                                </IconButton>
+
+                                <TextField
+                                    fullWidth
+                                    variant="standard"
+                                    placeholder={
+                                        isRecording ? '🎙 Listening...' :
+                                        !user ? 'Login to chat...' :
+                                        status === 'resolved' ? 'Session ended.' :
+                                        'Type, speak, or attach image...'
+                                    }
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                    disabled={!user || isLoading || status === 'resolved'}
+                                    InputProps={{ disableUnderline: true, sx: { fontSize: '14px', px: 1 } }}
+                                />
+
+                                <IconButton
+                                    onClick={handleVoiceToggle}
+                                    disabled={!user || isLoading || status === 'resolved'}
+                                    size="small"
+                                    sx={{
+                                        flexShrink: 0,
+                                        color: isRecording ? '#fff' : '#bbb',
+                                        bgcolor: isRecording ? '#ef4444' : 'transparent',
+                                        '&:hover': { color: '#0F6E56', bgcolor: isRecording ? '#dc2626' : 'transparent' },
+                                        animation: isRecording ? 'micPulse 1.5s infinite' : 'none',
+                                        '@keyframes micPulse': {
+                                            '0%': { boxShadow: '0 0 0 0 rgba(239,68,68,0.4)' },
+                                            '70%': { boxShadow: '0 0 0 8px rgba(239,68,68,0)' },
+                                            '100%': { boxShadow: '0 0 0 0 rgba(239,68,68,0)' }
+                                        }
+                                    }}
+                                >
+                                    {isRecording ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
+                                </IconButton>
+
+                                <IconButton
+                                    onClick={handleSend}
+                                    disabled={(!inputValue.trim() && !attachedImage) || !user || isLoading || status === 'resolved'}
+                                    sx={{
+                                        flexShrink: 0,
+                                        bgcolor: '#0F6E56',
+                                        color: '#fff',
+                                        '&:hover': { bgcolor: '#0B5E4A' },
+                                        '&.Mui-disabled': { bgcolor: '#eee' }
+                                    }}
+                                >
+                                    <SendIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
                         </Box>
                     )}
                 </Box>
