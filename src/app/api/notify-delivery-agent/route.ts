@@ -4,9 +4,7 @@ import Request from '@/models/Request';
 import DeliveryAgent from '@/models/DeliveryAgent';
 import DeliverySession from '@/models/DeliverySession';
 import TopContact from '@/models/TopContact';
-
-const WHAPI_TOKEN = process.env.WHAPI_TOKEN!;
-const WHAPI_URL = 'https://gate.whapi.cloud/messages/text';
+import { sendWhatsAppMessage } from '@/lib/whapi';
 
 function haversineKm(coord1: [number, number], coord2: [number, number]): number {
   const [lng1, lat1] = coord1;
@@ -22,58 +20,50 @@ function haversineKm(coord1: [number, number], coord2: [number, number]): number
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function sendWhatsApp(phone: string, message: string) {
-  try {
-    await fetch(WHAPI_URL, {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${WHAPI_TOKEN}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ 
-        to: `${phone}@s.whatsapp.net`, 
-        body: message 
-      }),
-    });
-  } catch (e) {
-    console.error(`[notify-agent] WhatsApp failed for ${phone}:`, e);
-  }
-}
-
 function googleMapsLink(coords: [number, number]): string {
   const [lng, lat] = coords;
   return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
+const normalizeState = (s: string) => (s || '').toLowerCase().replace(/state/g, '').trim();
+
 export async function POST(req: NextRequest) {
   await dbConnect();
   try {
     const { requestId } = await req.json();
+    console.log(`[notify-agent] Triggered for Request: ${requestId}`);
+    
     if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
 
     const request = await Request.findById(requestId).lean() as any;
     if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
 
-    // Get accepted quote to find which pharmacist/contact filled it
     const acceptedQuote = request.quotes?.find((q: any) => q.status === 'accepted');
-    if (!acceptedQuote) return NextResponse.json({ error: 'No accepted quote' }, { status: 400 });
+    if (!acceptedQuote) {
+        console.warn(`[notify-agent] No accepted quote found for ${requestId}`);
+        return NextResponse.json({ error: 'No accepted quote' }, { status: 400 });
+    }
 
-    // Dropoff = patient delivery location
     const dropoffCoords: [number, number] | undefined = request.deliveryCoords;
     const dropoffAddress: string = request.deliveryAddress || 'Patient delivery address';
     const patientPhone: string = request.patientPhone || '';
 
-    // Pickup = pharmacist/top contact location
     let pickupCoords: [number, number] | undefined;
     let pickupAddress = '';
     let pharmacistPhone = '';
     let pharmacistName = '';
 
-    const state: string = request.state || '';
+    const stateRaw: string = request.state || '';
+    const stateNorm = normalizeState(stateRaw);
 
+    console.log(`[notify-agent] Location Context - State: ${stateRaw} (normalized: ${stateNorm})`);
+
+    // 1. Finding Pickup location
     if (acceptedQuote.externalContact?.phone) {
-      // WhatsApp pharmacist — find in TopContacts by phone to get coords/address
-      const topContactDoc = await TopContact.findOne({ state }).lean() as any;
+      const topContactDoc = await TopContact.findOne({ 
+        state: new RegExp(`^${stateNorm}$`, 'i') 
+      }).lean() as any;
+      
       const contact = topContactDoc?.contacts?.find(
         (c: any) => c.phone === acceptedQuote.externalContact.phone
       );
@@ -81,10 +71,19 @@ export async function POST(req: NextRequest) {
       pickupAddress = contact?.address || 'Pharmacy location';
       pharmacistPhone = acceptedQuote.externalContact.phone;
       pharmacistName = acceptedQuote.externalContact.name || 'Pharmacist';
+      
+      // Fallback: Use any contact in state if specific one has no coords
+      if (!pickupCoords && topContactDoc?.contacts?.length > 0) {
+          const fallbackContact = topContactDoc.contacts.find((c: any) => c.coordinates);
+          if (fallbackContact) {
+              pickupCoords = fallbackContact.coordinates;
+              console.log(`[notify-agent] Using state fallback pickup coords from: ${fallbackContact.name}`);
+          }
+      }
     } else if (acceptedQuote.pharmacy) {
-      // App pharmacist — attempt to find matching top contact for geodata fallback
-      const topContactDoc = await TopContact.findOne({ state }).lean() as any;
-      // Best effort: pick first contact with coordinates if no exact phone match
+      const topContactDoc = await TopContact.findOne({ 
+        state: new RegExp(`^${stateNorm}$`, 'i') 
+      }).lean() as any;
       const contact = topContactDoc?.contacts?.find((c: any) => c.coordinates);
       pickupCoords = contact?.coordinates;
       pickupAddress = contact?.address || 'Pharmacy location';
@@ -93,32 +92,41 @@ export async function POST(req: NextRequest) {
     }
 
     if (!dropoffCoords || !pickupCoords) {
-      console.warn(`[notify-agent] Missing coordinates. Pickup: ${!!pickupCoords}, Dropoff: ${!!dropoffCoords}`);
+      console.warn(`[notify-agent] MISSING COORDS - Pickup: ${!!pickupCoords}, Dropoff: ${!!dropoffCoords}`);
       return NextResponse.json({ error: 'Missing coordinates for pickup or dropoff' }, { status: 400 });
     }
 
-    // Get delivery agents for state, sort by distance to pickup
-    const agentDoc = await DeliveryAgent.findOne({ state }).lean() as any;
-    const activeAgents = (agentDoc?.agents || []).filter((a: any) => a.isActive && a.coordinates);
+    // 2. Sorting Agents
+    const agentDoc = await DeliveryAgent.findOne({ 
+      state: new RegExp(`^${stateNorm}$`, 'i') 
+    }).lean() as any;
+    
+    if (!agentDoc || !agentDoc.agents?.length) {
+        console.warn(`[notify-agent] No agents found in DB for state: ${stateRaw}`);
+        return NextResponse.json({ error: 'No delivery agents available in state' }, { status: 404 });
+    }
 
+    const activeAgents = agentDoc.agents.filter((a: any) => a.isActive && a.coordinates);
     const sorted = activeAgents
       .map((a: any) => ({
         ...a,
         distanceKm: haversineKm(a.coordinates, pickupCoords!),
       }))
       .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
-      .slice(0, 2); // Notify nearest 2 agents
+      .slice(0, 2);
 
     if (sorted.length === 0) {
-      return NextResponse.json({ error: 'No delivery agents available in state' }, { status: 404 });
+      console.warn(`[notify-agent] 0 active agents with coords in ${stateRaw}`);
+      return NextResponse.json({ error: 'No active delivery agents available' }, { status: 404 });
     }
 
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours to accept
+    console.log(`[notify-agent] Notifying ${sorted.length} agents...`);
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     for (const agent of sorted) {
       const message = `🚴 *PharmaStackX Delivery Request*\n\nYou have a new delivery nearby!\n\n📦 *Pickup (Pharmacy):*\n${pharmacistName}\n📍 ${pickupAddress}\n🗺️ ${googleMapsLink(pickupCoords)}\n📞 Pharmacist: ${pharmacistPhone}\n\n🏠 *Dropoff (Patient):*\n📍 ${dropoffAddress}\n🗺️ ${googleMapsLink(dropoffCoords)}\n📞 Patient: ${patientPhone}\n\n📏 Distance from you to pickup: ~${agent.distanceKm.toFixed(1)} km\n\nReply *ACCEPT* to take this delivery or *DECLINE* to pass.\nThis offer expires in 2 hours.`;
 
-      await sendWhatsApp(agent.phone, message);
+      await sendWhatsAppMessage(agent.phone, message);
 
       await DeliverySession.create({
         phone: agent.phone,
@@ -138,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ dispatched: sorted.length });
   } catch (err: any) {
-    console.error('[notify-agent] Error:', err);
+    console.error('[notify-agent] FATAL ERROR:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
