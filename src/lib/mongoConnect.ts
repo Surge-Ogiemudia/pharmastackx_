@@ -1,10 +1,8 @@
 import mongoose, { Mongoose } from 'mongoose';
 
-// --- FIX: Corrected environment variable name back to MONGO_URI to match Vercel settings ---
 const MONGO_URI = process.env.MONGO_URI;
 
 if (!MONGO_URI) {
-  // This error will be thrown during the build process if the variable is missing.
   throw new Error('FATAL: MONGO_URI environment variable is not defined.');
 }
 
@@ -21,41 +19,31 @@ if (!cached) {
 }
 
 export async function dbConnect(): Promise<Mongoose> {
-  console.log('[dbConnect] Attempting to connect to the database.');
-
   if (cached.conn) {
-    console.log('[dbConnect] Returning cached database connection.');
     return cached.conn;
   }
 
   if (!cached.promise) {
-    console.log('[dbConnect] No existing connection promise. Creating a new one.');
-    const opts = {
-      bufferCommands: true,
-      maxPoolSize: 10, 
-      serverSelectionTimeoutMS: 15000, // Increased from 5s to 15s
-      socketTimeoutMS: 45000,
-      family: 4, // Force IPv4 (can help with some DNS issues in serverless)
-    };
-    console.log('[dbConnect] Initializing mongoose.connect with URI:', MONGO_URI!.split('@')[1]);
-    cached.promise = mongoose.connect(MONGO_URI!, opts).then((mongoose) => {
-      console.log('[dbConnect] ✅ Database connection successfully established.');
-      return mongoose;
-    }).catch(err => {
-        console.error('[dbConnect] ❌ Initial connection error:', err.message);
-        cached.promise = null; 
-        throw err;
+    cached.promise = mongoose.connect(MONGO_URI!, {
+      bufferCommands: false,
+      maxPoolSize: 3,        // Vercel serverless: many instances × low pool = safe total
+      minPoolSize: 0,        // Release connections when idle
+      maxIdleTimeMS: 10000,  // Close connections idle for 10s
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 30000,
+      connectTimeoutMS: 10000,
+      family: 4,
+    }).then((m) => m).catch((err) => {
+      cached.promise = null;
+      throw err;
     });
   }
 
   try {
-    console.log('[dbConnect] ⏳ Awaiting existing connection promise...');
     cached.conn = await cached.promise;
-    console.log('[dbConnect] 🎉 Connection resolved.');
-  } catch(e: any) {
-      console.error("[dbConnect] 💥 Failed to await the connection promise:", e.message);
-      throw e;
+  } catch (e) {
+    throw e;
   }
-  
+
   return cached.conn;
 }
