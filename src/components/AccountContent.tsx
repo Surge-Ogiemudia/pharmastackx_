@@ -17,6 +17,7 @@ const MedicineRestock = dynamic(() => import('./MedicineRestock'), { ssr: false 
 const WhatsAppManagement = dynamic(() => import('./WhatsAppManagement'), { ssr: false });
 const DataCentreContent = dynamic(() => import('./DataCentreContent'), { ssr: false });
 const AICommandCentreContent = dynamic(() => import('./AICommandCentreContent'), { ssr: false });
+const TopContactsContent = dynamic(() => import('./TopContactsContent'), { ssr: false });
 const AboutContent = dynamic(() => import('./AboutContent'), { ssr: false });
 const PrivacyContent = dynamic(() => import('./PrivacyContent'), { ssr: false });
 const GodMode = dynamic(() => import('../app/admin/god-mode/page'), { ssr: false });
@@ -133,7 +134,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const [accessUpdateResult, setAccessUpdateResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
     const [isActivityCentreEnabled, setIsActivityCentreEnabled] = useState(true);
     const [isPulseEnabled, setIsPulseEnabled] = useState(true);
-    const [profileMode, setProfileMode] = useState<'list' | 'platform' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre' | 'godmode'>('list');
+    const [profileMode, setProfileMode] = useState<'list' | 'platform' | 'profile' | 'contact' | 'about' | 'privacy' | 'store' | 'restock' | 'consultations' | 'whatsapp' | 'datacentre' | 'aicentre' | 'top-contacts' | 'godmode'>('list');
     const [consultations, setConsultations] = useState<any[]>([]);
     const [isConsultationLoading, setIsConsultationLoading] = useState(false);
     const [currentConsultation, setCurrentConsultation] = useState<any | null>(null);
@@ -331,6 +332,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         <span className="profile-row-label">Data Hub</span>
                                         <span className="profile-chevron">›</span>
                                     </div>
+                                    <div className="profile-row-action" onClick={() => setProfileMode('top-contacts')}>
+                                        <WhatsAppIcon style={{ color: '#0F6E56' }} />
+                                        <span className="profile-row-label">Top Contacts</span>
+                                        <span className="profile-chevron">›</span>
+                                    </div>
                                     <div className="profile-row-action" onClick={() => setProfileMode('aicentre')}>
                                         <SmartToy style={{ color: 'var(--primary-green)' }} />
                                         <span className="profile-row-label">AI Centre</span>
@@ -468,6 +474,12 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         {profileMode === 'aicentre' && (
                             <SubPageWrapper onBack={() => setProfileMode('list')} title="AI Centre">
                                 <AICommandCentreContent />
+                            </SubPageWrapper>
+                        )}
+
+                        {profileMode === 'top-contacts' && (
+                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Top Contacts">
+                                <TopContactsContent />
                             </SubPageWrapper>
                         )}
 

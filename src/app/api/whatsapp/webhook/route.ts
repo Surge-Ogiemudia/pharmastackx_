@@ -10,6 +10,106 @@ import RequestModel from "@/models/Request";
 import UserModel from "@/models/User";
 import { classifyWhatsAppMessage, classifyWhatsAppImage } from "@/lib/whatsapp-classifier";
 import { notifyPharmacists } from "@/lib/whatsapp-notifier";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import RequestModel from '@/models/Request';
+import { getFirebaseAdmin } from '@/lib/firebase-admin';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+async function parseQuoteReply(messageText: string): Promise<{ available: boolean; price: number | null }> {
+    const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+    const prompt = `Parse this WhatsApp reply from a pharmacy about medicine availability. Extract:
+- available: true if they have it, false if not
+- price: the total price in Naira as a number, or null if not available or not mentioned
+
+Reply: "${messageText}"
+
+Output ONLY valid JSON. No explanation. No markdown.
+Format: {"available": true, "price": 3500}`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return { available: false, price: null };
+        return JSON.parse(jsonMatch[0]);
+    } catch {
+        return { available: false, price: null };
+    }
+}
+
+async function handleQuoteReply(senderPhone: string, messageText: string) {
+    // 1. Find the most recent active session for this phone
+    // Normalize phone from Whapi (e.g. "2348157788101@s.whatsapp.net" -> "2348157788101")
+    const phone = senderPhone.split('@')[0];
+
+    const session = await WhatsAppSession.findOne({
+        phone: phone,
+        status: 'waiting',
+        expiresAt: { $gt: new Date() }
+    }).sort({ sentAt: -1 });
+
+    if (!session) return; // No active session — ignore message
+
+    const parsed = await parseQuoteReply(messageText);
+
+    // Mark session as replied regardless of outcome
+    session.status = 'replied';
+    await session.save();
+
+    if (!parsed.available) return; // Not available — no quote to add
+
+    const request = await RequestModel.findById(session.requestId);
+    if (!request || request.status === 'cancelled' || request.status === 'confirmed') return;
+
+    // Build quote items from request items with the single price split evenly
+    // (WhatsApp contacts give a total price, not per-item)
+    const itemCount = request.items.length;
+    const pricePerItem = parsed.price ? Math.round(parsed.price / itemCount) : 0;
+
+    const quoteItems = request.items.map((item: any) => ({
+        name: item.name,
+        form: item.form,
+        strength: item.strength,
+        price: pricePerItem,
+        isAvailable: true,
+        pharmacyQuantity: item.quantity
+    }));
+
+    request.quotes.push({
+        pharmacy: null,
+        externalContact: {
+            name: session.contactName,
+            phone: session.phone
+        },
+        source: 'whatsapp',
+        items: quoteItems,
+        notes: `Quote received via WhatsApp. Total: ₦${parsed.price?.toLocaleString()}`,
+        status: 'offered',
+        quotedAt: new Date()
+    });
+
+    await request.save();
+
+    // Notify patient via FCM
+    try {
+        const patient = await UserModel.findById(request.user).lean() as any;
+        if (patient?.fcmTokens?.length > 0) {
+            const admin = getFirebaseAdmin();
+            await admin.messaging().sendEachForMulticast({
+                notification: {
+                    title: '💊 You have a new quote!',
+                    body: `${session.contactName} has quoted ₦${parsed.price?.toLocaleString()} for your request.`
+                },
+                webpush: { fcmOptions: { link: `/my-requests/${request._id}` } },
+                tokens: patient.fcmTokens
+            } as any);
+        }
+    } catch (fcmErr) {
+        console.error('[webhook] FCM notify failed:', fcmErr);
+    }
+}
 
 // Keyword filter to save AI costs (regex)
 const DRUG_KEYWORDS = /drug search|who has|looking for|urgently needed|in need of|needed|available|where can i get|pls who has|anybody has|who get|searching for|qty|strength|location:|loc:/i;
@@ -51,8 +151,13 @@ export async function POST(req: NextRequest) {
                     // Cheap Regex Filter for text
                     if (!DRUG_KEYWORDS.test(rawText) || NOISE_KEYWORDS.test(rawText)) {
                         console.log("⏭️ Skipping non-drug message:", rawText.substring(0, 50));
+                        // However, it could be a quote reply!
+                        await handleQuoteReply(msg.from, rawText);
                         continue;
                     }
+
+                    // Before classification, check if it's a quote reply for an active session
+                    await handleQuoteReply(msg.from, rawText);
                 } else if (msg.type === 'image' || (msg.type === 'document' && msg.document?.mime_type?.startsWith('image/'))) {
                     isImage = true;
                     const mediaId = msg.image?.id || msg.document?.id;
