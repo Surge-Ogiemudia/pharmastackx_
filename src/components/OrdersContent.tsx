@@ -25,11 +25,12 @@ const BlogCenter = dynamic(() => import('./BlogCenter'), {
 interface OrdersContentProps {
   setView?: (view: string) => void;
   setSelectedRequestId?: (id: string) => void;
-  initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin';
+  initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list';
+  backToView?: string;
 }
 
 const ActivityDashboardView = ({ 
-  onSelectPersonal, 
+  onSelectOrdersManagement,
   onSelectProfessional, 
   onSelectStore,
   onSelectRestock,
@@ -45,7 +46,7 @@ const ActivityDashboardView = ({
   isActivityCentreEnabled,
   isPulseEnabled,
 }: { 
-  onSelectPersonal: () => void, 
+  onSelectOrdersManagement: () => void,
   onSelectProfessional: () => void, 
   onSelectStore: () => void,
   onSelectRestock: () => void,
@@ -97,11 +98,11 @@ const ActivityDashboardView = ({
         </Typography>
       </div>
 
-      <div className="activity-widget" onClick={onSelectPersonal}>
-        <div className="widget-icon-box">📊</div>
+      <div className="activity-widget" onClick={onSelectOrdersManagement}>
+        <div className="widget-icon-box">📦</div>
         <div className="widget-content">
-          <div className="widget-title">Medicine Tracker</div>
-          <div className="widget-desc">Track your active medicine searches and order status.</div>
+          <div className="widget-title">Order Management</div>
+          <div className="widget-desc">Track your paid orders, deliveries, and payment history.</div>
         </div>
         <div className="widget-arrow">→</div>
       </div>
@@ -174,11 +175,17 @@ const ActivityDashboardView = ({
   );
 };
 
-const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest }: { orders: Order[], requests: any[], onSelectOrder: (order: Order) => void, onSelectRequest: (request: any) => void }) => {
+const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest, filterType = 'all' }: { orders: Order[], requests: any[], onSelectOrder: (order: Order) => void, onSelectRequest: (request: any) => void, filterType?: 'all' | 'orders' | 'requests' }) => {
   const allActivity = [
     ...orders.map(o => ({ ...o, type: 'order' })),
     ...requests.map(r => ({ ...r, type: 'request' }))
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const filteredActivity = allActivity.filter(item => {
+    if (filterType === 'orders') return item.type === 'order';
+    if (filterType === 'requests') return item.type === 'request';
+    return true;
+  });
 
   return (
     <motion.div
@@ -188,13 +195,15 @@ const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest }: 
       className="sora"
     >
       <div className="activity-header">
-        <Typography className="activity-title">My activity</Typography>
+        <Typography className="activity-title">
+          {filterType === 'orders' ? 'Order Management' : filterType === 'requests' ? 'Medicine Tracker' : 'My activity'}
+        </Typography>
       </div>
 
-      <div className="sec-tag">Recent orders</div>
-      {allActivity.length > 0 ? (
+      <div className="sec-tag">{filterType === 'orders' ? 'Recent Orders' : 'Recent activity'}</div>
+      {filteredActivity.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {allActivity.map((item: any) => (
+          {filteredActivity.map((item: any) => (
             <div 
               key={item._id} 
               className="glass-card"
@@ -342,12 +351,12 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
   );
 };
 
-export default function OrdersContent({ setView, setSelectedRequestId, initialViewMode }: OrdersContentProps) {
+export default function OrdersContent({ setView, setSelectedRequestId, initialViewMode, backToView }: OrdersContentProps) {
   const { user } = useSession();
   const { orders, loading: ordersLoading } = useOrders();
   const [requests, setRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin'>(initialViewMode || 'dashboard');
+  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list'>(initialViewMode || 'dashboard');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActivityCentreEnabled, setIsActivityCenterEnabled] = useState(true);
   const [isPulseEnabled, setIsPulseEnabled] = useState(true);
@@ -442,7 +451,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
               isClinic={isClinic}
               isAdmin={isAdmin}
               pendingQuotesCount={pendingRequestsCount}
-              onSelectPersonal={() => setViewMode('list')}
+              onSelectOrdersManagement={() => setViewMode('orders-list')}
               onSelectProfessional={() => setViewMode('pharmacist')}
               onSelectStore={() => setViewMode('store')}
               onSelectRestock={() => setViewMode('restock')}
@@ -456,15 +465,30 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
             />
           ) : viewMode === 'list' ? (
             <div key="personal-activity">
-              <div className="back-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
+              <div className="back-btn" onClick={() => (backToView && setView) ? setView(backToView) : setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
                 <div className="back-arrow">←</div>
-                <span>Dashboard</span>
+                <span>{backToView ? 'Back' : 'Dashboard'}</span>
+              </div>
+               <OrderHistoryView 
+                orders={orders} 
+                requests={requests} 
+                onSelectOrder={handleSelectOrder}
+                onSelectRequest={handleSelectRequest}
+                filterType={viewMode === 'orders-list' ? 'orders' : 'requests'}
+              />
+            </div>
+          ) : viewMode === 'orders-list' ? (
+            <div key="order-management">
+              <div className="back-btn" onClick={() => (backToView && setView) ? setView(backToView) : setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
+                <div className="back-arrow">←</div>
+                <span>{backToView ? 'Back' : 'Dashboard'}</span>
               </div>
               <OrderHistoryView 
                 orders={orders} 
                 requests={requests} 
                 onSelectOrder={handleSelectOrder}
                 onSelectRequest={handleSelectRequest}
+                filterType="orders"
               />
             </div>
           ) : viewMode === 'pharmacist' ? (
