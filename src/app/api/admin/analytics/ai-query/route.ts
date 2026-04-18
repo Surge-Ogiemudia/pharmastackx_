@@ -151,9 +151,18 @@ function sanitizeResponse(text: string): string {
   return cleaned || "I couldn't find a direct answer in that data. Could you try rephrasing?";
 }
 
-  const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
-  const result = await model.generateContent(prompt);
-  const answer = sanitizeResponse(result.response.text());
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+    const result = await model.generateContent(prompt);
+    const answer = sanitizeResponse(result.response.text());
 
-  return NextResponse.json({ answer });
+    return NextResponse.json({ answer });
+  } catch (error: any) {
+    console.error("AI Analytics Query Error:", error);
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+    return NextResponse.json({ 
+      error: isRateLimit ? "AI_BUSY" : "Failed to process analytics query.",
+      message: isRateLimit ? "AI_BUSY" : error.message 
+    }, { status: isRateLimit ? 429 : 500 });
+  }
 }

@@ -38,9 +38,16 @@ export async function POST(req: NextRequest) {
     const suggestions = JSON.parse(jsonString);
     return NextResponse.json(suggestions);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating suggestions from Gemini:", error);
-    // Return an empty array on error to prevent the frontend from crashing
+    
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+    
+    if (isRateLimit) {
+      return NextResponse.json({ error: "AI_BUSY" }, { status: 429 });
+    }
+
+    // Return an empty array on generic error to prevent the frontend from crashing
     return NextResponse.json([], { status: 500 });
   }
 }

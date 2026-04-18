@@ -175,10 +175,18 @@ export default function DataCentreContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
       });
-      const json = await res.json();
+      
+      const isRateLimit = res.status === 429;
+      const json = await res.json().catch(() => ({}));
+      
       setChatHistory(prev => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: 'ai', text: json.answer || json.message || 'No response.' };
+        updated[updated.length - 1] = { 
+          role: 'ai', 
+          text: isRateLimit 
+            ? '⚠️ Our Analytics AI expert is currently handling multiple requests. Please wait about 30 seconds and try again!'
+            : (json.answer || json.message || 'No response.') 
+        };
         return updated;
       });
     } catch {

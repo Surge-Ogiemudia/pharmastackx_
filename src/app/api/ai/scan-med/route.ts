@@ -90,9 +90,12 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("📸 [ScanMed API] Fatal Error:", error);
+
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+
     return NextResponse.json({ 
-      error: "Failed to identify medicine. Please ensure the label is clear and readable.",
+      error: isRateLimit ? "AI_BUSY" : "Failed to identify medicine. Please ensure the label is clear and readable.",
       details: error.message 
-    }, { status: 500 });
+    }, { status: isRateLimit ? 429 : 500 });
   }
 }
