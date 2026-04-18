@@ -136,6 +136,10 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                 })
             });
 
+            if (res.status === 429) {
+                throw new Error("AI_BUSY");
+            }
+
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.error || 'API request failed');
@@ -157,9 +161,11 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
         } catch (err: any) {
             setMessages(prev => [...prev, { 
                 id: Date.now().toString(), 
-                text: err.message?.includes('Image too large') 
-                    ? 'That image is too large to process. Please try a smaller or clearer photo.'
-                    : "I'm having trouble connecting to my knowledge base right now. Please try again or wait for a pharmacist.", 
+                text: err.message === "AI_BUSY"
+                    ? "Our Rx Expert is currently busy with multiple patients. Please wait about 30 seconds and try again!"
+                    : err.message?.includes('Image too large') 
+                        ? 'That image is too large to process. Please try a smaller or clearer photo.'
+                        : "I'm having trouble connecting to my knowledge base right now. Please try again or wait for a pharmacist.", 
                 sender: 'ai', 
                 timestamp: new Date() 
             }]);
