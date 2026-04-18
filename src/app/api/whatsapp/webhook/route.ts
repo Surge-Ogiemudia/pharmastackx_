@@ -138,7 +138,14 @@ export async function POST(req: NextRequest) {
 
         // 2. Process all messages synchronously so Vercel doesn't suspend the function
         try {
+            const FIVE_MINUTES_AGO = Math.floor(Date.now() / 1000) - 300;
             for (const msg of messages) {
+                // 0. Ignore old backlogged messages
+                if (msg.timestamp && msg.timestamp < FIVE_MINUTES_AGO) {
+                    console.log(`⌛ Skipping backlogged message: ${msg.id}`);
+                    continue;
+                }
+
                 // 1. Determine Message Type & Content
                 let classification: any = null;
                 let rawText = "";
