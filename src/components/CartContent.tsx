@@ -242,11 +242,14 @@ const createOrderFromCart = useCallback(async () => {
                 await fetch(`/api/requests/${requestId}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'confirm-request' }),
+                  body: JSON.stringify({
+                    action: 'confirm-request',
+                    patientPhone: deliveryPhone,
+                    deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
+                  }),
                 });
               } catch (error) {
                 console.error('Failed to confirm request:', error);
-                // This is a background task, so we won't block the UI
               }
             }
       
@@ -329,9 +332,12 @@ useEffect(() => {
                   fetch(`/api/requests/${requestId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'confirm-request' }),
+                    body: JSON.stringify({
+                      action: 'confirm-request',
+                      patientPhone: deliveryPhone,
+                      deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
+                    }),
                   }).catch(error => {
-                    // Best-effort, log error but don't disrupt user flow
                     console.error('Failed to confirm request for free order:', error);
                   });
                 }
