@@ -246,7 +246,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
     const orderData = {
       patientName, patientAge, patientCondition,
-      deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
+      deliveryEmail, deliveryCity, deliveryState,
       items: itemsForBackend,
       coupon: activePromo?.code,
       deliveryOption,
@@ -255,8 +255,8 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       requestId,
       quoteId,
       patientPhone: deliveryPhone,
-      deliveryAddress: deliveryAddress,
-      deliveryCoords: deliveryCoords,
+      deliveryAddress,
+      deliveryCoords,
     };
     
     const result = await addOrder(orderData);
