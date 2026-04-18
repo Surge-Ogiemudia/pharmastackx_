@@ -182,9 +182,13 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
               setShowCsvUpload(false);
               alert('Upload successful!');
           }
-      } catch (err) {
+      } catch (err: any) {
           console.error('Upload Error:', err);
-          alert('Upload failed. Please check file format.');
+          if (err.response?.status === 429) {
+              alert('AI System Busy: Our servers are currently handling too many parallel requests. Please wait a minute before uploading again.');
+          } else {
+              alert('Upload failed. Please check file format.');
+          }
       } finally {
           if (isMounted.current) setIsUploading(false);
       }
@@ -238,7 +242,13 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
               setSuggestionData(res.data.suggestion);
               setShowSuggestions(true);
           }
-      } catch (err) { alert('AI Refinement failed'); }
+      } catch (err: any) { 
+          if (err.response?.status === 429) {
+              alert('AI Experts are currently busy. Please wait about 30 seconds and try again!');
+          } else {
+              alert('AI Refinement failed'); 
+          }
+      }
       finally { if (isMounted.current) setEnrichingId(null); }
   };
 

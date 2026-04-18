@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -42,30 +43,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const newPharmacy = await User.findById(pharmacyId);
-        if (!newPharmacy || newPharmacy.role !== 'pharmacy') {
-            return res.status(404).json({ message: 'The selected pharmacy does not exist.' });
+        const pharmacist = await User.findById(userId);
+        if (!pharmacist) {
+            return res.status(404).json({ message: 'User not found.' });
         }
 
-        const updatedPharmacist = await User.findByIdAndUpdate(
-            userId, // Use the userId from the JWT token
-            { $set: { pharmacy: newPharmacy._id } },
+        // If it's a valid ObjectId and looks like a pharmacy, link it.
+        // Otherwise, if the user is a pharmacist, treat it as a custom string.
+        let pharmacyValue = pharmacyId;
+        let isLinked = false;
+
+        if (mongoose.Types.ObjectId.isValid(pharmacyId)) {
+            const pharmacyDoc = await User.findById(pharmacyId);
+            if (pharmacyDoc && pharmacyDoc.role === 'pharmacy') {
+                pharmacyValue = pharmacyDoc._id;
+                isLinked = true;
+            }
+        }
+
+        const updateData: any = { pharmacy: pharmacyValue };
+        // Reset store management if they are switching to a new linked/unlinked entity
+        if (pharmacist.role === 'pharmacist') {
+            updateData.canManageStore = false;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
             { new: true }
-        ).populate('pharmacy', 'businessName');
+        );
 
-        if (!updatedPharmacist) {
-            return res.status(404).json({ message: 'Pharmacist not found.' });
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found.' });
         }
 
-        const detailedUser = {
-            ...updatedPharmacist.toObject(),
-            pharmacy: {
-                _id: newPharmacy._id,
-                businessName: newPharmacy.businessName,
-            },
-        };
+        if (isLinked) {
+            await updatedUser.populate('pharmacy', 'businessName');
+        }
 
-        return res.status(200).json(detailedUser);
+        return res.status(200).json(updatedUser);
     } catch (error: any) {
         console.error('Error switching pharmacy:', error);
         return res.status(500).json({ message: 'Internal Server Error', error: error.message });

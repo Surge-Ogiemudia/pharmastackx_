@@ -113,7 +113,7 @@ export default function PharmacySearch() {
                 <LocationOn sx={{ color: '#006D5B' }} />
               </InputAdornment>
             ),
-            sx: { borderRadius: '12px', bgcolor: 'white' }
+            sx: { borderRadius: '12px', bgcolor: 'white', '& input': { fontSize: '16px' } }
           }}
         />
       </Box>
