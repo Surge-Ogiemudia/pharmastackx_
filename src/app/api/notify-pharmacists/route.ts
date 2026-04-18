@@ -61,6 +61,19 @@ async function getRecipientTokens(requestState?: string): Promise<string[]> {
 }
 
 // Helper function to generate a dynamic notification title
+function haversineKm(lng1: number, lat1: number, lng2: number, lat2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function createDynamicTitle(drugNames: string[]): string {
     if (!drugNames || drugNames.length === 0) {
         return 'New Dispatch Request';
@@ -82,12 +95,16 @@ function createDynamicTitle(drugNames: string[]): string {
     return title;
 }
 
-function buildWhatsAppMessage(items: any[], requestId: string, state: string): string {
+function buildWhatsAppMessage(items: any[], requestId: string, state: string, distanceKm?: number): string {
     const itemList = items.map((item: any) =>
         `• ${item.name}${item.strength ? ` ${item.strength}` : ''}${item.form ? ` (${item.form})` : ''} x${item.quantity}`
     ).join('\n');
 
-    return `🔔 *New Medicine Request — PharmaStackX*\n\nA patient in *${state}* needs:\n${itemList}\n\n*Reply with:*\n✅ AVAILABLE [total price in Naira]\n❌ NOT AVAILABLE\n\n_Example: AVAILABLE 3500_\n\n_Ref: ${requestId.toString().slice(-6).toUpperCase()}_\n_This request expires in 24 hours._`;
+    const distanceLine = distanceKm != null
+        ? `\n📍 *Patient is ~${distanceKm.toFixed(1)}km from your location*`
+        : '';
+
+    return `🔔 *New Medicine Request — PharmaStackX*\n\nA patient in *${state}* needs:\n${itemList}${distanceLine}\n\n*Reply with:*\n✅ AVAILABLE [total price in Naira]\n❌ NOT AVAILABLE\n\n_Example: AVAILABLE 3500_\n\n_Ref: ${requestId.toString().slice(-6).toUpperCase()}_\n_This request expires in 24 hours._`;
 }
 
 export async function POST(req: NextRequest) {
@@ -155,15 +172,40 @@ export async function POST(req: NextRequest) {
         try {
             const topContactDoc = await TopContact.findOne({ state: (request as any).state });
             if (topContactDoc?.contacts?.length > 0) {
-                const activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive);
-                const waMessage = buildWhatsAppMessage(
-                    (request as any).items || [],
-                    requestId,
-                    (request as any).state || 'your state'
-                );
+                let activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive);
+
+                // Sort by distance from patient if both patient and contact have coordinates
+                const patientCoords = (request as any).coordinates; // [lng, lat]
+                if (patientCoords?.length === 2) {
+                    activeContacts = activeContacts.sort((a: any, b: any) => {
+                        if (!a.coordinates && !b.coordinates) return 0;
+                        if (!a.coordinates) return 1; // push contacts without coords to end
+                        if (!b.coordinates) return -1;
+                        const distA = haversineKm(patientCoords[0], patientCoords[1], a.coordinates[0], a.coordinates[1]);
+                        const distB = haversineKm(patientCoords[0], patientCoords[1], b.coordinates[0], b.coordinates[1]);
+                        return distA - distB;
+                    });
+                }
 
                 for (const contact of activeContacts) {
                     try {
+                        let distanceKm: number | undefined;
+                        if (patientCoords?.length === 2 && contact.coordinates?.length === 2) {
+                            distanceKm = haversineKm(
+                                patientCoords[0],
+                                patientCoords[1],
+                                contact.coordinates[0],
+                                contact.coordinates[1]
+                            );
+                        }
+
+                        const waMessage = buildWhatsAppMessage(
+                            (request as any).items || [],
+                            requestId,
+                            (request as any).state || 'your state',
+                            distanceKm
+                        );
+
                         await sendWhatsAppMessage(contact.phone, waMessage);
 
                         await WhatsAppSession.create({
