@@ -16,7 +16,32 @@ import { getFirebaseAdmin } from '@/lib/firebase-admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+async function parseQuoteRegex(text: string): Promise<{ available: boolean; price: number | null } | null> {
+    const cleanText = text.trim().toUpperCase();
+    
+    // Check for "NOT AVAILABLE" / "NA" etc
+    if (cleanText.includes("NOT AVAILABLE") || cleanText.includes("UNAVAILABLE") || cleanText === "X" || cleanText === "NO") {
+        return { available: false, price: null };
+    }
+
+    // Match patterns like "AVAILABLE 5000", "AVAILABLE 5,000", "AVAILABLE N5000"
+    const availMatch = cleanText.match(/AVAILABLE\s*(?:N|₦)?\s*([\d,]+)/i);
+    if (availMatch) {
+        const price = parseInt(availMatch[1].replace(/,/g, ''));
+        if (!isNaN(price)) return { available: true, price };
+    }
+
+    // Fallback match for just a number if the message is only a number
+    if (/^\d+$/.test(cleanText.replace(/,/g, ''))) {
+        const price = parseInt(cleanText.replace(/,/g, ''));
+        return { available: true, price };
+    }
+
+    return null; // No clear regex match, move to AI
+}
+
 async function parseQuoteReply(messageText: string): Promise<{ available: boolean; price: number | null }> {
+    console.log(`🤖 Attempting AI Parsing for: "${messageText}"`);
     const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
     const prompt = `Parse this WhatsApp reply from a pharmacy about medicine availability. Extract:
 - available: true if they have it, false if not
@@ -31,17 +56,25 @@ Format: {"available": true, "price": 3500}`;
         const result = await model.generateContent(prompt);
         const text = result.response.text().trim();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return { available: false, price: null };
-        return JSON.parse(jsonMatch[0]);
-    } catch {
+        if (!jsonMatch) {
+            console.error("❌ AI Parsing failed: No JSON found in response");
+            return { available: false, price: null };
+        }
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log("✅ AI Parsing successful:", parsed);
+        return parsed;
+    } catch (err: any) {
+        console.error("❌ AI Parsing Error:", err.message);
         return { available: false, price: null };
     }
 }
 
 async function handleQuoteReply(senderPhone: string, messageText: string) {
+    console.log(`💬 Processing potentially a quote reply from ${senderPhone}: "${messageText}"`);
     // 1. Find the most recent active session for this phone
     // Normalize phone from Whapi (e.g. "2348157788101@s.whatsapp.net" -> "2348157788101")
     const phone = senderPhone.split('@')[0];
+    console.log(`📱 Normalized phone: ${phone}`);
 
     const session = await WhatsAppSession.findOne({
         phone: phone,
@@ -49,23 +82,48 @@ async function handleQuoteReply(senderPhone: string, messageText: string) {
         expiresAt: { $gt: new Date() }
     }).sort({ sentAt: -1 });
 
-    if (!session) return; // No active session — ignore message
+    if (!session) {
+        console.log(`⏭️ No active session found for ${phone}. Ignoring message.`);
+        return; 
+    }
 
-    const parsed = await parseQuoteReply(messageText);
+    console.log(`✅ Session found! RequestId: ${session.requestId}, Contact: ${session.contactName}`);
+
+    // Try Regex First (Fast, 0 Cost)
+    let parsed = await parseQuoteRegex(messageText);
+    if (parsed) {
+        console.log("⚡ Regex Match successful:", parsed);
+    } else {
+        // Fallback to AI
+        parsed = await parseQuoteReply(messageText);
+    }
 
     // Mark session as replied regardless of outcome
     session.status = 'replied';
     await session.save();
+    console.log(`🔄 Session status updated to 'replied'`);
 
-    if (!parsed.available) return; // Not available — no quote to add
+    if (!parsed.available) {
+        console.log("🚫 Quote marked as not available. Skipping insertion.");
+        return; 
+    }
 
     const request = await RequestModel.findById(session.requestId);
-    if (!request || request.status === 'cancelled' || request.status === 'confirmed') return;
+    if (!request) {
+        console.error(`❌ Request ${session.requestId} not found in DB!`);
+        return;
+    }
+    
+    if (request.status === 'cancelled' || request.status === 'confirmed') {
+        console.log(`⏭️ Request status is ${request.status}. Skipping quote.`);
+        return;
+    }
+
+    console.log(`📝 Inserting quote into request ${request._id}...`);
 
     // Build quote items from request items with the single price split evenly
-    // (WhatsApp contacts give a total price, not per-item)
     const itemCount = request.items.length;
-    const pricePerItem = parsed.price ? Math.round(parsed.price / itemCount) : 0;
+    const pricePerItem = (parsed.price && itemCount > 0) ? Math.round(parsed.price / itemCount) : 0;
 
     const quoteItems = request.items.map((item: any) => ({
         name: item.name,
@@ -90,11 +148,13 @@ async function handleQuoteReply(senderPhone: string, messageText: string) {
     });
 
     await request.save();
+    console.log("🎯 Quote successfully added to request!");
 
     // Notify patient via FCM
     try {
         const patient = await UserModel.findById(request.user).lean() as any;
         if (patient?.fcmTokens?.length > 0) {
+            console.log(`🔔 Notifying patient (${patient.username}) via FCM...`);
             const admin = getFirebaseAdmin();
             await admin.messaging().sendEachForMulticast({
                 notification: {
@@ -104,9 +164,11 @@ async function handleQuoteReply(senderPhone: string, messageText: string) {
                 webpush: { fcmOptions: { link: `/my-requests/${request._id}` } },
                 tokens: patient.fcmTokens
             } as any);
+        } else {
+            console.log("🔕 Patient has no registered FCM tokens. Skipping FCM.");
         }
-    } catch (fcmErr) {
-        console.error('[webhook] FCM notify failed:', fcmErr);
+    } catch (fcmErr: any) {
+        console.error('[webhook] FCM notify failed:', fcmErr.message);
     }
 }
 
