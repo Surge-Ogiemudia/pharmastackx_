@@ -315,7 +315,7 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
     if (!selectedRequestId) {
       const fetchRequests = async () => {
         try {
-          const response = await fetch('/api/requests');
+          const response = await fetch('/api/requests?forPharmacist=true');
           if (!response.ok) throw new Error('Failed to fetch requests');
           const data = await response.json();
           setRequests(data);
