@@ -151,8 +151,6 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        }
-
         // --- WhatsApp dispatch to top contacts ---
         try {
             const topContactDoc = await TopContact.findOne({ state: (request as any).state });

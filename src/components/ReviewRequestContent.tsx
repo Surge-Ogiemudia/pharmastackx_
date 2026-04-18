@@ -30,7 +30,9 @@ interface QuoteItem {
 
 interface Quote {
   _id: string;
-  pharmacy: Pharmacy;
+  pharmacy?: Pharmacy;
+  externalContact?: { name: string; phone: string };
+  source?: 'app' | 'whatsapp';
   items: QuoteItem[];
   notes?: string;
   status: 'offered' | 'accepted' | 'rejected';
@@ -97,12 +99,19 @@ const QuoteCard: React.FC<{
             <div className="rr-card-top">
                 <div className="rr-card-top-row">
                     <div className="rr-pharmacist-info">
-                        <div className="rr-pharmacist-name">{quote.pharmacy.name}</div>
-                        <div className="rr-pharmacist-pharmacy">{quote.pharmacy.address || 'Address not available'}</div>
+                        <div className="rr-pharmacist-name">
+                            {quote.pharmacy?.name || quote.externalContact?.name || 'Pharmacist'}
+                            {quote.source === 'whatsapp' && (
+                                <span style={{ fontSize: '9px', background: '#F0FDF4', color: '#166534', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 700, verticalAlign: 'middle' }}>
+                                    via WhatsApp
+                                </span>
+                            )}
+                        </div>
+                        <div className="rr-pharmacist-pharmacy">{quote.pharmacy?.address || (quote.source === 'whatsapp' ? 'Verified External Partner' : 'Address not available')}</div>
                         <div className="rr-pharmacist-rating">
                             <span className="rr-rating-star">⭐</span>
-                            <span className="rr-rating-num">{quote.pharmacy.rating || '4.5'}</span>
-                            <span className="rr-rating-count">({quote.pharmacy.orderCount || '12'} orders)</span>
+                            <span className="rr-rating-num">{quote.pharmacy?.rating || '4.5'}</span>
+                            <span className="rr-rating-count">({quote.pharmacy?.orderCount || '12'} orders)</span>
                         </div>
                     </div>
                     <div className="rr-verified-badge">
@@ -126,7 +135,7 @@ const QuoteCard: React.FC<{
                     <div className="rr-distance-wrap">
                         <div className="rr-distance-label">Distance</div>
                         <div className="rr-distance-amount">
-                            {isFetchingDistance ? '...' : (quote.pharmacy.distance || 'N/A')}
+                            {isFetchingDistance ? '...' : (quote.pharmacy?.distance || 'N/A')}
                         </div>
                     </div>
                 </div>
@@ -245,7 +254,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
               quantity: item.pharmacyQuantity,
               image: request?.items.find(i => i.name === item.name)?.image || '',
               activeIngredients: request?.items.find(i => i.name === item.name)?.strength || '',
-              pharmacy: sortedQuotes.find(q => q._id === quoteId)?.pharmacy.name || 'Pharmacy',
+              pharmacy: sortedQuotes.find(q => q._id === quoteId)?.pharmacy?.name || sortedQuotes.find(q => q._id === quoteId)?.externalContact?.name || 'Pharmacy',
               drugClass: 'From Quote',
               isQuoteItem: true,
               quoteId: quoteId
@@ -263,10 +272,10 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
     if (!request?.quotes) return [];
     return request.quotes.map(quote => ({
       ...quote,
-      pharmacy: {
+      pharmacy: quote.pharmacy ? {
         ...quote.pharmacy,
         distance: distances[quote.pharmacy._id] || (distanceError ? (quote.pharmacy.distance || distanceError) : undefined)
-      }
+      } : undefined
     }));
   }, [request?.quotes, distances, distanceError]);
 
@@ -288,12 +297,12 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
     return [...enrichedQuotes].sort((a, b) => {
         switch (sortBy) {
             case 'price': return calculateTotalPrice(a.items) - calculateTotalPrice(b.items);
-            case 'distance': return parseDistance(a.pharmacy.distance) - parseDistance(b.pharmacy.distance);
+            case 'distance': return parseDistance(a.pharmacy?.distance) - parseDistance(b.pharmacy?.distance);
             case 'date': return b.quotedAt.localeCompare(a.quotedAt);
             case 'efficiency':
             default:
-                const distA = parseDistance(a.pharmacy.distance);
-                const distB = parseDistance(b.pharmacy.distance);
+                const distA = parseDistance(a.pharmacy?.distance);
+                const distB = parseDistance(b.pharmacy?.distance);
                 if (distA !== distB) return distA - distB;
                 return calculateTotalPrice(a.items) - calculateTotalPrice(b.items);
         }

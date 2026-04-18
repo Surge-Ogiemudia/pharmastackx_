@@ -12,7 +12,6 @@ import { classifyWhatsAppMessage, classifyWhatsAppImage } from "@/lib/whatsapp-c
 import { notifyPharmacists } from "@/lib/whatsapp-notifier";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import WhatsAppSession from '@/models/WhatsAppSession';
-import RequestModel from '@/models/Request';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);

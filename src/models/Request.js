@@ -6,7 +6,8 @@ const QuoteSchema = new mongoose.Schema({
   pharmacy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: false,
+    default: null
   },
   // The pharmacy's version of the items, with their pricing and availability
   items: [{
@@ -20,6 +21,15 @@ const QuoteSchema = new mongoose.Schema({
     pharmacyQuantity: { type: Number }
   }],
   notes: { type: String }, // Notes from the pharmacy
+  externalContact: {
+    name: { type: String },
+    phone: { type: String }
+  },
+  source: {
+    type: String,
+    enum: ['app', 'whatsapp'],
+    default: 'app'
+  },
   status: {
       type: String,
       enum: ['offered', 'accepted', 'rejected'],
