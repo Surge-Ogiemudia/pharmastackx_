@@ -79,6 +79,8 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
         const body = await req.json();
         const { action } = body;
 
+        let shouldNotifyDelivery = false;
+
         const params = await paramsPromise;
         const originalRequest = await RequestModel.findById(params.id);
 
@@ -144,16 +146,7 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
                 if (deliveryCoords) originalRequest.deliveryCoords = deliveryCoords;
 
                 originalRequest.status = 'confirmed';
-
-                // Trigger delivery agent notification (fire and forget)
-                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`;
-                console.log(`[trigger-delivery] Notifying agents via internal fetch: ${baseUrl}/api/notify-delivery-agent`);
-                fetch(`${baseUrl}/api/notify-delivery-agent`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requestId: originalRequest._id.toString() }),
-                }).catch(err => console.error('[trigger-delivery] Failed:', err));
-
+                shouldNotifyDelivery = true;
                 break;
             }
             
@@ -204,6 +197,17 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
         }
         
         const savedRequest = await originalRequest.save();
+
+        if (shouldNotifyDelivery) {
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`;
+            console.log(`[trigger-delivery] Request saved. Notifying agents: ${baseUrl}/api/notify-delivery-agent`);
+            fetch(`${baseUrl}/api/notify-delivery-agent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestId: savedRequest._id.toString() }),
+            }).catch(err => console.error('[trigger-delivery] Failed:', err));
+        }
+
         return NextResponse.json(savedRequest, { status: 200 });
 
     } catch (error) {
