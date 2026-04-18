@@ -463,8 +463,8 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
               isActivityCentreEnabled={isActivityCentreEnabled}
               isPulseEnabled={isPulseEnabled}
             />
-          ) : viewMode === 'list' ? (
-            <div key="personal-activity">
+          ) : (viewMode === 'list' || viewMode === 'requests-list') ? (
+            <div key="medicine-tracker">
               <div className="back-btn" onClick={() => (backToView && setView) ? setView(backToView) : setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
                 <div className="back-arrow">←</div>
                 <span>{backToView ? 'Back' : 'Dashboard'}</span>
@@ -474,7 +474,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
                 requests={requests} 
                 onSelectOrder={handleSelectOrder}
                 onSelectRequest={handleSelectRequest}
-                filterType={viewMode === 'orders-list' ? 'orders' : 'requests'}
+                filterType={viewMode === 'requests-list' ? 'requests' : 'all'}
               />
             </div>
           ) : viewMode === 'orders-list' ? (
