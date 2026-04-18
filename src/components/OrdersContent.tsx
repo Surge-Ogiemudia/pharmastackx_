@@ -25,6 +25,7 @@ const BlogCenter = dynamic(() => import('./BlogCenter'), {
 interface OrdersContentProps {
   setView?: (view: string) => void;
   setSelectedRequestId?: (id: string) => void;
+  initialViewMode?: 'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin';
 }
 
 const ActivityDashboardView = ({ 
@@ -341,12 +342,12 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
   );
 };
 
-export default function OrdersContent({ setView, setSelectedRequestId }: OrdersContentProps) {
+export default function OrdersContent({ setView, setSelectedRequestId, initialViewMode }: OrdersContentProps) {
   const { user } = useSession();
   const { orders, loading: ordersLoading } = useOrders();
   const [requests, setRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin'>('dashboard');
+  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin'>(initialViewMode || 'dashboard');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActivityCentreEnabled, setIsActivityCenterEnabled] = useState(true);
   const [isPulseEnabled, setIsPulseEnabled] = useState(true);
