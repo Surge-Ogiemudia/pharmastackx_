@@ -147,6 +147,7 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
 
                 // Trigger delivery agent notification (fire and forget)
                 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`;
+                console.log(`[trigger-delivery] Notifying agents via internal fetch: ${baseUrl}/api/notify-delivery-agent`);
                 fetch(`${baseUrl}/api/notify-delivery-agent`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
