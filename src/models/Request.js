@@ -83,6 +83,17 @@ const RequestSchema = new mongoose.Schema({
     type: [Number], // [longitude, latitude]
     index: '2dsphere',
   },
+  // Delivery info — populated after payment
+  delivery: {
+    agentName:    { type: String,      default: null },
+    agentPhone:   { type: String,      default: null },
+    status:       { type: String, enum: ['pending', 'assigned', 'picked_up', 'delivered', null], default: null },
+    assignedAt:   { type: Date,        default: null },
+  },
+  patientPhone:    { type: String,     default: null },
+  deliveryAddress: { type: String,     default: null },
+  deliveryCoords:  { type: [Number],   default: undefined }, // [lng, lat] 
+
   notes: {
     type: String, // General request notes
   },

@@ -137,7 +137,22 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
                 if (originalRequest.user.toString() !== session.userId) {
                     return NextResponse.json({ message: 'Unauthorized: You cannot confirm this request.' }, { status: 403 });
                 }
+                
+                const { patientPhone, deliveryAddress, deliveryCoords } = body;
+                if (patientPhone) originalRequest.patientPhone = patientPhone;
+                if (deliveryAddress) originalRequest.deliveryAddress = deliveryAddress;
+                if (deliveryCoords) originalRequest.deliveryCoords = deliveryCoords;
+
                 originalRequest.status = 'confirmed';
+
+                // Trigger delivery agent notification (fire and forget)
+                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`;
+                fetch(`${baseUrl}/api/notify-delivery-agent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId: originalRequest._id.toString() }),
+                }).catch(err => console.error('[trigger-delivery] Failed:', err));
+
                 break;
             }
             

@@ -12,7 +12,9 @@ import { classifyWhatsAppMessage, classifyWhatsAppImage } from "@/lib/whatsapp-c
 import { notifyPharmacists } from "@/lib/whatsapp-notifier";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import WhatsAppSession from '@/models/WhatsAppSession';
+import DeliverySession from '@/models/DeliverySession';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { sendWhatsAppMessage } from '@/lib/whapi';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -172,6 +174,62 @@ async function handleQuoteReply(senderPhone: string, messageText: string) {
     }
 }
 
+async function handleDeliveryReply(senderPhone: string, incomingText: string) {
+    const phone = senderPhone.split('@')[0];
+    const deliverySession = await DeliverySession.findOne({
+        phone: phone,
+        status: 'waiting',
+        expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    if (!deliverySession) return false; // Not a delivery agent reply
+
+    const replyUpper = incomingText.trim().toUpperCase();
+    const googleMapsLink = (coords: [number, number]) => `https://maps.google.com/?q=${coords[1]},${coords[0]}`;
+
+    if (replyUpper === 'ACCEPT') {
+        deliverySession.status = 'accepted';
+        await deliverySession.save();
+
+        await RequestModel.findByIdAndUpdate(deliverySession.requestId, {
+            'delivery.agentName': deliverySession.agentName,
+            'delivery.agentPhone': deliverySession.phone,
+            'delivery.status': 'assigned',
+            'delivery.assignedAt': new Date(),
+        });
+
+        // Confirm to agent
+        await sendWhatsAppMessage(deliverySession.phone, 
+            `✅ Delivery confirmed! Please proceed to pickup.\n\n` +
+            `📦 Pickup: ${deliverySession.pickupAddress}\n` +
+            `🗺️ ${googleMapsLink(deliverySession.pickupCoords)}\n` +
+            `📞 Call pharmacist: ${deliverySession.pharmacistPhone}\n\n` +
+            `🏠 Dropoff: ${deliverySession.dropoffAddress}\n` +
+            `🗺️ ${googleMapsLink(deliverySession.dropoffCoords)}\n` +
+            `📞 Call patient: ${deliverySession.patientPhone}\n\n` +
+            `Thank you! 🙏`
+        );
+
+        // Expire others
+        await DeliverySession.updateMany(
+            { orderId: deliverySession.orderId, status: 'waiting', _id: { $ne: deliverySession._id } },
+            { $set: { status: 'expired' } }
+        );
+        return true;
+    }
+
+    if (replyUpper === 'DECLINE') {
+        deliverySession.status = 'declined';
+        await deliverySession.save();
+        await sendWhatsAppMessage(deliverySession.phone, `Okay, no worries! We'll find another agent. 👍`);
+        return true;
+    }
+
+    // fallback
+    await sendWhatsAppMessage(deliverySession.phone, `Reply *ACCEPT* to take the delivery or *DECLINE* to pass.`);
+    return true;
+}
+
 // Keyword filter to save AI costs (regex)
 const DRUG_KEYWORDS = /drug search|who has|looking for|urgently needed|in need of|needed|available|where can i get|pls who has|anybody has|who get|searching for|qty|strength|location:|loc:/i;
 const NOISE_KEYWORDS = /meeting|lecture|dues|election|football|chelsea|arsenal|politics/i;
@@ -216,6 +274,10 @@ export async function POST(req: NextRequest) {
 
                 if (msg.type === 'text') {
                     rawText = msg.text?.body || "";
+                    // Before classification, check if it's a delivery agent reply
+                    const handledByDelivery = await handleDeliveryReply(msg.from, rawText);
+                    if (handledByDelivery) continue;
+
                     // Cheap Regex Filter for text
                     if (!DRUG_KEYWORDS.test(rawText) || NOISE_KEYWORDS.test(rawText)) {
                         console.log("⏭️ Skipping non-drug message:", rawText.substring(0, 50));
