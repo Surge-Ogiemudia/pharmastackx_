@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get('state');
   if (!state) return NextResponse.json({ error: 'state required' }, { status: 400 });
 
-  const doc = await DeliveryAgent.findOne({ state }).lean();
+  const doc = await DeliveryAgent.findOne({ state }).lean() as any;
   return NextResponse.json({ agents: doc?.agents ?? [] });
 }
 
@@ -44,6 +44,6 @@ export async function POST(req: NextRequest) {
     { state },
     { $set: { agents } },
     { upsert: true, new: true }
-  );
+  ) as any;
   return NextResponse.json({ agents: doc.agents });
 }
