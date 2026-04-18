@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
     // Use session cookie to verify admin, standard practice in this repo
-    const sessionCookie = req.cookies.get('session');
+    const sessionCookie = req.cookies.get('session_token');
     if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     let settings = await AISettings.findOne();
@@ -32,7 +32,7 @@ If a symptom sounds severe, include the text: ESCALATE_TO_PHARMACIST`,
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const sessionCookie = req.cookies.get('session');
+    const sessionCookie = req.cookies.get('session_token');
     if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();

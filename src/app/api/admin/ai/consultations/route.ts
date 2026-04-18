@@ -5,7 +5,7 @@ import Consultation from '@/models/Consultation';
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
-    const sessionCookie = req.cookies.get('session');
+    const sessionCookie = req.cookies.get('session_token');
     if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const searchParams = req.nextUrl.searchParams;
