@@ -356,7 +356,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
   const { orders, loading: ordersLoading } = useOrders();
   const [requests, setRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list'>(initialViewMode || 'dashboard');
+  const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'detail' | 'pharmacist' | 'store' | 'restock' | 'pulse-admin' | 'orders-list' | 'requests-list'>(initialViewMode || 'dashboard');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isActivityCentreEnabled, setIsActivityCenterEnabled] = useState(true);
   const [isPulseEnabled, setIsPulseEnabled] = useState(true);
