@@ -4,6 +4,9 @@ import { dbConnect } from '@/lib/mongoConnect';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import UserModel from '@/models/User';
 import RequestModel from '@/models/Request';
+import TopContact from '@/models/TopContact';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import { sendWhatsAppMessage } from '@/lib/whapi';
 
 async function getRecipientTokens(requestState?: string): Promise<string[]> {
     await dbConnect();
@@ -79,6 +82,14 @@ function createDynamicTitle(drugNames: string[]): string {
     return title;
 }
 
+function buildWhatsAppMessage(items: any[], requestId: string, state: string): string {
+    const itemList = items.map((item: any) =>
+        `• ${item.name}${item.strength ? ` ${item.strength}` : ''}${item.form ? ` (${item.form})` : ''} x${item.quantity}`
+    ).join('\n');
+
+    return `🔔 *New Medicine Request — PharmaStackX*\n\nA patient in *${state}* needs:\n${itemList}\n\n*Reply with:*\n✅ AVAILABLE [total price in Naira]\n❌ NOT AVAILABLE\n\n_Example: AVAILABLE 3500_\n\n_Ref: ${requestId.toString().slice(-6).toUpperCase()}_\n_This request expires in 24 hours._`;
+}
+
 export async function POST(req: NextRequest) {
     console.log('Received notification request');
     try {
@@ -140,7 +151,41 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        return NextResponse.json({ success: true, message: `Notified ${response.successCount} recipients.` });
+        }
+
+        // --- WhatsApp dispatch to top contacts ---
+        try {
+            const topContactDoc = await TopContact.findOne({ state: (request as any).state });
+            if (topContactDoc?.contacts?.length > 0) {
+                const activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive);
+                const waMessage = buildWhatsAppMessage(
+                    (request as any).items || [],
+                    requestId,
+                    (request as any).state || 'your state'
+                );
+
+                for (const contact of activeContacts) {
+                    try {
+                        await sendWhatsAppMessage(contact.phone, waMessage);
+
+                        await WhatsAppSession.create({
+                            phone: contact.phone,
+                            requestId,
+                            contactName: contact.name,
+                            requestState: (request as any).state,
+                            status: 'waiting'
+                        });
+                    } catch (waErr) {
+                        console.error(`[notify] WhatsApp failed for ${contact.phone}:`, waErr);
+                    }
+                }
+            }
+        } catch (waErr) {
+            console.error('[notify] WhatsApp dispatch error:', waErr);
+            // Non-fatal — FCM already sent, don't fail the whole request
+        }
+
+        return NextResponse.json({ success: true, message: `Notified ${response.successCount} recipients via FCM + WhatsApp contacts.` });
 
     } catch (error) {
         console.error('Error sending notification:', error);
