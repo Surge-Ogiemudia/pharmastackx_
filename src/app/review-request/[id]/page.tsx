@@ -29,12 +29,11 @@ const ReviewRequestPage = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ bgcolor: '#fafaf8', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
-      <Container maxWidth="lg">
-        {/* Pass the required onBack prop */}
+      <Box sx={{ pt: { xs: 8, sm: 10 }, pb: 10, flexGrow: 1, overflowY: 'auto' }}>
         <ManageRequest requestId={requestId} onBack={handleBack} />
-      </Container>
+      </Box>
     </Box>
   );
 };
