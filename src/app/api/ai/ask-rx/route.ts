@@ -60,7 +60,7 @@ function sanitizeResponse(text: string): string {
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { message, userId, consultationId } = await req.json();
+    const { message, userId, consultationId, image } = await req.json();
 
     if (!process.env.GEMINI_API_KEY) {
         console.error("CRITICAL: GEMINI_API_KEY is missing from environment variables");
@@ -69,6 +69,16 @@ export async function POST(req: NextRequest) {
 
     if (!message || !userId) {
         return NextResponse.json({ error: "Missing required fields: message or userId" }, { status: 400 });
+    }
+
+    if (image) {
+        const sizeInMB = Buffer.byteLength(image, 'utf8') / (1024 * 1024);
+        if (sizeInMB > 3.5) {
+            return NextResponse.json(
+                { error: 'Image too large. Please use a smaller image.' },
+                { status: 400 }
+            );
+        }
     }
 
     let consultation;
@@ -118,21 +128,47 @@ export async function POST(req: NextRequest) {
     }
 
     // Using gemma-4-26b-a4b-it based on availability
-    const model = genAI.getGenerativeModel({ 
-      model: "gemma-4-26b-a4b-it",
-      systemInstruction: systemPrompt
-    });
+    let aiText: string;
 
-    const chat = model.startChat({
-        history: chatHistory,
-        generationConfig: { maxOutputTokens: 500 }
-    });
+    if (image) {
+        const visionModel = genAI.getGenerativeModel({
+            model: "gemma-4-26b-a4b-it",
+            systemInstruction: systemPrompt
+        });
 
-    const promptMessage = message;
+        const base64Data = image.includes(',') ? image.split(',')[1] : image;
+        const mimeType = image.startsWith('data:image/png') ? 'image/png' :
+                         image.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
 
-    const result = await chat.sendMessage(promptMessage);
-    const response = await result.response;
-    let aiText = sanitizeResponse(response.text().trim());
+        const historyContext = consultation.messages.length > 0 
+            ? `Conversation so far:\n${consultation.messages.slice(-4).map((m: any) => 
+                `${m.sender === 'user' ? 'Patient' : 'You'}: ${m.text}`
+              ).join('\n')}\n\n`
+            : '';
+
+        const prompt = `${historyContext}Patient message: ${message || 'What can you tell me about this image?'}\n\nAnalyze the image and respond as Ask Rx.`;
+
+        const result = await visionModel.generateContent([
+            prompt,
+            { inlineData: { data: base64Data, mimeType } }
+        ]);
+
+        aiText = sanitizeResponse(result.response.text().trim());
+    } else {
+        const model = genAI.getGenerativeModel({
+            model: "gemma-4-26b-a4b-it",
+            systemInstruction: systemPrompt
+        });
+
+        const chat = model.startChat({
+            history: chatHistory,
+            generationConfig: { maxOutputTokens: 500 }
+        });
+
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        aiText = sanitizeResponse(response.text().trim());
+    }
 
     const shouldEscalate = aiText.includes("ESCALATE_TO_PHARMACIST");
     if (shouldEscalate) {
@@ -142,7 +178,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Save messages
-    consultation.messages.push({ sender: 'user', text: message });
+    consultation.messages.push({ sender: 'user', text: image ? `[Image] ${message || ''}`.trim() : message });
     consultation.messages.push({ sender: 'ai', text: aiText });
     consultation.aiMoveCount += 1;
     await consultation.save();
