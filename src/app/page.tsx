@@ -92,6 +92,7 @@ export default function HomePage() {
   const [prevView, setPrevView] = useState('home');
   const [shouldTriggerScan, setShouldTriggerScan] = useState(false);
   const [ordersInitialViewMode, setOrdersInitialViewMode] = useState<'dashboard' | 'list'>('dashboard');
+  const [ordersBackView, setOrdersBackView] = useState<string | undefined>(undefined);
 
   const setViewWithPrev = (newView: string) => {
     setPrevView(view);
@@ -481,7 +482,8 @@ useEffect(() => {
         setSelectedRequestId(activeRequests[0]._id);
         setView('reviewRequest');
       } else {
-        setOrdersInitialViewMode('list');
+        setOrdersInitialViewMode('requests-list');
+        setOrdersBackView('orderMedicines');
         setView('orders');
       }
     } catch (err) {
@@ -938,6 +940,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                 setView={setView} 
                 setSelectedRequestId={setSelectedRequestId} 
                 initialViewMode={ordersInitialViewMode}
+                backToView={ordersBackView}
               />
             </Box>
           </Box>
@@ -1272,11 +1275,13 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
        <BottomNav currentView={view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
+         if (v === 'requests-list') setActiveRequestId(null);
          setOrdersInitialViewMode('dashboard');
+         setOrdersBackView(undefined);
          setViewWithPrev(v);
        }} />
 
-       {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'orderMedicines' && activeRequestId === activeRequest._id) && (
+       {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'requests-list' && activeRequestId === activeRequest._id) && (
           <ReactiveQuoteOverlay 
               request={activeRequest} 
               onClick={handleOverlayClick} 
