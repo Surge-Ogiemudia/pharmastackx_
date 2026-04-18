@@ -20,9 +20,9 @@ const AISettingsSchema: Schema = new Schema({
     default: "You are Ask Rx, a friendly medicine expert. Respond like a knowledgeable friend — short, clear, warm, and human. Only discuss health and medicine topics." 
   },
   goldenRules: [{
-    input: { type: String, required: true },
-    output: { type: String, required: true },
-    label: { type: String }
+    input: { type: String, default: '' },
+    output: { type: String, default: '' },
+    label: { type: String, default: '' }
   }],
   alertEmail: { type: String, default: 'pogiemudia@gmail.com' },
   isAlertingEnabled: { type: Boolean, default: true },

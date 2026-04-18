@@ -9,11 +9,13 @@ export default function AICommandCentreContent() {
   // Settings State
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   // Audit State
   const [consultations, setConsultations] = useState<any[]>([]);
+  const [auditing, setAuditing] = useState(false);
   const [expandedChat, setExpandedChat] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,20 +23,31 @@ export default function AICommandCentreContent() {
     fetchConsultations();
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== 'audit') return;
+    const interval = setInterval(fetchConsultations, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/ai/settings');
       if (res.ok) {
         setSettings(await res.json());
+        setSettingsError(false);
+      } else {
+        setSettingsError(true);
       }
     } catch (e) {
       console.error(e);
+      setSettingsError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchConsultations = async () => {
+    setAuditing(true);
     try {
       const res = await fetch('/api/admin/ai/consultations?limit=30');
       if (res.ok) {
@@ -42,6 +55,8 @@ export default function AICommandCentreContent() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setAuditing(false);
     }
   };
 
@@ -49,16 +64,24 @@ export default function AICommandCentreContent() {
     setSaving(true);
     setMsg("");
     try {
+      const payload = {
+        ...settings,
+        goldenRules: (settings?.goldenRules || []).filter(
+          (r: any) => r.input?.trim() && r.output?.trim()
+        )
+      };
       const res = await fetch('/api/admin/ai/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
-        setMsg("Settings saved automatically.");
+        const saved = await res.json();
+        setSettings(saved);
+        setMsg("Settings saved.");
         setTimeout(() => setMsg(""), 3000);
       } else {
-        setMsg("Failed to save.");
+        setMsg("Failed to save. Please try again.");
       }
     } catch (e) {
       setMsg("Network error.");
@@ -68,22 +91,24 @@ export default function AICommandCentreContent() {
   };
 
   const addRule = () => {
+    if (!settings) return;
     const newRule = { input: '', output: '', label: 'New Rule' };
     setSettings((prev: any) => ({
       ...prev,
-      goldenRules: [...(prev.goldenRules || []), newRule]
+      goldenRules: [...(prev?.goldenRules || []), newRule]
     }));
   };
 
   const updateRule = (index: number, field: string, value: string) => {
+    if (!settings?.goldenRules) return;
     const rules = [...settings.goldenRules];
-    rules[index][field] = value;
+    rules[index] = { ...rules[index], [field]: value };
     setSettings({ ...settings, goldenRules: rules });
   };
 
   const removeRule = (index: number) => {
-    const rules = [...settings.goldenRules];
-    rules.splice(index, 1);
+    if (!settings?.goldenRules) return;
+    const rules = settings.goldenRules.filter((_: any, i: number) => i !== index);
     setSettings({ ...settings, goldenRules: rules });
   };
 
@@ -104,6 +129,15 @@ export default function AICommandCentreContent() {
   });
 
   if (loading) return <Box sx={{ p: 4, textAlign: 'center', color: '#888' }}>Loading Command Centre...</Box>;
+
+  if (settingsError) return (
+    <Box sx={{ p: 4, textAlign: 'center' }}>
+      <Typography sx={{ color: '#d32f2f', fontWeight: 600, mb: 1 }}>Failed to load AI settings.</Typography>
+      <Button onClick={() => { setLoading(true); fetchSettings(); }} variant="outlined" size="small" sx={{ borderColor: '#0F6E56', color: '#0F6E56' }}>
+        Retry
+      </Button>
+    </Box>
+  );
 
   return (
     <Box sx={{ fontFamily: 'Sora, sans-serif', pb: 4 }}>
@@ -131,7 +165,18 @@ export default function AICommandCentreContent() {
       {/* Audit Tab */}
       {activeTab === 'audit' && (
         <Box>
-           <Typography sx={{ fontSize: '15px', fontWeight: 700, mb: 2 }}>Recent Consultations</Typography>
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography sx={{ fontSize: '15px', fontWeight: 700 }}>Recent Consultations</Typography>
+              <Button
+                  onClick={fetchConsultations}
+                  disabled={auditing}
+                  size="small"
+                  variant="outlined"
+                  sx={{ borderColor: '#0F6E56', color: '#0F6E56', borderRadius: '8px', textTransform: 'none', fontSize: '12px', fontWeight: 600 }}
+              >
+                  {auditing ? 'Refreshing...' : '↻ Refresh'}
+              </Button>
+           </Box>
            {consultations.length === 0 ? (
              <Typography sx={{ fontSize: '13px', color: '#888', fontStyle: 'italic' }}>No active or recent chats found.</Typography>
            ) : (
