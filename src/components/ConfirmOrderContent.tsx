@@ -309,7 +309,17 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     }
   }, [postPaymentStatus, setView]);
 
+  const isReturningFromPayment = searchParams?.get('redirect_status') === 'success';
+
   if (items.length === 0 && postPaymentStatus === 'idle') {
+    if (isReturningFromPayment) {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 2 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">Processing your payment...</Typography>
+        </Box>
+      );
+    }
     return (
       <div className="co-container" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px'}}>
         <Typography variant="h6" sx={{ mb: 2 }}>Your cart is empty</Typography>
