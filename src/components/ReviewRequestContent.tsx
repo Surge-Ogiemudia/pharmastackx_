@@ -59,13 +59,15 @@ interface Request {
 
 type SortByType = 'efficiency' | 'price' | 'distance' | 'date';
 
-const QuoteCard: React.FC<{ 
-  quote: Quote; 
-  onRequestDecision: (quoteId: string, items: any[]) => void; 
-  isActionDisabled: boolean; 
+const QuoteCard: React.FC<{
+  quote: Quote;
+  onRequestDecision: (quoteId: string, items: any[]) => void;
+  onRetryPayment: (quoteId: string, items: any[]) => void;
+  isActionDisabled: boolean;
   isFetchingDistance: boolean;
   isBest?: boolean;
-}> = ({ quote, onRequestDecision, isActionDisabled, isFetchingDistance, isBest }) => {
+  requestStatus: string;
+}> = ({ quote, onRequestDecision, onRetryPayment, isActionDisabled, isFetchingDistance, isBest, requestStatus }) => {
 
     const validItems = useMemo(() => 
         quote.items.filter(item => 
@@ -148,13 +150,23 @@ const QuoteCard: React.FC<{
                 </div>
                 {quote.notes && <div className="rr-card-notes">"{quote.notes}"</div>}
                 
-                <button 
-                    className={`rr-select-btn ${isBest ? '' : 'outline'}`}
-                    disabled={isActionDisabled || validItems.length === 0}
-                    onClick={() => onRequestDecision(quote._id, validItems)}
-                >
-                    {quote.status === 'accepted' ? 'Accepted' : 'Select this pharmacist'}
-                </button>
+                {quote.status === 'accepted' && requestStatus === 'awaiting-confirmation' ? (
+                    <button
+                        className="rr-select-btn"
+                        style={{ background: '#F59E0B', borderColor: '#F59E0B' }}
+                        onClick={() => onRetryPayment(quote._id, validItems)}
+                    >
+                        Complete Payment →
+                    </button>
+                ) : (
+                    <button
+                        className={`rr-select-btn ${isBest ? '' : 'outline'}`}
+                        disabled={isActionDisabled || validItems.length === 0}
+                        onClick={() => onRequestDecision(quote._id, validItems)}
+                    >
+                        {quote.status === 'accepted' ? 'Accepted' : 'Select this pharmacist'}
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -235,6 +247,24 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
       return () => clearInterval(interval);
     }
   }, [requestId, requestUserLocation]);
+
+  const handleRetryPayment = (quoteId: string, itemsToAdd: any[]) => {
+      const validItems = itemsToAdd.filter(item => item.isAvailable && item.price && item.pharmacyQuantity > 0);
+      const cartItems: CartItem[] = validItems.map(item => ({
+          id: `${item.productId || item.name}-${quoteId}`,
+          name: item.name,
+          price: item.price,
+          quantity: item.pharmacyQuantity,
+          image: request?.items.find(i => i.name === item.name)?.image || '',
+          activeIngredients: request?.items.find(i => i.name === item.name)?.strength || '',
+          pharmacy: sortedQuotes.find(q => q._id === quoteId)?.pharmacy?.name || sortedQuotes.find(q => q._id === quoteId)?.externalContact?.name || 'Pharmacy',
+          drugClass: 'From Quote',
+          isQuoteItem: true,
+          quoteId: quoteId
+      }));
+      initializeCart(cartItems, requestId, quoteId);
+      setView('confirmOrder');
+  };
 
   const handleAcceptQuote = async (quoteId: string, itemsToAdd: any[]) => {
       setIsSubmitting(true);
@@ -358,13 +388,15 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
             )}
 
             {sortedQuotes.map((quote, idx) => (
-                <QuoteCard 
+                <QuoteCard
                     key={quote._id}
                     quote={quote}
                     onRequestDecision={handleAcceptQuote}
+                    onRetryPayment={handleRetryPayment}
                     isActionDisabled={isSubmitting || request.status !== 'quoted'}
                     isFetchingDistance={isFetchingDistances}
                     isBest={idx === 0 && sortBy === 'efficiency'}
+                    requestStatus={request.status}
                 />
             ))}
 
