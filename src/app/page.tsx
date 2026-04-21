@@ -1032,14 +1032,6 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                     </Button>
                 </Grid>
               )}
-              {normalizedUser && ['pharmacy', 'pharmacist', 'clinic', 'admin'].includes(normalizedUser.role) && (
-                <Grid item xs="auto">
-                    <Button variant="contained" onClick={() => setView('medicineRestock')}
-                          sx={{ borderRadius: '20px', px: 4, py: 1.5, fontWeight: 600, bgcolor: 'secondary.main', color: 'white', '&:hover': { transform: 'scale(1.05)', bgcolor: 'secondary.dark' } }}>
-                        Medicine Restock
-                    </Button>
-                </Grid>
-              )}
               {detailedUser && detailedUser.role === 'admin' && (
                 <Grid item xs="auto">
                     <Button variant="contained" onClick={() => router.push('/admin/god-mode')}
@@ -1275,7 +1267,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav currentView={(view === 'orders' && ordersViewMode === 'requests-list') ? 'orderMedicines' : view} onTabClick={(v) => {
+       <BottomNav currentView={(view === 'orders' && ordersViewMode === 'requests-list') ? 'orderMedicines' : view === 'medicineRestock' ? 'orderMedicines' : view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
          if (v === 'requests-list') setActiveRequestId(null);
          setOrdersInitialViewMode('dashboard');
