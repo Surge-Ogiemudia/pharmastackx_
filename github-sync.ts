@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const REPO = "Surge-Ogiemudia/pharmastackx_";
 const TOKEN = process.env.GITHUB_TOKEN;
 const BRANCH = "main";
-const MESSAGE = "feat: final sync - include confirm order fix and terminal updates";
+const MESSAGE = "feat: navigation highlight fix and data privacy enforcement";
 
 const FILES_TO_SYNC = [
     "src/components/ConfirmOrderContent.tsx",
@@ -37,6 +37,7 @@ const FILES_TO_SYNC = [
     "src/app/api/ai/scan-rx/route.ts",
     "src/app/api/ai/scan-med/route.ts",
     "src/app/api/stock/enrich-and-upload/route.ts",
+    "src/components/OrderRequestsContent.tsx",
     "src/app/MainLayout.tsx",
     "src/lib/track.ts",
     "src/models/AnalyticsEvent.ts",
@@ -80,7 +81,10 @@ const FILES_TO_SYNC = [
     "src/components/TopContactsContent.tsx",
     "src/app/api/admin/settings/route.ts",
     "src/components/ManageRequest.tsx",
-    "src/app/review-request/[id]/page.tsx"
+    "src/app/review-request/[id]/page.tsx",
+    "src/components/CartContent.tsx",
+    "src/components/DeliveryStatusModal.tsx",
+    "src/app/api/delivery-status/route.ts"
 ];
 
 async function sync() {
