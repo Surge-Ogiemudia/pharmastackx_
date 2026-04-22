@@ -219,17 +219,19 @@ const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest, fi
                     {item.type === 'order' ? (item.businesses[0]?.name || 'Pharmacy') : 'Pharmacy search'} · {new Date(item.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                   </div>
                 </div>
-                <div className={`badge-pill ${item.status === 'Completed' ? 'badge-green' : 'badge-pink'}`}>
-                  {item.status || 'Active'}
+                <div className={`badge-pill ${item.status === 'Completed' ? 'badge-green' : item.status === 'awaiting-confirmation' ? '' : 'badge-pink'}`}
+                  style={item.status === 'awaiting-confirmation' ? { background: '#FEF3C7', color: '#92400E' } : undefined}>
+                  {item.status === 'awaiting-confirmation' ? 'Payment Pending' : item.status || 'Active'}
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                 <div className="fraunces" style={{ fontSize: '16px', fontWeight: 900, color: 'var(--green)', letterSpacing: '-0.5px' }}>
                   {item.type === 'order' ? `₦${item.totalAmount?.toLocaleString()}` : (item.quoteCount > 0 ? `${item.quoteCount} Quotes` : 'Pending')}
                 </div>
-                <div className={`reorder-link ${item.status === 'Completed' ? '' : 'pink'}`}>
-                  {item.status === 'Completed' ? 'Reorder' : (item.type === 'request' ? 'View Quotes' : 'Track Order')}
+                <div className={`reorder-link ${item.status === 'Completed' ? '' : 'pink'}`}
+                  style={item.status === 'awaiting-confirmation' ? { color: '#D97706', fontWeight: 700 } : undefined}>
+                  {item.status === 'Completed' ? 'Reorder' : item.status === 'awaiting-confirmation' ? 'Continue to Payment →' : (item.type === 'request' ? 'View Quotes' : 'Track Order')}
                 </div>
               </div>
             </div>
