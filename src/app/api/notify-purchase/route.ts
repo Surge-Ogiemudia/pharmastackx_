@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { transporter } from '@/lib/nodemailer';
 import { sendWhatsAppMessage } from '@/lib/whapi';
 
-const ADMIN_EMAIL = 'pharmastackx@gmail.com';
+const ADMIN_EMAIL = 'pharmastackxsales@gmail.com';
 const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP_NUMBER;
 
 export async function POST(req: NextRequest) {
