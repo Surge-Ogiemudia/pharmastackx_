@@ -13,6 +13,7 @@ import { notifyPharmacists } from "@/lib/whatsapp-notifier";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import WhatsAppSession from '@/models/WhatsAppSession';
 import DeliverySession from '@/models/DeliverySession';
+import DmConversation from '@/models/DmConversation';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { sendWhatsAppMessage } from '@/lib/whapi';
 
@@ -230,6 +231,167 @@ async function handleDeliveryReply(senderPhone: string, incomingText: string) {
     return true;
 }
 
+// ── Private DM conversation handler ─────────────────────────────────────────
+
+const NIGERIAN_STATES = [
+  'abia','adamawa','akwa ibom','anambra','bauchi','bayelsa','benue','borno',
+  'cross river','delta','ebonyi','edo','ekiti','enugu','fct','abuja','gombe',
+  'imo','jigawa','kaduna','kano','katsina','kebbi','kogi','kwara','lagos',
+  'nasarawa','niger','ogun','ondo','osun','oyo','plateau','rivers','sokoto',
+  'taraba','yobe','zamfara',
+];
+
+function extractState(text: string): string | null {
+  const lower = text.toLowerCase().replace(/\bstate\b/g, '').trim();
+  // Try exact word-boundary match first
+  for (const s of NIGERIAN_STATES) {
+    const regex = new RegExp(`\\b${s.replace(' ', '\\s+')}\\b`, 'i');
+    if (regex.test(lower)) {
+      // Capitalise nicely
+      return s === 'fct' || s === 'abuja' ? 'FCT - Abuja' :
+        s.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+    }
+  }
+  return null;
+}
+
+async function handlePrivateDm(senderPhone: string, text: string) {
+  const phone = senderPhone.split('@')[0];
+  const replyTo = `${phone}@s.whatsapp.net`;
+  const lowerText = text.toLowerCase().trim();
+
+  // 1. Check if they're continuing an existing conversation (awaiting_state)
+  const existing = await DmConversation.findOne({
+    phone,
+    step: 'awaiting_state',
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (existing) {
+    const state = extractState(text);
+    if (!state) {
+      await sendWhatsAppMessage(replyTo,
+        `📍 I didn't catch that state. Please reply with just your state name.\n\nE.g. *Lagos*, *Abuja*, *Rivers*, *Kano*`
+      );
+      return;
+    }
+
+    // State received — create the platform request and notify
+    await finaliseDmRequest(phone, existing.medicines, state, existing.rawText || text);
+    existing.step = 'complete';
+    await existing.save();
+    return;
+  }
+
+  // 2. New message — classify it
+  const classification = await classifyWhatsAppMessage(text, 'Private DM');
+  if (!classification?.isDrugRequest || classification.confidence < 0.55) {
+    // Not a drug request — send friendly help
+    await sendWhatsAppMessage(replyTo,
+      `👋 Hi! I'm *PharmaStackX*.\n\nTell me which medicine you're looking for and we'll connect you with pharmacists near you.\n\nE.g. _I need Amoxicillin 500mg, 2 packs_`
+    );
+    return;
+  }
+
+  const medicines: any[] = (classification.medicines || []).map((m: any) => ({
+    name: m.name,
+    strength: m.strength || '',
+    form: m.form || 'Tablet',
+    quantity: m.quantity || 1,
+  }));
+
+  if (!medicines.length) {
+    await sendWhatsAppMessage(replyTo,
+      `👋 Hi! I'd love to help.\n\nCould you please tell me:\n1️⃣ The *medicine name*\n2️⃣ The *quantity* you need\n3️⃣ Your *state*\n\nE.g. _Paracetamol 500mg x3, Lagos_`
+    );
+    return;
+  }
+
+  const state = extractState(classification.location || text);
+
+  if (!state) {
+    // Save session and ask for state
+    await DmConversation.create({
+      phone,
+      step: 'awaiting_state',
+      medicines,
+      rawText: text,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    const medList = medicines.map((m: any) =>
+      `• ${m.name}${m.strength ? ` ${m.strength}` : ''} x${m.quantity}`
+    ).join('\n');
+
+    await sendWhatsAppMessage(replyTo,
+      `Got it! I found your request:\n${medList}\n\n📍 Which *state* are you in? This helps us find the nearest pharmacists.\n\nE.g. *Lagos*, *Abuja*, *Rivers*`
+    );
+    return;
+  }
+
+  // We have everything — create request immediately
+  await finaliseDmRequest(phone, medicines, state, text);
+}
+
+async function finaliseDmRequest(phone: string, medicines: any[], state: string, rawText: string) {
+  const replyTo = `${phone}@s.whatsapp.net`;
+
+  try {
+    // Get or create the bot user
+    let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
+    if (!botUser) {
+      botUser = await UserModel.create({
+        username: 'whatsapp_bot',
+        email: 'whatsapp@pharmastackx.com',
+        password: 'system_bot_password_123',
+        role: 'customer',
+        name: 'WhatsApp Automated Bot',
+      });
+    }
+
+    const platformRequest = await RequestModel.create({
+      user: botUser._id,
+      phoneNumber: phone,
+      state,
+      requestType: 'drug-list',
+      items: medicines,
+      status: 'pending',
+      notes: `[WHAPI AUTOMATED] Private DM\nRaw: ${rawText}`,
+    });
+
+    // Notify pharmacists + top contacts (reuse the same flow as groups)
+    const waRequest = await WhatsAppRequest.create({
+      source: 'whatsapp_dm',
+      groupId: `dm_${phone}`,
+      groupName: 'Private DM',
+      rawText,
+      medicines,
+      location: state,
+      urgency: 'normal',
+      confidence: 0.95,
+      status: 'open',
+      platform_request_id: platformRequest._id,
+      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+    });
+
+    await notifyPharmacists(waRequest);
+
+    // Confirm to the user
+    const medList = medicines.map((m: any) =>
+      `• ${m.name}${m.strength ? ` ${m.strength}` : ''} x${m.quantity}`
+    ).join('\n');
+
+    await sendWhatsAppMessage(replyTo,
+      `✅ *Request received!*\n\nWe're searching for:\n${medList}\n\n📍 *State:* ${state}\n\nPharmacists in your area have been notified. You'll receive a reply here shortly with pricing and availability. 🙏\n\n_PharmaStackX — Your health, our priority._`
+    );
+  } catch (err: any) {
+    console.error('[DM] finaliseDmRequest error:', err?.message);
+    await sendWhatsAppMessage(replyTo,
+      `Sorry, something went wrong on our end. Please try again in a moment. 🙏`
+    ).catch(() => {});
+  }
+}
+
 // Keyword filter to save AI costs (regex)
 const DRUG_KEYWORDS = /drug search|who has|looking for|urgently needed|in need of|needed|available|where can i get|pls who has|anybody has|who get|searching for|qty|strength|location:|loc:/i;
 const NOISE_KEYWORDS = /meeting|lecture|dues|election|football|chelsea|arsenal|politics/i;
@@ -271,6 +433,31 @@ export async function POST(req: NextRequest) {
                 let rawText = "";
                 let isImage = false;
                 let mediaBase64: string | null = null;
+
+                // Skip messages sent by our own number
+                if (msg.from_me) continue;
+
+                // Private DM — handle conversationally, skip group flow
+                const isDm = msg.chat_id && !msg.chat_id.endsWith('@g.us');
+                if (isDm && msg.type === 'text') {
+                    rawText = msg.text?.body || "";
+                    console.log(`📩 [DM] from ${msg.from}: ${rawText.substring(0, 80)}`);
+                    // Delivery agent replies still take priority
+                    const handledByDelivery = await handleDeliveryReply(msg.from, rawText);
+                    if (!handledByDelivery) {
+                        // Also check if they're replying to a pharmacist quote session
+                        const handledByQuote = await (async () => {
+                            const phone = msg.from.split('@')[0];
+                            const session = await WhatsAppSession.findOne({ phone, status: 'waiting', expiresAt: { $gt: new Date() } }).sort({ sentAt: -1 });
+                            if (session) { await handleQuoteReply(msg.from, rawText); return true; }
+                            return false;
+                        })();
+                        if (!handledByQuote) {
+                            await handlePrivateDm(msg.from, rawText);
+                        }
+                    }
+                    continue;
+                }
 
                 if (msg.type === 'text') {
                     rawText = msg.text?.body || "";
