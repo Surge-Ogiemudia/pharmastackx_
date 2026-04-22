@@ -96,6 +96,13 @@ export default function HomePage() {
   const [ordersBackView, setOrdersBackView] = useState<string | undefined>(undefined);
 
   const setViewWithPrev = (newView: string) => {
+    if (newView === 'orderManagement') {
+      setPrevView(view);
+      setOrdersInitialViewMode('orders-list');
+      setOrdersViewMode('orders-list');
+      setView('orders');
+      return;
+    }
     setPrevView(view);
     setView(newView);
   };
@@ -907,7 +914,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
           >
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
               <Suspense fallback={<Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>}>
-                <ConfirmOrderContent setView={setView} />
+                <ConfirmOrderContent setView={setViewWithPrev} />
               </Suspense>
             </Box>
           </Box>

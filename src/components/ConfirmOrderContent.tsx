@@ -330,7 +330,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           patientName={patientName}
           total={total}
           items={items.map(i => ({ name: i.name, qty: i.quantity, price: i.price }))}
-          onDone={() => { setShowPostPaymentFlow(false); setView('orders'); }}
+          onDone={() => { setShowPostPaymentFlow(false); setView('orderManagement'); }}
         />
       )}
 
