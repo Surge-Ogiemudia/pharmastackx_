@@ -1,6 +1,10 @@
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import axios from 'axios';
 import User from '@/models/User';
+import RequestModel from '@/models/Request';
+import TopContact from '@/models/TopContact';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import { sendWhatsAppMessage } from '@/lib/whapi';
 import { dbConnect } from '@/lib/mongoConnect';
 import GlobalSettings from '@/models/GlobalSettings';
 
@@ -131,14 +135,14 @@ export async function notifyPharmacists(request: any) {
         console.warn("⚠️ No FCM tokens found to notify.");
     }
 
-    // 3. Send Admin WhatsApp Alert (Keep this as it's WhatsApp-specific)
+    // 3. Send Admin WhatsApp Alert
     if (WHAPI_TOKEN && ADMIN_NUMBER) {
         try {
             const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'psx.ng';
             const link = `https://${baseUrl}/admin/requests/${targetId}`;
 
             const waMessage = `🔔 *New Request Intercepted*\n\n💊 *Drug:* ${medicineNamesString}\n📍 *Loc:* ${location || 'Unknown'}\n\nReview & Notify: ${link}`;
-            
+
             await axios.post(`https://gate.whapi.cloud/messages/text`, {
                 typing_time: 0,
                 to: `${ADMIN_NUMBER}@s.whatsapp.net`,
@@ -150,5 +154,62 @@ export async function notifyPharmacists(request: any) {
         } catch (error) {
             console.error("❌ Admin WhatsApp Error:", error);
         }
+    }
+
+    // 4. Dispatch WhatsApp to top contacts in the detected state (same as web flow)
+    try {
+        const topContactDoc = await TopContact.findOne({
+            state: new RegExp(`^${normalizedLocation}$`, 'i')
+        }).lean() as any;
+
+        if (!topContactDoc?.contacts?.length) {
+            console.log(`[whatsapp-notifier] No top contacts found for state: ${normalizedLocation}`);
+            return;
+        }
+
+        const activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive !== false && c.phone);
+        console.log(`[whatsapp-notifier] Dispatching to ${activeContacts.length} top contacts in ${normalizedLocation}`);
+
+        // Fetch platform request items for the proper message format
+        let requestItems: any[] = medicines.map((m: any) => ({
+            name: m.name,
+            strength: m.strength,
+            form: m.form,
+            quantity: m.quantity || 1
+        }));
+
+        if (platform_request_id) {
+            try {
+                const platformReq = await RequestModel.findById(platform_request_id).lean() as any;
+                if (platformReq?.items?.length) requestItems = platformReq.items;
+            } catch { /* use medicines fallback */ }
+        }
+
+        const itemList = requestItems.map((item: any) =>
+            `• ${item.name}${item.strength ? ` ${item.strength}` : ''}${item.form ? ` (${item.form})` : ''} x${item.quantity || 1}`
+        ).join('\n');
+
+        for (const contact of activeContacts) {
+            try {
+                const waMsg = `🔔 *New Medicine Request — PharmaStackX*\n\nA patient in *${normalizedLocation}* needs:\n${itemList}\n\n*Reply with:*\n✅ AVAILABLE [total price in Naira]\n❌ NOT AVAILABLE\n\n_Example: AVAILABLE 3500_\n\n_Ref: ${String(targetId).slice(-6).toUpperCase()}_\n_This request expires in 24 hours._`;
+
+                await sendWhatsAppMessage(contact.phone, waMsg);
+
+                await WhatsAppSession.create({
+                    phone: contact.phone,
+                    requestId: platform_request_id || _id,
+                    contactName: contact.name,
+                    requestState: normalizedLocation,
+                    status: 'waiting',
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                });
+
+                console.log(`[whatsapp-notifier] ✅ WhatsApp sent + session created for ${contact.name} (${contact.phone})`);
+            } catch (contactErr: any) {
+                console.error(`[whatsapp-notifier] ❌ Failed for ${contact.phone}:`, contactErr?.message);
+            }
+        }
+    } catch (topContactErr: any) {
+        console.error('[whatsapp-notifier] Top contact dispatch error:', topContactErr?.message);
     }
 }
