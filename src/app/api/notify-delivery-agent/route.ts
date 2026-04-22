@@ -126,29 +126,39 @@ export async function POST(req: NextRequest) {
     console.log(`[notify-agent] Notifying ${sorted.length} agents...`);
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
+    let dispatched = 0;
     for (const agent of sorted) {
       const dropoffMapLine = dropoffCoords ? `🗺️ ${googleMapsLink(dropoffCoords)}\n` : '';
       const message = `🚴 *PharmaStackX Delivery Request*\n\nYou have a new delivery nearby!\n\n📦 *Pickup (Pharmacy):*\n${pharmacistName}\n📍 ${pickupAddress}\n🗺️ ${googleMapsLink(pickupCoords)}\n📞 Pharmacist: ${pharmacistPhone}\n\n🏠 *Dropoff (Patient):*\n📍 ${dropoffAddress}\n${dropoffMapLine}📞 Patient: ${patientPhone}\n\n📏 Distance from you to pickup: ~${agent.distanceKm.toFixed(1)} km\n\nReply *ACCEPT* to take this delivery or *DECLINE* to pass.\nThis offer expires in 2 hours.`;
 
-      await sendWhatsAppMessage(agent.phone, message);
+      try {
+        await sendWhatsAppMessage(agent.phone, message);
+      } catch (waErr: any) {
+        console.error(`[notify-agent] WhatsApp failed for ${agent.phone}:`, waErr?.message || waErr);
+      }
 
-      await DeliverySession.create({
-        phone: agent.phone,
-        orderId: acceptedQuote._id?.toString() || requestId,
-        requestId,
-        agentName: agent.name,
-        status: 'waiting',
-        pickupAddress,
-        pickupCoords,
-        dropoffAddress,
-        dropoffCoords,
-        pharmacistPhone,
-        patientPhone,
-        expiresAt,
-      });
+      try {
+        await DeliverySession.create({
+          phone: agent.phone,
+          orderId: acceptedQuote._id?.toString() || requestId,
+          requestId,
+          agentName: agent.name,
+          status: 'waiting',
+          pickupAddress,
+          pickupCoords,
+          dropoffAddress,
+          dropoffCoords,
+          pharmacistPhone,
+          patientPhone,
+          expiresAt,
+        });
+        dispatched++;
+      } catch (dbErr: any) {
+        console.error(`[notify-agent] DeliverySession create failed for ${agent.phone}:`, dbErr?.message || dbErr);
+      }
     }
 
-    return NextResponse.json({ dispatched: sorted.length });
+    return NextResponse.json({ dispatched });
   } catch (err: any) {
     console.error('[notify-agent] FATAL ERROR:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
