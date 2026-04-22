@@ -81,14 +81,20 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    const isGuest = typeof userId === 'string' && userId.startsWith('guest_');
+    const userFilter = isGuest ? { guestId: userId } : { userId };
+    const newConsultationData = isGuest
+      ? { guestId: userId, messages: [], status: 'ai', aiMoveCount: 0 }
+      : { userId, messages: [], status: 'ai', aiMoveCount: 0 };
+
     let consultation;
     if (consultationId) {
       consultation = await Consultation.findById(consultationId);
     } else {
       // Find existing active AI consultation for this user or create new
-      consultation = await Consultation.findOne({ userId, status: 'ai' }).sort({ createdAt: -1 });
+      consultation = await Consultation.findOne({ ...userFilter, status: 'ai' }).sort({ createdAt: -1 });
       if (!consultation || consultation.status !== 'ai') {
-        consultation = new Consultation({ userId, messages: [], status: 'ai', aiMoveCount: 0 });
+        consultation = new Consultation(newConsultationData);
       }
     }
 
