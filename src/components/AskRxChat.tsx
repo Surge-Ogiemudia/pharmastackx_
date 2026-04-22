@@ -19,6 +19,18 @@ interface Message {
     image?: string;
 }
 
+function getOrCreateGuestId(): string {
+    try {
+        const existing = localStorage.getItem('psx_guest_id');
+        if (existing) return existing;
+        const id = 'guest_' + Math.random().toString(36).slice(2, 11);
+        localStorage.setItem('psx_guest_id', id);
+        return id;
+    } catch {
+        return 'guest_anon';
+    }
+}
+
 export default function AskRxChat({ open, onClose }: { open: boolean, onClose: () => void }) {
     const { user } = useSession();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -27,6 +39,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
     const [status, setStatus] = useState<'ai' | 'pending_escalation' | 'escalated' | 'resolved'>('ai');
     const [consultationId, setConsultationId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const effectiveUserId = user?._id || (user as any)?.id || (typeof window !== 'undefined' ? getOrCreateGuestId() : 'guest_anon');
 
     const recognitionRef = useRef<any>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -55,10 +68,17 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
         });
     };
 
-    // Initial Load: Fetch existing consultation
+    // Initial Load: Fetch existing consultation (logged-in users only; guests start fresh)
     useEffect(() => {
         if (open && user) {
             fetchConsultation();
+        } else if (open && messages.length === 0) {
+            setMessages([{
+                id: 'welcome',
+                text: "Hi! I'm your Rx Expert. Ask me anything about your medications, side effects, or dosages.",
+                sender: 'ai',
+                timestamp: new Date()
+            }]);
         }
     }, [open, user]);
 
@@ -107,7 +127,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
     }, [messages]);
 
     const handleSend = async () => {
-        if ((!inputValue.trim() && !attachedImage) || !user) return;
+        if (!inputValue.trim() && !attachedImage) return;
 
         const text = inputValue;
         const image = attachedImage?.base64 || null;
@@ -115,10 +135,10 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
         setAttachedImage(null);
 
         const tempId = Date.now().toString();
-        setMessages(prev => [...prev, { 
-            id: tempId, 
-            text, 
-            sender: 'user', 
+        setMessages(prev => [...prev, {
+            id: tempId,
+            text,
+            sender: 'user',
             timestamp: new Date(),
             image: image || undefined
         }]);
@@ -128,9 +148,9 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
             const res = await fetch('/api/ai/ask-rx', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: text || 'What can you tell me about this?', 
-                    userId: user._id || (user as any).id, 
+                body: JSON.stringify({
+                    message: text || 'What can you tell me about this?',
+                    userId: effectiveUserId,
                     consultationId,
                     image
                 })
@@ -514,7 +534,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
 
                                 <IconButton
                                     onClick={() => fileInputRef.current?.click()}
-                                    disabled={!user || isLoading || status === 'resolved'}
+                                    disabled={isLoading || status === 'resolved'}
                                     size="small"
                                     sx={{ color: attachedImage ? '#0F6E56' : '#bbb', flexShrink: 0, '&:hover': { color: '#0F6E56' } }}
                                 >
@@ -526,20 +546,19 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
                                     variant="standard"
                                     placeholder={
                                         isRecording ? '🎙 Listening...' :
-                                        !user ? 'Login to chat...' :
                                         status === 'resolved' ? 'Session ended.' :
                                         'Type, speak, or attach image...'
                                     }
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                    disabled={!user || isLoading || status === 'resolved'}
+                                    disabled={isLoading || status === 'resolved'}
                                     InputProps={{ disableUnderline: true, sx: { fontSize: '14px', px: 1 } }}
                                 />
 
                                 <IconButton
                                     onClick={handleVoiceToggle}
-                                    disabled={!user || isLoading || status === 'resolved'}
+                                    disabled={isLoading || status === 'resolved'}
                                     size="small"
                                     sx={{
                                         flexShrink: 0,
@@ -559,7 +578,7 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
 
                                 <IconButton
                                     onClick={handleSend}
-                                    disabled={(!inputValue.trim() && !attachedImage) || !user || isLoading || status === 'resolved'}
+                                    disabled={(!inputValue.trim() && !attachedImage) || isLoading || status === 'resolved'}
                                     sx={{
                                         flexShrink: 0,
                                         bgcolor: '#0F6E56',
