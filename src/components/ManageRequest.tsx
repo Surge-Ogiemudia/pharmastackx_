@@ -57,7 +57,8 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
     }
     return [ { name: '', price: 0, pharmacyQuantity: 1, isAvailable: true } ];
   });
-  const [notes, setNotes] = useState(initialData?.notes || '');
+  const isAutoNote = (n?: string) => !!(n && (n.toLowerCase().includes('whapi') || n.toLowerCase().includes('automated')));
+  const [notes, setNotes] = useState(isAutoNote(initialData?.notes) ? '' : (initialData?.notes || ''));
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,7 +88,7 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
             }
           }
           
-          if (data.notes && !notes) setNotes(data.notes);
+          if (data.notes && !notes && !isAutoNote(data.notes)) setNotes(data.notes);
         } catch (err) { 
           if (!request) setError(err instanceof Error ? err.message : 'An unknown error');
         } finally { 
@@ -345,7 +346,7 @@ const ManageRequest: React.FC<ManageRequestProps> = ({ requestId, onBack, onSucc
           </div>
         ))}
 
-        {request.notes && (
+        {request.notes && !request.notes.toLowerCase().includes('whapi') && !request.notes.toLowerCase().includes('automated') && (
           <div className="glass-card" style={{ cursor: 'default', background: 'rgba(255,165,0,0.03)', border: '1px solid rgba(255,165,0,0.1)' }}>
             <div className="sec-tag" style={{ marginTop: 0, color: '#B45309', fontSize: '10px', letterSpacing: '1px', fontWeight: 900 }}>PATIENT REQUIREMENTS</div>
             <Typography sx={{ fontSize: '14px', color: '#1a1a1a', fontWeight: 500, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
