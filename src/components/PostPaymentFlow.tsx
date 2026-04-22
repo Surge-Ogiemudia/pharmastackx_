@@ -89,7 +89,7 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
           const data = await res.json();
           if (!res.ok) {
             console.error('[PostPaymentFlow] notify-delivery-agent failed:', data.error);
-            setFailReason(`${friendlyError(data.error || '')} [debug: ${data.error || 'unknown'}]`);
+            setFailReason(friendlyError(data.error || ''));
             setStep('failed');
           } else {
             setAgentCount(data.dispatched ?? 0);

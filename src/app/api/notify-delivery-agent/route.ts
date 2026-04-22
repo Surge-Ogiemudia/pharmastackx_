@@ -122,19 +122,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No delivery agents available in state' }, { status: 404 });
     }
 
-    const activeAgents = agentDoc.agents.filter((a: any) => a.isActive && a.coordinates);
+    // Accept agents with isActive true OR unset — only exclude explicitly inactive ones
+    const activeAgents = agentDoc.agents.filter((a: any) => a.isActive !== false && a.phone);
+
+    if (activeAgents.length === 0) {
+      console.warn(`[notify-agent] 0 active agents in ${stateRaw}`);
+      return NextResponse.json({ error: 'No active delivery agents available' }, { status: 404 });
+    }
+
+    // Sort by distance if coords available, otherwise keep original order
     const sorted = activeAgents
       .map((a: any) => ({
         ...a,
-        distanceKm: haversineKm(a.coordinates, pickupCoords!),
+        distanceKm: a.coordinates ? haversineKm(a.coordinates, pickupCoords!) : 9999,
       }))
       .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
       .slice(0, 2);
-
-    if (sorted.length === 0) {
-      console.warn(`[notify-agent] 0 active agents with coords in ${stateRaw}`);
-      return NextResponse.json({ error: 'No active delivery agents available' }, { status: 404 });
-    }
 
     console.log(`[notify-agent] Notifying ${sorted.length} agents...`);
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
