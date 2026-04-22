@@ -1,19 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  CircularProgress, 
+import {
+  CircularProgress,
   Alert,
   Box,
   Typography,
-  Paper,
   IconButton,
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
+  Dialog,
+  DialogTitle,
+  DialogContent,
   DialogActions,
 } from '@mui/material';
-import { DeleteOutline, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { DeleteOutline } from '@mui/icons-material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from "next/dynamic";
 import { useCart } from '../contexts/CartContext';
@@ -23,7 +22,7 @@ import { useSession } from '../context/SessionProvider';
 import { event } from '../lib/gtag';
 import { Business } from '@/types';
 import './ConfirmOrder.css';
-import DeliveryStatusModal from './DeliveryStatusModal';
+import PostPaymentFlow from './PostPaymentFlow';
 
 const PaystackButton = dynamic(
   () => import("./PaystackButton"),
@@ -80,8 +79,8 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   
   const [postPaymentStatus, setPostPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [postPaymentMessage, setPostPaymentMessage] = useState('');
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [deliveryRequestId, setDeliveryRequestId] = useState<string | null>(null);
+  const [showPostPaymentFlow, setShowPostPaymentFlow] = useState(false);
+  const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'pickup'>('standard');
@@ -276,6 +275,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
             action: 'confirm-request',
             patientPhone: deliveryPhone,
             deliveryAddress: [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', '),
+            state: deliveryState,
           }),
         }).catch(err => console.error('Failed to confirm request:', err));
       }
@@ -284,8 +284,8 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       removePromo();
       router.replace(window.location.pathname, { scroll: false });
       setPostPaymentStatus('idle');
-      setDeliveryRequestId(capturedRequestId ?? null);
-      setShowDeliveryModal(!!capturedRequestId);
+      setCompletedRequestId(capturedRequestId ?? null);
+      setShowPostPaymentFlow(true);
     } else {
       setPostPaymentStatus('error');
       setPostPaymentMessage(`Order creation failed: ${result.message}`);
@@ -300,14 +300,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     }
   }, [searchParams, postPaymentStatus, items.length, createOrderFromCart]);
 
-  useEffect(() => {
-    if (postPaymentStatus === 'success') {
-      const timer = setTimeout(() => {
-        setView('orders');
-      }, 4000); // 4 seconds delay.
-      return () => clearTimeout(timer);
-    }
-  }, [postPaymentStatus, setView]);
 
   const isReturningFromPayment = searchParams?.get('redirect_status') === 'success';
 
@@ -330,36 +322,26 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
   return (
     <div className="co-container">
-      {deliveryRequestId && (
-        <DeliveryStatusModal
-          open={showDeliveryModal}
-          requestId={deliveryRequestId}
-          onDone={() => { setShowDeliveryModal(false); setView('orders'); }}
+      {showPostPaymentFlow && completedRequestId && (
+        <PostPaymentFlow
+          requestId={completedRequestId}
+          deliveryOption={deliveryOption}
+          deliveryState={deliveryState}
+          patientName={patientName}
+          total={total}
+          items={items.map(i => ({ name: i.name, qty: i.quantity, price: i.price }))}
+          onDone={() => { setShowPostPaymentFlow(false); setView('orders'); }}
         />
       )}
 
-      {/* POST-PAYMENT OVERLAY */}
-      {postPaymentStatus !== 'idle' && (
-        <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255, 255, 255, 0.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, p: 2 }}>
-            <Paper elevation={3} sx={{ p: 4, textAlign: 'center', borderRadius: '16px', maxWidth: 450, width: '100%' }}>
-                {postPaymentStatus === 'processing' && <CircularProgress sx={{ mb: 2 }} />}
-                {postPaymentStatus === 'success' && <CheckCircle sx={{ fontSize: 56, color: 'success.main', mb: 2 }} />}
-                {postPaymentStatus === 'error' && <ErrorIcon sx={{ fontSize: 56, color: 'error.main', mb: 2 }} />}
-                
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    {postPaymentStatus === 'processing' ? 'Processing...' : postPaymentStatus === 'success' ? 'Success!' : 'An Error Occurred'}
-                </Typography>
-
-                <Typography sx={{ mb: 3 }}>
-                    {postPaymentStatus === 'success' 
-                        ? 'Your order has been placed. You will be redirected to your orders shortly...' 
-                        : postPaymentMessage}
-                </Typography>
-
-                <button className="co-proceed-btn" onClick={() => setView('orders')} disabled={postPaymentStatus !== 'success'}>
-                    View Orders
-                </button>
-            </Paper>
+      {/* POST-PAYMENT ERROR OVERLAY (order creation failed) */}
+      {postPaymentStatus === 'error' && (
+        <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255,255,255,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, p: 2 }}>
+          <Box sx={{ textAlign: 'center', maxWidth: 380 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Order creation failed</Typography>
+            <Typography sx={{ mb: 3, color: 'text.secondary' }}>{postPaymentMessage}</Typography>
+            <button className="co-proceed-btn" onClick={() => setView('orders')}>Go to orders</button>
+          </Box>
         </Box>
       )}
 

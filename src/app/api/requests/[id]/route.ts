@@ -140,10 +140,11 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
                     return NextResponse.json({ message: 'Unauthorized: You cannot confirm this request.' }, { status: 403 });
                 }
                 
-                const { patientPhone, deliveryAddress, deliveryCoords } = body;
+                const { patientPhone, deliveryAddress, deliveryCoords, state } = body;
                 if (patientPhone) originalRequest.patientPhone = patientPhone;
                 if (deliveryAddress) originalRequest.deliveryAddress = deliveryAddress;
                 if (deliveryCoords) originalRequest.deliveryCoords = deliveryCoords;
+                if (state) originalRequest.state = state;
 
                 originalRequest.status = 'confirmed';
                 shouldNotifyDelivery = true;
