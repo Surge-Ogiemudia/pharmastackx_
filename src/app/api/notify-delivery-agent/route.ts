@@ -28,21 +28,33 @@ function googleMapsLink(coords: [number, number]): string {
 const normalizeState = (s: string) => (s || '').toLowerCase().replace(/state/g, '').trim();
 
 export async function POST(req: NextRequest) {
-  await dbConnect();
+  try { await dbConnect(); } catch (e: any) {
+    console.error('[notify-agent] dbConnect failed:', e?.message);
+    return NextResponse.json({ error: `DB connection failed: ${e?.message}` }, { status: 500 });
+  }
   try {
     const { requestId } = await req.json();
     console.log(`[notify-agent] Triggered for Request: ${requestId}`);
-    
+
     if (!requestId) return NextResponse.json({ error: 'requestId required' }, { status: 400 });
 
-    const request = await Request.findById(requestId).lean() as any;
+    let request: any;
+    try {
+      request = await Request.findById(requestId).lean();
+    } catch (e: any) {
+      console.error('[notify-agent] Request.findById failed:', e?.message);
+      return NextResponse.json({ error: `Request lookup failed: ${e?.message}` }, { status: 500 });
+    }
     if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+
+    console.log(`[notify-agent] Request status: ${request.status}, state: ${request.state}, quotes: ${request.quotes?.length}`);
 
     const acceptedQuote = request.quotes?.find((q: any) => q.status === 'accepted');
     if (!acceptedQuote) {
         console.warn(`[notify-agent] No accepted quote found for ${requestId}`);
         return NextResponse.json({ error: 'No accepted quote' }, { status: 400 });
     }
+    console.log(`[notify-agent] Accepted quote found. externalContact: ${!!acceptedQuote.externalContact}, pharmacy: ${!!acceptedQuote.pharmacy}`);
 
     const dropoffCoords: [number, number] | undefined = request.deliveryCoords;
     const dropoffAddress: string = request.deliveryAddress || 'Patient delivery address';
@@ -91,6 +103,7 @@ export async function POST(req: NextRequest) {
       pharmacistName = contact?.name || 'Pharmacist';
     }
 
+    console.log(`[notify-agent] pickupCoords: ${JSON.stringify(pickupCoords)}, pickupAddress: ${pickupAddress}`);
     if (!pickupCoords) {
       console.warn(`[notify-agent] MISSING PICKUP COORDS - cannot locate delivery agents`);
       return NextResponse.json({ error: 'Missing coordinates for pickup location' }, { status: 400 });
@@ -160,7 +173,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ dispatched });
   } catch (err: any) {
-    console.error('[notify-agent] FATAL ERROR:', err);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const msg = err?.message || String(err);
+    console.error('[notify-agent] FATAL ERROR:', msg);
+    return NextResponse.json({ error: `Internal error: ${msg}` }, { status: 500 });
   }
 }
