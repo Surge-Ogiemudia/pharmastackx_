@@ -483,9 +483,7 @@ useEffect(() => {
         setSelectedRequestId(activeRequests[0]._id);
         setView('reviewRequest');
       } else {
-        setOrdersInitialViewMode('requests-list');
-        setOrdersBackView('orderMedicines');
-        setView('orders');
+        setView('requestsList');
       }
     } catch (err) {
       console.error('Error fetching latest request:', err);
@@ -947,6 +945,28 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             </Box>
           </Box>
         );
+      case 'requestsList':
+        return (
+          <Box
+            key="requests-list-view"
+            component={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+          >
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <OrdersContent
+                setView={setView}
+                setSelectedRequestId={setSelectedRequestId}
+                initialViewMode="requests-list"
+                backToView="orderMedicines"
+                onViewModeChange={setOrdersViewMode}
+              />
+            </Box>
+          </Box>
+        );
+
       case 'reviewRequest':
         if (selectedRequestId) {
             return (
@@ -1267,7 +1287,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav currentView={(view === 'orders' && ordersViewMode === 'requests-list') ? 'orderMedicines' : view === 'medicineRestock' ? 'orderMedicines' : view} onTabClick={(v) => {
+       <BottomNav currentView={view === 'requestsList' || view === 'medicineRestock' ? 'orderMedicines' : view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
          if (v === 'requests-list') setActiveRequestId(null);
          setOrdersInitialViewMode('dashboard');
@@ -1276,7 +1296,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
          setViewWithPrev(v);
        }} />
 
-       {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'requests-list' && activeRequestId === activeRequest._id) && (
+       {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'requestsList' && activeRequestId === activeRequest._id) && (
           <ReactiveQuoteOverlay 
               request={activeRequest} 
               onClick={handleOverlayClick} 
