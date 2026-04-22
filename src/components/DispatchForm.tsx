@@ -43,9 +43,9 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
 
   const { user } = useSession();
   const [modalState, setModalState] = useState<'none' | 'login' | 'confirm'>('none');
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(!!initialRequestId);
   const [showGuestGate, setShowGuestGate] = useState(false);
-  const [requestId, setRequestId] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(initialRequestId || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [generalNotes, setGeneralNotes] = useState('');
@@ -1150,7 +1150,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                     </button>
                   )}
                 </div>
-              ) : (
+              ) : !isLoadingHistory && (
                 <div style={{ padding: '20px', textAlign: 'center', background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1.5px dashed #ebebeb' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                     <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2px solid #ddd' }}></div>
