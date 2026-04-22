@@ -13,6 +13,9 @@ export interface IAnalyticsEvent extends Document {
   referrer?: string;
   userId?: string;
   internal: boolean;
+  component?: string;
+  label?: string;
+  meta?: Record<string, any>;
   createdAt: Date;
 }
 
@@ -29,6 +32,9 @@ const AnalyticsEventSchema: Schema<IAnalyticsEvent> = new Schema({
   referrer:   { type: String },
   userId:     { type: String },
   internal:   { type: Boolean, default: false, index: true },
+  component:  { type: String, index: true },
+  label:      { type: String },
+  meta:       { type: Schema.Types.Mixed },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
 // TTL index: auto-delete raw events after 90 days to keep collection lean

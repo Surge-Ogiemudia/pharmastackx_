@@ -10,6 +10,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import ImageIcon from '@mui/icons-material/Image';
 import { useSession } from '@/context/SessionProvider';
+import { useTrack } from '@/hooks/useTrack';
 
 interface Message {
     id: string;
@@ -33,6 +34,7 @@ function getOrCreateGuestId(): string {
 
 export default function AskRxChat({ open, onClose }: { open: boolean, onClose: () => void }) {
     const { user } = useSession();
+    const { track } = useTrack();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +69,10 @@ export default function AskRxChat({ open, onClose }: { open: boolean, onClose: (
             img.src = dataUrl;
         });
     };
+
+    useEffect(() => {
+        if (open) track('chat_opened', 'AskRxChat', user ? 'logged_in' : 'guest');
+    }, [open]);
 
     // Initial Load: Fetch existing consultation (logged-in users only; guests start fresh)
     useEffect(() => {

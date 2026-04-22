@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { CheckCircle, TwoWheeler, PhoneInTalk, ErrorOutline, Store } from '@mui/icons-material';
+import { useTrack } from '@/hooks/useTrack';
 
 type Step =
   | 'payment_confirmed'
@@ -35,6 +36,7 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartRef = useRef(0);
   const didRunRef = useRef(false);
+  const { track } = useTrack();
 
   const stopPolling = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
 
@@ -49,6 +51,7 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
           setAgentName(data.agentName);
           setAgentPhone(data.agentPhone);
           setStep('rider_confirmed');
+          track('rider_confirmed', 'PostPaymentFlow', deliveryOption, { requestId });
         } else if (Date.now() - pollStartRef.current > MAX_POLL_MS) {
           stopPolling();
         }
@@ -59,6 +62,8 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
   useEffect(() => {
     if (didRunRef.current) return;
     didRunRef.current = true;
+
+    track('payment_confirmed', 'PostPaymentFlow', deliveryOption, { total, requestId });
 
     // Step 1 → Step 2 after 1s
     const t1 = setTimeout(() => setStep('notifying_pharmacist'), 1000);
@@ -91,9 +96,11 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
             console.error('[PostPaymentFlow] notify-delivery-agent failed:', data.error);
             setFailReason(friendlyError(data.error || ''));
             setStep('failed');
+            track('rider_dispatch_failed', 'PostPaymentFlow', data.error || 'unknown');
           } else {
             setAgentCount(data.dispatched ?? 0);
             setStep('rider_waiting');
+            track('rider_dispatched', 'PostPaymentFlow', deliveryOption, { dispatched: data.dispatched, requestId });
             startPolling(requestId);
           }
         } catch {

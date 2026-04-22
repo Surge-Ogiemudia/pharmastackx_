@@ -1,6 +1,37 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+interface EventRow {
+  component: string;
+  event: string;
+  label?: string;
+  count: number;
+}
+
+interface RecentEvent {
+  _id: string;
+  event: string;
+  component: string;
+  label?: string;
+  meta?: Record<string, any>;
+  userId?: string;
+  createdAt: string;
+}
+
+interface FunnelStep {
+  step: string;
+  count: number;
+}
+
+interface EventsData {
+  totalToday: number;
+  totalPeriod: number;
+  byComponent: EventRow[];
+  recent: RecentEvent[];
+  funnel: FunnelStep[];
+  days: number;
+}
+
 interface SummaryData {
   summary: {
     visitorsToday: number;
@@ -97,7 +128,10 @@ export default function DataCentreContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'ai' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'ai' | 'settings'>('overview');
+  const [eventsData, setEventsData] = useState<EventsData | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsDays, setEventsDays] = useState(7);
 
   // AI Query state
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
@@ -142,16 +176,26 @@ export default function DataCentreContent() {
     }
   }, []);
 
+  const fetchEvents = useCallback(async (days = eventsDays) => {
+    setEventsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/analytics/events?days=${days}`);
+      if (res.ok) setEventsData(await res.json());
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [eventsDays]);
+
   useEffect(() => {
     fetchSummary();
-    // Auto-refresh every 5 minutes
     const interval = setInterval(fetchSummary, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchSummary]);
 
   useEffect(() => {
     if (activeTab === 'settings') fetchExcludedDevices();
-  }, [activeTab, fetchExcludedDevices]);
+    if (activeTab === 'events') fetchEvents(eventsDays);
+  }, [activeTab, fetchExcludedDevices, fetchEvents, eventsDays]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -308,8 +352,9 @@ export default function DataCentreContent() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.04)', borderRadius: '24px', padding: '4px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.04)', borderRadius: '24px', padding: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button style={tabStyle(activeTab === 'overview')} onClick={() => setActiveTab('overview')}>📊 Overview</button>
+        <button style={tabStyle(activeTab === 'events')} onClick={() => setActiveTab('events')}>🎯 Events</button>
         <button style={tabStyle(activeTab === 'ai')} onClick={() => setActiveTab('ai')}>🤖 Ask AI</button>
         <button style={tabStyle(activeTab === 'settings')} onClick={() => setActiveTab('settings')}>🛡️ Exclusions</button>
       </div>
@@ -437,6 +482,112 @@ export default function DataCentreContent() {
             </>
           )}
         </>
+      )}
+
+      {/* ── EVENTS TAB ── */}
+      {activeTab === 'events' && (
+        <div>
+          {/* Period picker + refresh */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            {[1, 7, 30].map(d => (
+              <button
+                key={d}
+                onClick={() => { setEventsDays(d); fetchEvents(d); }}
+                style={{ ...btnStyle(true), background: eventsDays === d ? '#0F6E56' : 'rgba(0,0,0,0.06)', color: eventsDays === d ? '#fff' : '#555' }}
+              >
+                {d === 1 ? 'Today' : `${d}d`}
+              </button>
+            ))}
+            <button onClick={() => fetchEvents(eventsDays)} disabled={eventsLoading} style={{ ...btnStyle(true), marginLeft: 'auto', background: eventsLoading ? '#ccc' : '#0F6E56' }}>
+              {eventsLoading ? '⟳' : '↻'}
+            </button>
+          </div>
+
+          {eventsLoading && !eventsData && (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: '#888', fontSize: '14px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📡</div>Loading events…
+            </div>
+          )}
+
+          {eventsData && (
+            <>
+              {/* Summary Cards */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                <StatCard icon="⚡" label="Events Today" value={eventsData.totalToday} sub="All in-app actions" />
+                <StatCard icon="📆" label={`Last ${eventsData.days} Days`} value={eventsData.totalPeriod} sub="Total events" />
+              </div>
+
+              {/* Conversion Funnel */}
+              <SectionCard title="Order Funnel" icon="🔻">
+                {eventsData.funnel.map((step, i) => {
+                  const top = eventsData.funnel[0].count || 1;
+                  const pct = Math.max(4, Math.round((step.count / top) * 100));
+                  const prev = i > 0 ? eventsData.funnel[i - 1].count : null;
+                  const dropPct = prev && prev > 0 ? Math.round(((prev - step.count) / prev) * 100) : null;
+                  return (
+                    <div key={step.step} style={{ marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontFamily: 'Sora, sans-serif', color: '#333' }}>{step.step}</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {dropPct !== null && dropPct > 0 && (
+                            <span style={{ fontSize: '10px', color: '#dc2626', fontWeight: 600 }}>-{dropPct}%</span>
+                          )}
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F6E56' }}>{step.count}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: '8px', background: 'rgba(15,110,86,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: i === 0 ? '#0F6E56' : `rgba(15,110,86,${0.9 - i * 0.12})`, borderRadius: '4px', transition: 'width 0.6s ease' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </SectionCard>
+
+              {/* Top Events by Component */}
+              {eventsData.byComponent.length > 0 && (
+                <SectionCard title="Events by Component" icon="🧩">
+                  {(() => {
+                    const max = eventsData.byComponent[0]?.count || 1;
+                    return eventsData.byComponent.map((e, i) => (
+                      <BarItem
+                        key={i}
+                        label={`${e.component} · ${e.event}${e.label ? ` · ${e.label}` : ''}`}
+                        count={e.count}
+                        max={max}
+                      />
+                    ));
+                  })()}
+                </SectionCard>
+              )}
+
+              {/* Recent Event Feed */}
+              <SectionCard title="Recent Events" icon="🕐">
+                {eventsData.recent.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '16px 0' }}>No events yet. They appear here as users interact with the app.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {eventsData.recent.map((e) => (
+                      <div key={e._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.04)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F6E56', background: 'rgba(15,110,86,0.08)', padding: '2px 8px', borderRadius: '100px' }}>{e.event}</span>
+                            <span style={{ fontSize: '11px', color: '#666' }}>{e.component}</span>
+                            {e.label && <span style={{ fontSize: '11px', color: '#aaa' }}>· {e.label}</span>}
+                          </div>
+                          {e.userId && <div style={{ fontSize: '10px', color: '#bbb', marginTop: '3px' }}>user: {e.userId.slice(0, 12)}…</div>}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#bbb', whiteSpace: 'nowrap', marginLeft: '8px', flexShrink: 0 }}>
+                          {new Date(e.createdAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+                          <div>{new Date(e.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </>
+          )}
+        </div>
       )}
 
       {/* ── AI QUERY TAB ── */}

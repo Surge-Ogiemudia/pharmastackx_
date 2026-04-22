@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSession } from '@/context/SessionProvider';
 import RxScanModal from './RxScanModal';
+import { useTrack } from '@/hooks/useTrack';
 
 interface DispatchFormProps {
   initialSearchValue?: string;
@@ -42,6 +43,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(3);
 
   const { user } = useSession();
+  const { track } = useTrack();
   const [modalState, setModalState] = useState<'none' | 'login' | 'confirm'>('none');
   const [isSearching, setIsSearching] = useState(!!initialRequestId);
   const [showGuestGate, setShowGuestGate] = useState(false);
@@ -1330,6 +1332,7 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
                             setIsSearching(true);
                             setRequestId(realId);
                             setSelectedRequestId(realId);
+                            track('request_submitted', 'DispatchForm', confirmState, { itemCount: requestList.length });
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           } else {
                             console.error('Failed to create request');
