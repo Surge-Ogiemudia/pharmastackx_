@@ -500,7 +500,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
             </div>
           ) : viewMode === 'pharmacist' ? (
             <div key="professional-portal">
-              <div className="back-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
+              <div className="back-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '16px', marginTop: '16px' }}>
                 <div className="back-arrow">←</div>
                 <span>Dashboard</span>
               </div>
