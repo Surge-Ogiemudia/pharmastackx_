@@ -1,6 +1,7 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { motion } from "framer-motion";
+import { useTrack } from '@/hooks/useTrack';
 
 interface BottomNavProps {
   currentView: string;
@@ -8,6 +9,7 @@ interface BottomNavProps {
 }
 
 const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
+  const { track } = useTrack();
   const tabs = [
     { id: 'home', label: 'HOME' },
     { id: 'orderMedicines', label: 'SEARCH' },
@@ -42,9 +44,9 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
           const isStrictActive = currentView === tab.id || (tab.id === 'orders' && currentView === 'orderRequests');
           
           return (
-            <Box 
+            <Box
               key={tab.id}
-              onClick={() => onTabClick(tab.id)}
+              onClick={() => { track('tab_view', 'BottomNav', tab.id); onTabClick(tab.id); }}
               sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 

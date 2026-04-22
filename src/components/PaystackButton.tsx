@@ -8,6 +8,7 @@ import { useCart } from '../contexts/CartContext';
 import { useOrders } from '../contexts/OrderContext';
 import { useRouter } from 'next/navigation';
 import { event } from '../lib/gtag';
+import { useTrack } from '../hooks/useTrack';
 
 
 interface PaystackButtonProps {
@@ -37,6 +38,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
   const { user } = useSession();
   const { items } = useCart(); // Removed clearCart as it's no longer called here
   const router = useRouter();
+  const { track } = useTrack();
 
   const config = {
     reference: new Date().getTime().toString(),
@@ -98,6 +100,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
       label: 'Paid Checkout',
       value: props.total,
     });
+    track('payment_initiated', 'PaystackButton', props.deliveryOption, { total: props.total, state: props.deliveryState });
     initializePayment({ onSuccess, onClose });
   };
 
