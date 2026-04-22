@@ -303,7 +303,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
   const isReturningFromPayment = searchParams?.get('redirect_status') === 'success';
 
-  if (items.length === 0 && postPaymentStatus === 'idle') {
+  if (items.length === 0 && postPaymentStatus === 'idle' && !showPostPaymentFlow) {
     if (isReturningFromPayment) {
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 2 }}>
