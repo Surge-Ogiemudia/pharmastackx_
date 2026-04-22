@@ -355,7 +355,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
         
         <div className="rr-header">
             <div className="rr-header-top reveal visible">
-                <button className="rr-back-btn" onClick={() => setView('home')}>
+                <button className="rr-back-btn" onClick={() => setView('requestsList')}>
                     <div className="rr-back-circle">←</div>
                     <div className="rr-back-text">My requests</div>
                 </button>

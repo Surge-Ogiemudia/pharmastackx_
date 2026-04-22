@@ -470,7 +470,7 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
             />
           ) : (viewMode === 'list' || viewMode === 'requests-list') ? (
             <div key="medicine-tracker">
-              <div className="back-btn" onClick={() => (backToView && setView) ? setView(backToView) : setViewMode('dashboard')} style={{ marginBottom: '16px' }}>
+              <div className="back-btn" onClick={() => (backToView && setView) ? setView(backToView) : setViewMode('dashboard')} style={{ marginBottom: '16px', marginTop: '16px' }}>
                 <div className="back-arrow">←</div>
                 <span>{backToView ? 'Back' : 'Dashboard'}</span>
               </div>
