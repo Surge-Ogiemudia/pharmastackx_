@@ -1192,12 +1192,29 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
       />
 
 
-      <Button onClick={() => {
-  setShowInstallPrompt(false);
-  setShowContinueOnAppMessage(true);
-}} sx={{ mt: 2 }} variant="contained">
+      <button
+        onPointerUp={() => {
+          setShowInstallPrompt(false);
+          setShowContinueOnAppMessage(true);
+        }}
+        style={{
+          marginTop: '16px',
+          width: '100%',
+          padding: '14px',
+          background: '#0F6E56',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '14px',
+          fontSize: '14px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          fontFamily: 'var(--font-sora)',
+        }}
+      >
         Close
-      </Button>
+      </button>
     </Box>
   </Fade>
 </Modal>
