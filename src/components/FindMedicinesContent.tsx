@@ -82,7 +82,7 @@ const modalStyle = {
   outline: 'none'
 };
 
-export default function FindMedicinesContent({ setView }: { setView?: (view: string) => void }) {
+export default function FindMedicinesContent({ setView, initialQuery }: { setView?: (view: string) => void; initialQuery?: string }) {
   const searchParams = useSearchParams();
   const slug = searchParams?.get('slug') || '';
   const router = useRouter();
@@ -90,8 +90,12 @@ export default function FindMedicinesContent({ setView }: { setView?: (view: str
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const initialSearch = searchParams?.get('search') || '';
+  const initialSearch = initialQuery || searchParams?.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
+
+  useEffect(() => {
+    if (initialQuery) setSearchQuery(initialQuery);
+  }, [initialQuery]);
   const [sortBy, setSortBy] = useState('recommended');
   const [filterBy, setFilterBy] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);

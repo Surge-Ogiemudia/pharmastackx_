@@ -31,6 +31,7 @@ interface Post {
     imageUrl?: string;
     youtubeUrl?: string;
     blocks?: Block[];
+    linkedMedicines?: string[];
     status: 'draft' | 'published';
     author: { name: string };
     createdAt: string;
@@ -38,7 +39,7 @@ interface Post {
 
 interface PulseContentProps {
     onBack: () => void;
-    onFindMeds: () => void;
+    onFindMeds: (query?: string) => void;
 }
 
 const getCoverImage = (post: Post): string => {
@@ -71,6 +72,8 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [medSheet, setMedSheet] = useState(false);
+    const [availableMeds, setAvailableMeds] = useState<string[]>([]);
 
     useEffect(() => { fetchPosts(); }, []);
 
@@ -335,13 +338,97 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             <Typography variant="body2" sx={{ color: 'var(--gray)', mb: 3 }}>
                                 Our verified pharmacists are ready to provide the meds and advice mentioned in this article.
                             </Typography>
-                            <Button variant="contained" onClick={onFindMeds} sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 6, py: 1.5, textTransform: 'none', fontWeight: 700 }}>
+                            <Button
+                                variant="contained"
+                                onClick={() => {
+                                    const meds = selectedPost.linkedMedicines?.filter(m => m.trim());
+                                    if (meds && meds.length > 0) {
+                                        setAvailableMeds([...meds]);
+                                        setMedSheet(true);
+                                    } else {
+                                        onFindMeds();
+                                    }
+                                }}
+                                sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 6, py: 1.5, textTransform: 'none', fontWeight: 700 }}
+                            >
                                 Find Meds Now
                             </Button>
                         </Box>
                     </Box>
                 </Box>
             )}
+
+            {/* Medicine selection sheet */}
+            <AnimatePresence>
+                {medSheet && (
+                    <>
+                        {/* Backdrop */}
+                        <Box
+                            component={motion.div}
+                            key="backdrop"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMedSheet(false)}
+                            sx={{ position: 'fixed', inset: 0, bgcolor: 'rgba(0,0,0,0.4)', zIndex: 100 }}
+                        />
+                        {/* Sheet */}
+                        <Box
+                            component={motion.div}
+                            key="sheet"
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                            sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, bgcolor: '#fff', borderRadius: '24px 24px 0 0', zIndex: 101, p: 3, pb: 5, boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}
+                        >
+                            {/* Handle */}
+                            <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', mb: 3 }} />
+
+                            <Typography className="fraunces" variant="h6" sx={{ fontWeight: 900, mb: 0.5 }}>
+                                Search for a medicine
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'var(--gray)', mb: 3, fontSize: '13px' }}>
+                                Tap a medicine below to find it. Remove any you're not interested in.
+                            </Typography>
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+                                {availableMeds.map(med => (
+                                    <Box
+                                        key={med}
+                                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '14px 16px', borderRadius: '14px', border: '1.5px solid rgba(15,110,86,0.15)', bgcolor: 'rgba(15,110,86,0.02)', cursor: 'pointer', transition: 'all 0.15s', '&:hover': { bgcolor: 'rgba(15,110,86,0.06)', borderColor: 'var(--green)' } }}
+                                        onClick={() => { setMedSheet(false); onFindMeds(med); }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'var(--green)', flexShrink: 0 }} />
+                                            <Typography sx={{ fontWeight: 600, fontSize: '15px', color: 'var(--black)' }}>{med}</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography sx={{ fontSize: '12px', color: 'var(--green)', fontWeight: 700 }}>Search →</Typography>
+                                            <Box
+                                                component="span"
+                                                onClick={e => { e.stopPropagation(); setAvailableMeds(prev => prev.filter(m => m !== med)); }}
+                                                sx={{ ml: 1, width: 22, height: 22, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#888', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,0,0,0.1)', color: '#e53935' } }}
+                                            >
+                                                ✕
+                                            </Box>
+                                        </Box>
+                                    </Box>
+                                ))}
+                                {availableMeds.length === 0 && (
+                                    <Typography sx={{ textAlign: 'center', color: 'var(--gray)', py: 2, fontSize: '13px' }}>
+                                        No medicines selected.
+                                    </Typography>
+                                )}
+                            </Box>
+
+                            <Button fullWidth variant="outlined" onClick={() => setMedSheet(false)} sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 600, color: 'var(--gray)', borderColor: 'rgba(0,0,0,0.15)' }}>
+                                Cancel
+                            </Button>
+                        </Box>
+                    </>
+                )}
+            </AnimatePresence>
         </AnimatePresence>
     );
 };
