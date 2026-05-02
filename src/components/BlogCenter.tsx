@@ -18,18 +18,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-async function uploadImage(file: File, path: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const storageRef = ref(storage, `pulse/${path}/${Date.now()}_${file.name}`);
-        const task = uploadBytesResumable(storageRef, file);
-        task.on('state_changed', null, reject, async () => {
-            const url = await getDownloadURL(task.snapshot.ref);
-            resolve(url);
-        });
-    });
+async function uploadImage(file: File, folder: string): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    const res = await axios.post('/api/admin/upload-image', formData);
+    return res.data.url;
 }
 
 interface Block {

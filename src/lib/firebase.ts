@@ -2,9 +2,7 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getMessaging } from "firebase/messaging";
 import { getAnalytics } from "firebase/analytics";
-import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,10 +13,8 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const messaging = () => getMessaging(app);
 const analytics = () => getAnalytics(app);
-const storage = getStorage(app);
 
-export { app, messaging, analytics, storage };
+export { app, messaging, analytics };
