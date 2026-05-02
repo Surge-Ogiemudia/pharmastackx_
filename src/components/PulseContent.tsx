@@ -88,14 +88,15 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%', 
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
                         overflowY: 'auto',
-                        p: { xs: 2, sm: 4 },
+                        overflowX: 'hidden',
+                        px: { xs: 2, sm: 4 },
                         pt: { xs: 10, sm: 12 },
                         pb: { xs: 12, sm: 8 }
                     }}
@@ -117,7 +118,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress sx={{ color: 'var(--green)' }} /></Box>
                     ) : (
-                        <Grid container spacing={4} sx={{ maxWidth: '1200px', mx: 'auto' }}>
+                        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
                             {posts.map((post) => (
                                 <Grid item xs={12} md={6} lg={4} key={post._id}>
                                     <Card 
@@ -135,15 +136,14 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                                             '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 12px 30px rgba(15, 110, 86, 0.08)' }
                                         }}
                                     >
-                                        <Box sx={{ bgcolor: '#fdfdfd', p: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                        <Box sx={{ bgcolor: '#f8f9fa', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, overflow: 'hidden', borderRadius: '24px 24px 0 0' }}>
                                             <CardMedia
                                                 component="img"
-                                                sx={{ 
-                                                    height: 180, 
-                                                    width: 'auto',
-                                                    maxWidth: '100%',
+                                                sx={{
+                                                    height: '100%',
+                                                    width: '100%',
                                                     objectFit: 'contain',
-                                                    borderRadius: '16px'
+                                                    p: 2
                                                 }}
                                                 image={post.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80'}
                                                 alt={post.title}
