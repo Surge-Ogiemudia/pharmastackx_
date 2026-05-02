@@ -292,10 +292,26 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     exit={{ opacity: 0, x: -20 }}
                     sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, px: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 }, pb: { xs: 12, sm: 8 }, overflowY: 'auto', overflowX: 'hidden' }}
                 >
-                    <div className="back-btn" onClick={() => setSelectedPost(null)} style={{ marginBottom: '24px' }}>
-                        <div className="back-arrow">←</div>
-                        <span>Back to Pulse feed</span>
-                    </div>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: '24px' }}>
+                        <div className="back-btn" onClick={() => setSelectedPost(null)} style={{ margin: 0 }}>
+                            <div className="back-arrow">←</div>
+                            <span>Back to Pulse feed</span>
+                        </div>
+                        <Button
+                            size="small"
+                            onClick={() => {
+                                const url = `${window.location.origin}/pulse/${selectedPost.slug}`;
+                                if (navigator.share) {
+                                    navigator.share({ title: selectedPost.title, url });
+                                } else {
+                                    navigator.clipboard.writeText(url);
+                                }
+                            }}
+                            sx={{ borderRadius: '20px', textTransform: 'none', fontSize: '12px', fontWeight: 700, color: 'var(--green)', border: '1px solid rgba(15,110,86,0.2)', px: 2, '&:hover': { bgcolor: 'rgba(15,110,86,0.05)' } }}
+                        >
+                            Share ↗
+                        </Button>
+                    </Box>
 
                     <Box sx={{ maxWidth: '720px', mx: 'auto' }}>
                         {/* Category + meta */}
