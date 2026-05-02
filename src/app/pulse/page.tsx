@@ -8,6 +8,9 @@ export const revalidate = 60;
 export const metadata: Metadata = {
     title: 'PSX Pulse | PharmaStackX',
     description: 'Real-time trends, pharmacist insights, and health vlogs from PharmaStackX.',
+    alternates: {
+        canonical: 'https://pharmastackx.com/pulse',
+    },
     openGraph: {
         title: 'PSX Pulse | PharmaStackX',
         description: 'Real-time trends, pharmacist insights, and health vlogs.',
