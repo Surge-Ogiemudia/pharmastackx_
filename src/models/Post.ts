@@ -14,6 +14,7 @@ export interface IPost extends Document {
   imageUrl?: string;
   youtubeUrl?: string;
   blocks?: IBlock[];
+  linkedMedicines?: string[];
   author: {
     name: string;
     id: string;
@@ -71,6 +72,7 @@ const PostSchema = new Schema<IPost>({
     content: { type: String, default: '' },
     caption: { type: String, default: '' },
   }],
+  linkedMedicines: [{ type: String, trim: true }],
   seoKeywords: [String],
   status: {
     type: String,

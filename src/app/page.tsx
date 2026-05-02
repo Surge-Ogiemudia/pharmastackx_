@@ -80,6 +80,7 @@ export default function HomePage() {
   const [inputValue, setInputValue] = useState("");
   const [wordIndex, setWordIndex] = useState(0);
   const [view, setView] = useState('home');
+  const [searchPrefill, setSearchPrefill] = useState('');
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -822,7 +823,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              <FindMedicinesContent setView={setView} />
+              <FindMedicinesContent setView={setView} initialQuery={searchPrefill} />
             </Box>
           </Box>
         );
@@ -995,7 +996,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
       case 'readPulse':
         return (
             <AnimatePresence mode="wait">
-                <PulseContent onBack={() => setView('orders')} onFindMeds={() => setView('orderMedicines')} />
+                <PulseContent onBack={() => setView('orders')} onFindMeds={(query) => { setSearchPrefill(query || ''); setView('orderMedicines'); }} />
             </AnimatePresence>
         );
       case 'learning':

@@ -4,7 +4,6 @@ import {
     Typography,
     TextField,
     Button,
-    Autocomplete,
     CircularProgress,
     IconButton,
     Dialog,
@@ -66,17 +65,16 @@ const BlogCenter = () => {
         category: '',
         imageUrl: '',
         status: 'draft',
-        linkedProduct: '',
         seoKeywords: '',
         authorName: ''
     });
     const [blocks, setBlocks] = useState<Block[]>([emptyBlock('paragraph')]);
+    const [linkedMedicines, setLinkedMedicines] = useState<string[]>([]);
+    const [medicineInput, setMedicineInput] = useState('');
 
-    const [products, setProducts] = useState<any[]>([]);
 
     useEffect(() => {
         fetchPosts();
-        fetchOptions();
         fetchInsights();
     }, []);
 
@@ -102,17 +100,6 @@ const BlogCenter = () => {
         }
     };
 
-    const fetchOptions = async () => {
-        try {
-            const prodRes = await axios.get('/api/products?limit=100');
-            if (prodRes.data?.success && Array.isArray(prodRes.data.data)) {
-                setProducts(prodRes.data.data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch options:', err);
-        }
-    };
-
     const handleOpen = (post: Post | null = null, prefillTitle?: string) => {
         if (post) {
             setEditingPost(post);
@@ -121,11 +108,10 @@ const BlogCenter = () => {
                 category: post.category,
                 imageUrl: post.imageUrl || '',
                 status: post.status,
-
-                linkedProduct: post.linkedProduct || '',
                 seoKeywords: (post.seoKeywords || []).join(', '),
                 authorName: post.author?.name || ''
             });
+            setLinkedMedicines(post.linkedMedicines || []);
             if (post.blocks && post.blocks.length > 0) {
                 setBlocks(post.blocks.map(b => ({ ...b, caption: b.caption || '' })));
             } else {
@@ -141,11 +127,10 @@ const BlogCenter = () => {
                 category: '',
                 imageUrl: '',
                 status: 'draft',
-
-                linkedProduct: '',
                 seoKeywords: '',
                 authorName: ''
             });
+            setLinkedMedicines([]);
             setBlocks([emptyBlock('paragraph')]);
         }
         setOpen(true);
@@ -173,11 +158,20 @@ const BlogCenter = () => {
         });
     };
 
+    const addMedicine = () => {
+        const name = medicineInput.trim();
+        if (name && !linkedMedicines.includes(name)) {
+            setLinkedMedicines(prev => [...prev, name]);
+        }
+        setMedicineInput('');
+    };
+
     const handleSave = async () => {
         const payload = {
             ...formData,
             id: editingPost?._id,
             blocks,
+            linkedMedicines,
             content: blocks.find(b => b.type === 'paragraph')?.content || '',
             seoKeywords: formData.seoKeywords.split(',').map(k => k.trim()).filter(k => k)
         };
@@ -400,20 +394,38 @@ const BlogCenter = () => {
                             </Box>
                         </Box>
 
-                        {/* Extra meta */}
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Autocomplete
-                                {...({
-                                    fullWidth: true, options: products,
-                                    getOptionLabel: (o: any) => o.name || 'Unknown',
-                                    value: products.find(p => p.id === formData.linkedProduct) || null,
-                                    isOptionEqualToValue: (o: any, v: any) => o.id === v.id,
-                                    disablePortal: true, PopperProps: { sx: { zIndex: 10002 } },
-                                    renderOption: (props: any, o: any) => <li {...props} key={o.id}>{o.name}</li>,
-                                    onChange: (_: any, v: any) => setFormData({ ...formData, linkedProduct: v?.id || '' }),
-                                    renderInput: (params: any) => <TextField {...params} label="Link Product" />
-                                } as any)}
-                            />
+                        {/* Linked Medicines */}
+                        <Box>
+                            <Typography variant="caption" sx={{ color: 'var(--gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, mb: 1.5, display: 'block' }}>
+                                Linked Medicines
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <TextField
+                                    size="small"
+                                    fullWidth
+                                    placeholder="Type medicine name and press Enter"
+                                    value={medicineInput}
+                                    onChange={e => setMedicineInput(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMedicine(); } }}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                                />
+                                <Button onClick={addMedicine} variant="outlined" sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, color: 'var(--green)', borderColor: 'rgba(15,110,86,0.3)', whiteSpace: 'nowrap', '&:hover': { borderColor: 'var(--green)', bgcolor: 'rgba(15,110,86,0.05)' } }}>
+                                    + Add
+                                </Button>
+                            </Box>
+                            {linkedMedicines.length > 0 && (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+                                    {linkedMedicines.map(med => (
+                                        <Chip
+                                            key={med}
+                                            label={med}
+                                            onDelete={() => setLinkedMedicines(prev => prev.filter(m => m !== med))}
+                                            size="small"
+                                            sx={{ bgcolor: 'rgba(15,110,86,0.08)', color: 'var(--green)', fontWeight: 600, '& .MuiChip-deleteIcon': { color: 'rgba(15,110,86,0.5)' } }}
+                                        />
+                                    ))}
+                                </Box>
+                            )}
                         </Box>
                         <TextField label="SEO Keywords (comma separated)" fullWidth value={formData.seoKeywords} onChange={e => setFormData({ ...formData, seoKeywords: e.target.value })} />
                         <TextField select label="Status" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} fullWidth SelectProps={{ MenuProps: { sx: { zIndex: 10002 } } }}>
