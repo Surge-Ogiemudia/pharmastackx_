@@ -66,14 +66,12 @@ const BlogCenter = () => {
         category: '',
         imageUrl: '',
         status: 'draft',
-        linkedPharmacy: '',
         linkedProduct: '',
         seoKeywords: '',
         authorName: ''
     });
     const [blocks, setBlocks] = useState<Block[]>([emptyBlock('paragraph')]);
 
-    const [pharmacies, setPharmacies] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
 
     useEffect(() => {
@@ -106,10 +104,6 @@ const BlogCenter = () => {
 
     const fetchOptions = async () => {
         try {
-            const userRes = await axios.get('/api/pharmacies?all=true');
-            if (userRes.data?.pharmacies && Array.isArray(userRes.data.pharmacies)) {
-                setPharmacies(userRes.data.pharmacies);
-            }
             const prodRes = await axios.get('/api/products?limit=100');
             if (prodRes.data?.success && Array.isArray(prodRes.data.data)) {
                 setProducts(prodRes.data.data);
@@ -127,7 +121,7 @@ const BlogCenter = () => {
                 category: post.category,
                 imageUrl: post.imageUrl || '',
                 status: post.status,
-                linkedPharmacy: post.linkedPharmacy || '',
+
                 linkedProduct: post.linkedProduct || '',
                 seoKeywords: (post.seoKeywords || []).join(', '),
                 authorName: post.author?.name || ''
@@ -147,7 +141,7 @@ const BlogCenter = () => {
                 category: '',
                 imageUrl: '',
                 status: 'draft',
-                linkedPharmacy: '',
+
                 linkedProduct: '',
                 seoKeywords: '',
                 authorName: ''
@@ -408,18 +402,6 @@ const BlogCenter = () => {
 
                         {/* Extra meta */}
                         <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Autocomplete
-                                {...({
-                                    fullWidth: true, options: pharmacies,
-                                    getOptionLabel: (o: any) => o.businessName || 'Unknown',
-                                    value: pharmacies.find(p => p._id === formData.linkedPharmacy) || null,
-                                    isOptionEqualToValue: (o: any, v: any) => o._id === v._id,
-                                    disablePortal: true, PopperProps: { sx: { zIndex: 10002 } },
-                                    renderOption: (props: any, o: any) => <li {...props} key={o._id}>{o.businessName}</li>,
-                                    onChange: (_: any, v: any) => setFormData({ ...formData, linkedPharmacy: v?._id || '' }),
-                                    renderInput: (params: any) => <TextField {...params} label="Link Pharmacy" />
-                                } as any)}
-                            />
                             <Autocomplete
                                 {...({
                                     fullWidth: true, options: products,
