@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
 
-const BASE_URL = 'https://ph-stackx.vercel.app';
+const BASE_URL = 'https://pharmastackx.com';
 
 export const revalidate = 3600; // regenerate every hour
 

@@ -30,6 +30,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
         title: `${post.title} | PSX Pulse`,
         description: excerpt,
+        alternates: {
+            canonical: `https://pharmastackx.com/pulse/${slug}`,
+        },
         openGraph: {
             title: post.title,
             description: excerpt,
@@ -109,8 +112,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         datePublished: post.createdAt,
         dateModified: post.updatedAt,
         author: { '@type': 'Person', name: post.author?.name },
-        publisher: { '@type': 'Organization', name: 'PharmaStackX', url: 'https://ph-stackx.vercel.app' },
-        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://ph-stackx.vercel.app/pulse/${post.slug}` },
+        publisher: { '@type': 'Organization', name: 'PharmaStackX', url: 'https://pharmastackx.com' },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://pharmastackx.com/pulse/${post.slug}` },
     };
 
     return (
