@@ -104,11 +104,11 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                 );
             case 'image':
                 return (
-                    <Box key={index} sx={{ my: 4 }}>
+                    <Box key={index} sx={{ my: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#f8f9fa', borderRadius: '20px', p: 2 }}>
                         <Box
                             component="img"
                             src={block.content}
-                            sx={{ width: '100%', borderRadius: '16px', display: 'block', maxHeight: '420px', objectFit: 'contain', bgcolor: '#f8f9fa' }}
+                            sx={{ height: { xs: '220px', sm: '300px' }, maxWidth: '100%', borderRadius: '12px', display: 'block', objectFit: 'contain' }}
                         />
                         {block.caption && (
                             <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'var(--gray)', mt: 1.5, fontStyle: 'italic', fontSize: '13px' }}>
@@ -163,8 +163,8 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                 );
             })()}
             {!post.youtubeUrl && post.imageUrl && (
-                <Box sx={{ my: 4 }}>
-                    <Box component="img" src={post.imageUrl} sx={{ width: '100%', borderRadius: '16px', maxHeight: '420px', objectFit: 'contain', bgcolor: '#f8f9fa' }} />
+                <Box sx={{ my: 4, display: 'flex', justifyContent: 'center', bgcolor: '#f8f9fa', borderRadius: '20px', p: 2 }}>
+                    <Box component="img" src={post.imageUrl} sx={{ height: { xs: '220px', sm: '300px' }, maxWidth: '100%', objectFit: 'contain', borderRadius: '12px', display: 'block' }} />
                 </Box>
             )}
             <Typography className="sora" variant="body1" sx={{ lineHeight: 1.85, whiteSpace: 'pre-wrap', fontSize: { xs: '15px', sm: '16px' }, color: '#2d2d2d', textAlign: 'justify' }}>
