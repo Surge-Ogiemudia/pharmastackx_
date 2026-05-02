@@ -76,19 +76,20 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { title, content, category, imageUrl, youtubeUrl, linkedPharmacy, linkedProduct, seoKeywords, status, authorName } = body;
+        const { title, content, category, imageUrl, youtubeUrl, blocks, linkedPharmacy, linkedProduct, seoKeywords, status, authorName } = body;
 
-        if (!title || !content || !category) {
+        if (!title || !category) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
 
         const slug = createSlug(title);
         const newPost = new Post({
             title,
-            content,
+            content: content || (blocks?.find((b: any) => b.type === 'paragraph')?.content ?? ''),
             category,
             imageUrl,
             youtubeUrl,
+            blocks: blocks || [],
             slug,
             author: {
                 name: authorName || admin.username || 'Admin',
@@ -115,7 +116,8 @@ export async function PUT(req: NextRequest) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { id, authorName, ...updateData } = body;
+        const { id, authorName, blocks, ...updateData } = body;
+        if (blocks !== undefined) updateData.blocks = blocks;
 
         if (!id) return NextResponse.json({ message: 'Missing post ID' }, { status: 400 });
 

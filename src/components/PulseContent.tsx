@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Box, 
-    Typography, 
-    Container, 
-    Grid, 
-    Card, 
-    CardContent, 
-    CardMedia, 
-    CircularProgress, 
+import {
+    Box,
+    Typography,
+    Grid,
+    Card,
+    CardContent,
+    CardMedia,
+    CircularProgress,
     Button,
     Chip,
     Divider
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+
+interface Block {
+    type: 'paragraph' | 'heading' | 'image' | 'video' | 'quote';
+    content: string;
+    caption?: string;
+}
 
 interface Post {
     _id: string;
@@ -26,6 +30,7 @@ interface Post {
     slug: string;
     imageUrl?: string;
     youtubeUrl?: string;
+    blocks?: Block[];
     status: 'draft' | 'published';
     author: { name: string };
     createdAt: string;
@@ -36,15 +41,38 @@ interface PulseContentProps {
     onFindMeds: () => void;
 }
 
+const getCoverImage = (post: Post): string => {
+    if (post.blocks?.length) {
+        const img = post.blocks.find(b => b.type === 'image');
+        if (img?.content) return img.content;
+    }
+    return post.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80';
+};
+
+const getExcerpt = (post: Post): string => {
+    if (post.blocks?.length) {
+        const para = post.blocks.find(b => b.type === 'paragraph');
+        if (para?.content) return para.content;
+    }
+    return post.content || '';
+};
+
+const getReadTime = (post: Post): number => {
+    let text = '';
+    if (post.blocks?.length) {
+        text = post.blocks.filter(b => ['paragraph', 'heading', 'quote'].includes(b.type)).map(b => b.content).join(' ');
+    } else {
+        text = post.content || '';
+    }
+    return Math.max(1, Math.ceil(text.split(/\s+/).length / 200));
+};
+
 const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-    const router = useRouter();
 
-    useEffect(() => {
-        fetchPosts();
-    }, []);
+    useEffect(() => { fetchPosts(); }, []);
 
     const fetchPosts = async () => {
         try {
@@ -57,27 +85,93 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
         }
     };
 
-    const handlePostClick = (post: Post) => {
-        setSelectedPost(post);
+    const getYoutubeId = (url: string) =>
+        url.split('v=')[1]?.split('&')[0] || url.split('/').pop() || '';
+
+    const renderBlock = (block: Block, index: number) => {
+        switch (block.type) {
+            case 'paragraph':
+                return (
+                    <Typography key={index} variant="body1" className="sora" sx={{ lineHeight: 1.85, fontSize: { xs: '15px', sm: '16px' }, color: '#2d2d2d', mb: 3, textAlign: 'justify' }}>
+                        {block.content}
+                    </Typography>
+                );
+            case 'heading':
+                return (
+                    <Typography key={index} className="fraunces" variant="h5" sx={{ fontWeight: 800, color: 'var(--black)', mt: 5, mb: 2, fontSize: { xs: '20px', sm: '24px' }, borderBottom: '2px solid rgba(15,110,86,0.15)', pb: 1 }}>
+                        {block.content}
+                    </Typography>
+                );
+            case 'image':
+                return (
+                    <Box key={index} sx={{ my: 4 }}>
+                        <Box
+                            component="img"
+                            src={block.content}
+                            sx={{ width: '100%', borderRadius: '16px', display: 'block', maxHeight: '420px', objectFit: 'contain', bgcolor: '#f8f9fa' }}
+                        />
+                        {block.caption && (
+                            <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'var(--gray)', mt: 1.5, fontStyle: 'italic', fontSize: '13px' }}>
+                                {block.caption}
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            case 'video': {
+                const videoId = getYoutubeId(block.content);
+                return (
+                    <Box key={index} sx={{ my: 4 }}>
+                        <Box sx={{ position: 'relative', pt: '56.25%', borderRadius: '16px', overflow: 'hidden', bgcolor: '#000' }}>
+                            <iframe
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                src={`https://www.youtube.com/embed/${videoId}`}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </Box>
+                        {block.caption && (
+                            <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'var(--gray)', mt: 1.5, fontStyle: 'italic', fontSize: '13px' }}>
+                                {block.caption}
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            }
+            case 'quote':
+                return (
+                    <Box key={index} sx={{ my: 4, px: { xs: 2, sm: 4 }, py: 3, borderLeft: '4px solid var(--green)', bgcolor: 'rgba(15,110,86,0.04)', borderRadius: '0 16px 16px 0' }}>
+                        <Typography variant="body1" className="fraunces" sx={{ fontStyle: 'italic', fontSize: { xs: '17px', sm: '20px' }, color: '#1a1a1a', lineHeight: 1.6, fontWeight: 600 }}>
+                            &ldquo;{block.content}&rdquo;
+                        </Typography>
+                    </Box>
+                );
+            default:
+                return null;
+        }
     };
 
-    const handleBackToFeed = () => {
-        setSelectedPost(null);
-    };
-
-    const renderVideo = (url: string) => {
-        const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-        return (
-            <Box sx={{ position: 'relative', pt: '56.25%', mb: 4, borderRadius: '24px', overflow: 'hidden', bgcolor: '#000' }}>
-                <iframe
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
-                    src={`https://www.youtube.com/embed/${videoId}`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                />
-            </Box>
-        );
-    };
+    const renderLegacyDetail = (post: Post) => (
+        <>
+            {post.youtubeUrl && (() => {
+                const videoId = getYoutubeId(post.youtubeUrl!);
+                return (
+                    <Box sx={{ position: 'relative', pt: '56.25%', mb: 4, borderRadius: '16px', overflow: 'hidden', bgcolor: '#000' }}>
+                        <iframe style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </Box>
+                );
+            })()}
+            {!post.youtubeUrl && post.imageUrl && (
+                <Box sx={{ my: 4 }}>
+                    <Box component="img" src={post.imageUrl} sx={{ width: '100%', borderRadius: '16px', maxHeight: '420px', objectFit: 'contain', bgcolor: '#f8f9fa' }} />
+                </Box>
+            )}
+            <Typography className="sora" variant="body1" sx={{ lineHeight: 1.85, whiteSpace: 'pre-wrap', fontSize: { xs: '15px', sm: '16px' }, color: '#2d2d2d', textAlign: 'justify' }}>
+                {post.content}
+            </Typography>
+        </>
+    );
 
     return (
         <AnimatePresence mode="wait">
@@ -88,18 +182,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        overflowY: 'auto',
-                        overflowX: 'hidden',
-                        px: { xs: 2, sm: 4 },
-                        pt: { xs: 10, sm: 12 },
-                        pb: { xs: 12, sm: 8 }
-                    }}
+                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden', px: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 }, pb: { xs: 12, sm: 8 } }}
                 >
                     <div className="back-btn" onClick={onBack} style={{ marginBottom: '16px' }}>
                         <div className="back-arrow">←</div>
@@ -118,162 +201,141 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress sx={{ color: 'var(--green)' }} /></Box>
                     ) : (
-                        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
-                            {posts.map((post) => (
-                                <Grid item xs={12} md={6} lg={4} key={post._id}>
-                                    <Card 
-                                        onClick={() => handlePostClick(post)}
-                                        sx={{ 
-                                            borderRadius: '24px', 
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-                                            border: '1px solid rgba(0,0,0,0.05)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease',
-                                            height: '100%',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            overflow: 'hidden',
-                                            '&:hover': { transform: 'translateY(-5px)', boxShadow: '0 12px 30px rgba(15, 110, 86, 0.08)' }
-                                        }}
-                                    >
-                                        <Box sx={{ bgcolor: '#f8f9fa', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, overflow: 'hidden', borderRadius: '24px 24px 0 0' }}>
-                                            <CardMedia
-                                                component="img"
-                                                sx={{
-                                                    height: '100%',
-                                                    width: '100%',
-                                                    objectFit: 'contain',
-                                                    p: 2
-                                                }}
-                                                image={post.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80'}
-                                                alt={post.title}
-                                            />
-                                        </Box>
-                                        <CardContent sx={{ flexGrow: 1, p: '20px !important', display: 'flex', flexDirection: 'column' }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                                                <Chip label={post.category} size="small" sx={{ height: 20, fontSize: '10px', bgcolor: 'rgba(15, 110, 86, 0.06)', color: 'var(--green)', fontWeight: 700, textTransform: 'uppercase' }} />
-                                                <Typography variant="caption" sx={{ color: 'var(--gray)', fontSize: '10px' }}>
-                                                    {new Date(post.createdAt).toLocaleDateString()}
-                                                </Typography>
+                        <Box sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
+                            {/* Featured first post */}
+                            {posts.length > 0 && (
+                                <Box
+                                    onClick={() => setSelectedPost(posts[0])}
+                                    sx={{ cursor: 'pointer', mb: 3, borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', display: { xs: 'block', sm: 'flex' }, transition: 'all 0.3s', '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 12px 32px rgba(15,110,86,0.10)' } }}
+                                >
+                                    <Box sx={{ bgcolor: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: { xs: 220, sm: 260 }, width: { xs: '100%', sm: '42%' }, flexShrink: 0, p: 2 }}>
+                                        <Box component="img" src={getCoverImage(posts[0])} sx={{ maxWidth: '100%', maxHeight: { xs: 200, sm: 240 }, objectFit: 'contain', borderRadius: '16px' }} />
+                                    </Box>
+                                    <Box sx={{ p: { xs: 2.5, sm: 3 }, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <Box sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'center' }}>
+                                            <Chip label={posts[0].category} size="small" sx={{ height: 20, fontSize: '10px', bgcolor: 'rgba(15,110,86,0.08)', color: 'var(--green)', fontWeight: 700, textTransform: 'uppercase' }} />
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'var(--gray)' }}>
+                                                <AccessTimeIcon sx={{ fontSize: 12 }} />
+                                                <Typography variant="caption" sx={{ fontSize: '10px' }}>{getReadTime(posts[0])} min read</Typography>
                                             </Box>
-                                            <Typography className="fraunces" variant="h6" sx={{ fontWeight: 800, mb: 1, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.4em' }}>
-                                                {post.title}
+                                        </Box>
+                                        <Typography className="fraunces" variant="h5" sx={{ fontWeight: 900, mb: 1.5, lineHeight: 1.2, color: 'var(--black)', fontSize: { xs: '20px', sm: '24px' } }}>
+                                            {posts[0].title}
+                                        </Typography>
+                                        <Typography variant="body2" className="sora" sx={{ color: 'var(--gray)', mb: 2.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '13px', lineHeight: 1.6 }}>
+                                            {getExcerpt(posts[0])}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Typography variant="caption" sx={{ color: 'var(--gray)', fontSize: '11px' }}>
+                                                {new Date(posts[0].createdAt).toLocaleDateString()}
                                             </Typography>
-                                            <Typography variant="body2" className="sora" sx={{ color: 'var(--gray)', mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '11px', lineHeight: 1.5 }}>
-                                                {post.content}
-                                            </Typography>
-                                            <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', color: 'var(--green)', fontWeight: 700, gap: 1, fontSize: '13px' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'var(--green)', fontWeight: 700, gap: 0.5, fontSize: '13px' }}>
                                                 Read More <ArrowForwardIcon sx={{ fontSize: 16 }} />
                                             </Box>
-                                        </CardContent>
-                                    </Card>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {/* Rest as grid */}
+                            {posts.length > 1 && (
+                                <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ width: '100%' }}>
+                                    {posts.slice(1).map(post => (
+                                        <Grid item xs={12} sm={6} md={4} key={post._id}>
+                                            <Card
+                                                onClick={() => setSelectedPost(post)}
+                                                sx={{ borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'all 0.3s', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 28px rgba(15,110,86,0.09)' } }}
+                                            >
+                                                <Box sx={{ bgcolor: '#f8f9fa', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 180, overflow: 'hidden', p: 2 }}>
+                                                    <CardMedia component="img" sx={{ height: '100%', width: '100%', objectFit: 'contain' }} image={getCoverImage(post)} alt={post.title} />
+                                                </Box>
+                                                <CardContent sx={{ flexGrow: 1, p: '16px !important', display: 'flex', flexDirection: 'column' }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
+                                                        <Chip label={post.category} size="small" sx={{ height: 18, fontSize: '9px', bgcolor: 'rgba(15,110,86,0.06)', color: 'var(--green)', fontWeight: 700, textTransform: 'uppercase' }} />
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'var(--gray)' }}>
+                                                            <AccessTimeIcon sx={{ fontSize: 11 }} />
+                                                            <Typography variant="caption" sx={{ fontSize: '10px' }}>{getReadTime(post)} min</Typography>
+                                                        </Box>
+                                                    </Box>
+                                                    <Typography className="fraunces" variant="h6" sx={{ fontWeight: 800, mb: 1, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '15px' }}>
+                                                        {post.title}
+                                                    </Typography>
+                                                    <Typography variant="body2" className="sora" sx={{ color: 'var(--gray)', mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '11px', lineHeight: 1.5 }}>
+                                                        {getExcerpt(post)}
+                                                    </Typography>
+                                                    <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <Typography variant="caption" sx={{ color: 'var(--gray)', fontSize: '10px' }}>
+                                                            {new Date(post.createdAt).toLocaleDateString()}
+                                                        </Typography>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'var(--green)', fontWeight: 700, gap: 0.5, fontSize: '12px' }}>
+                                                            Read More <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                                                        </Box>
+                                                    </Box>
+                                                </CardContent>
+                                            </Card>
+                                        </Grid>
+                                    ))}
                                 </Grid>
-                            ))}
-                        </Grid>
+                            )}
+                        </Box>
                     )}
                 </Box>
             ) : (
-                <Box 
+                <Box
                     component={motion.div}
                     key="detail"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%', 
-                        bgcolor: '#fff', 
-                        zIndex: 10, 
-                        p: { xs: 2, sm: 4 }, 
-                        pt: { xs: 10, sm: 12 }, 
-                        pb: { xs: 12, sm: 8 }, 
-                        overflowY: 'auto' 
-                    }}
+                    sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#fff', zIndex: 10, px: { xs: 2, sm: 4 }, pt: { xs: 10, sm: 12 }, pb: { xs: 12, sm: 8 }, overflowY: 'auto', overflowX: 'hidden' }}
                 >
-                    <div className="back-btn" onClick={handleBackToFeed} style={{ marginBottom: '16px' }}>
+                    <div className="back-btn" onClick={() => setSelectedPost(null)} style={{ marginBottom: '24px' }}>
                         <div className="back-arrow">←</div>
                         <span>Back to Pulse feed</span>
                     </div>
 
-                    <Box sx={{ maxWidth: '800px', mx: 'auto', mt: 2 }}>
-                        <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', mb: 2, fontSize: { xs: '24px', sm: '32px' } }}>
-                            {selectedPost.title}
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-                            <Chip label={selectedPost.category} variant="outlined" />
-                            <Typography className="sora" variant="body2" sx={{ color: 'var(--gray)' }}>
-                                By {selectedPost.author.name} · {new Date(selectedPost.createdAt).toLocaleDateString()}
+                    <Box sx={{ maxWidth: '720px', mx: 'auto' }}>
+                        {/* Category + meta */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
+                            <Chip label={selectedPost.category} size="small" sx={{ bgcolor: 'rgba(15,110,86,0.08)', color: 'var(--green)', fontWeight: 700, textTransform: 'uppercase', fontSize: '11px' }} />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'var(--gray)' }}>
+                                <AccessTimeIcon sx={{ fontSize: 13 }} />
+                                <Typography variant="caption" sx={{ fontSize: '12px' }}>{getReadTime(selectedPost)} min read</Typography>
+                            </Box>
+                            <Typography variant="caption" sx={{ color: 'var(--gray)', fontSize: '12px' }}>
+                                {new Date(selectedPost.createdAt).toLocaleDateString()}
                             </Typography>
                         </Box>
 
-                        {selectedPost.youtubeUrl && renderVideo(selectedPost.youtubeUrl)}
-
-                        {!selectedPost.youtubeUrl && (
-                            <Box
-                                sx={{
-                                    float: { xs: 'none', sm: 'left' },
-                                    width: { xs: '100%', sm: '340px' },
-                                    height: { xs: '260px', sm: '320px' },
-                                    borderRadius: '24px',
-                                    mr: { sm: 4 },
-                                    mb: { xs: 4, sm: 2 },
-                                    boxShadow: '0 20px 40px rgba(0,0,0,0.06)',
-                                    border: '1px solid rgba(0,0,0,0.05)',
-                                    bgcolor: '#f8f9fa',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    overflow: 'hidden',
-                                    p: 2
-                                }}
-                            >
-                                <Box
-                                    component="img"
-                                    src={selectedPost.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80'}
-                                    sx={{
-                                        maxWidth: '100%',
-                                        maxHeight: '100%',
-                                        objectFit: 'contain',
-                                        borderRadius: '12px'
-                                    }}
-                                />
-                            </Box>
-                        )}
-
-                        <Typography 
-                            className="sora" 
-                            variant="body1" 
-                            sx={{ 
-                                lineHeight: 1.6, 
-                                whiteSpace: 'pre-wrap', 
-                                fontSize: { xs: '14px', sm: '16px' }, 
-                                color: '#333',
-                                mb: 6,
-                                textAlign: 'justify'
-                            }}
-                        >
-                            {selectedPost.content}
+                        {/* Title */}
+                        <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', mb: 1.5, lineHeight: 1.15, fontSize: { xs: '26px', sm: '34px' } }}>
+                            {selectedPost.title}
                         </Typography>
 
-                        <Box sx={{ sx: { clear: 'both' } }} />
+                        {/* Author */}
+                        <Typography className="sora" variant="body2" sx={{ color: 'var(--gray)', mb: 4, fontSize: '13px' }}>
+                            By {selectedPost.author.name}
+                        </Typography>
 
                         <Divider sx={{ mb: 4 }} />
 
-                        <Box sx={{ p: 4, borderRadius: '24px', bgcolor: 'rgba(15, 110, 86, 0.05)', textAlign: 'center' }}>
+                        {/* Body */}
+                        {selectedPost.blocks && selectedPost.blocks.length > 0
+                            ? selectedPost.blocks.map((block, i) => renderBlock(block, i))
+                            : renderLegacyDetail(selectedPost)
+                        }
+
+                        <Divider sx={{ mt: 6, mb: 4 }} />
+
+                        {/* CTA */}
+                        <Box sx={{ p: { xs: 3, sm: 4 }, borderRadius: '24px', bgcolor: 'rgba(15,110,86,0.05)', textAlign: 'center', mb: 4 }}>
                             <Typography variant="h6" className="fraunces" sx={{ fontWeight: 800, mb: 1 }}>
                                 Interested in this topic?
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'var(--gray)', mb: 3 }}>
                                 Our verified pharmacists are ready to provide the meds and advice mentioned in this article.
                             </Typography>
-                            <Button 
-                                variant="contained" 
-                                onClick={onFindMeds}
-                                sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 6, py: 1.5, textTransform: 'none', fontWeight: 700 }}
-                            >
+                            <Button variant="contained" onClick={onFindMeds} sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 6, py: 1.5, textTransform: 'none', fontWeight: 700 }}>
                                 Find Meds Now
                             </Button>
                         </Box>
