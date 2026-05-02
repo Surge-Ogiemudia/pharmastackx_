@@ -34,6 +34,7 @@ interface Post {
     imageUrl?: string;
     youtubeUrl?: string;
     blocks?: Block[];
+    linkedMedicines?: string[];
     status: 'draft' | 'published';
     linkedPharmacy?: string;
     linkedProduct?: string;
