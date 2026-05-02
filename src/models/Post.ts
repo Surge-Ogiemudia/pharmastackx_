@@ -1,5 +1,11 @@
 import mongoose, { Document, Schema, models } from 'mongoose';
 
+export interface IBlock {
+  type: 'paragraph' | 'heading' | 'image' | 'video' | 'quote';
+  content: string;
+  caption?: string;
+}
+
 export interface IPost extends Document {
   title: string;
   content: string;
@@ -7,6 +13,7 @@ export interface IPost extends Document {
   slug: string;
   imageUrl?: string;
   youtubeUrl?: string;
+  blocks?: IBlock[];
   author: {
     name: string;
     id: string;
@@ -59,6 +66,11 @@ const PostSchema = new Schema<IPost>({
     type: Schema.Types.ObjectId,
     ref: 'Product',
   },
+  blocks: [{
+    type: { type: String, enum: ['paragraph', 'heading', 'image', 'video', 'quote'] },
+    content: { type: String, default: '' },
+    caption: { type: String, default: '' },
+  }],
   seoKeywords: [String],
   status: {
     type: String,
