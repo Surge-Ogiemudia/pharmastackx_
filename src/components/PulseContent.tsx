@@ -380,7 +380,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                            sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, bgcolor: '#fff', borderRadius: '24px 24px 0 0', zIndex: 101, p: 3, pb: 5, boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}
+                            sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, bgcolor: '#fff', borderRadius: '24px 24px 0 0', zIndex: 101, p: 3, pb: '100px', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}
                         >
                             {/* Handle */}
                             <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', mb: 3 }} />
