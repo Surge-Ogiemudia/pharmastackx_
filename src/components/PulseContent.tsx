@@ -212,22 +212,35 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                         {selectedPost.youtubeUrl && renderVideo(selectedPost.youtubeUrl)}
 
                         {!selectedPost.youtubeUrl && (
-                            <Box 
-                                component="img" 
-                                src={selectedPost.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80'} 
-                                sx={{ 
+                            <Box
+                                sx={{
                                     float: { xs: 'none', sm: 'left' },
                                     width: { xs: '100%', sm: '340px' },
-                                    height: { xs: '300px', sm: '380px' },
-                                    borderRadius: '24px', 
-                                    mr: { sm: 4 }, 
-                                    mb: { xs: 4, sm: 2 }, 
-                                    objectFit: 'cover',
+                                    height: { xs: '260px', sm: '320px' },
+                                    borderRadius: '24px',
+                                    mr: { sm: 4 },
+                                    mb: { xs: 4, sm: 2 },
                                     boxShadow: '0 20px 40px rgba(0,0,0,0.06)',
-                                    display: 'block',
-                                    border: '1px solid rgba(0,0,0,0.05)'
+                                    border: '1px solid rgba(0,0,0,0.05)',
+                                    bgcolor: '#f8f9fa',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    p: 2
                                 }}
-                            />
+                            >
+                                <Box
+                                    component="img"
+                                    src={selectedPost.imageUrl || 'https://images.unsplash.com/photo-1576091160550-217359f42f4c?auto=format&fit=crop&q=80'}
+                                    sx={{
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        objectFit: 'contain',
+                                        borderRadius: '12px'
+                                    }}
+                                />
+                            </Box>
                         )}
 
                         <Typography 
