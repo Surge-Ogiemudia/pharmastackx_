@@ -2,6 +2,7 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getMessaging } from "firebase/messaging";
 import { getAnalytics } from "firebase/analytics";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -18,5 +19,6 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const messaging = () => getMessaging(app);
 const analytics = () => getAnalytics(app);
+const storage = getStorage(app);
 
-export { app, messaging, analytics };
+export { app, messaging, analytics, storage };
