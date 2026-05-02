@@ -822,7 +822,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
             <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              <FindMedicinesContent setView={setView} initialQuery={searchPrefill} />
+              <FindMedicinesContent setView={setView} />
             </Box>
           </Box>
         );
