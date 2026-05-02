@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Typography,
@@ -18,6 +18,19 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
+async function uploadImage(file: File, path: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const storageRef = ref(storage, `pulse/${path}/${Date.now()}_${file.name}`);
+        const task = uploadBytesResumable(storageRef, file);
+        task.on('state_changed', null, reject, async () => {
+            const url = await getDownloadURL(task.snapshot.ref);
+            resolve(url);
+        });
+    });
+}
 
 interface Block {
     type: 'paragraph' | 'heading' | 'image' | 'video' | 'quote';
@@ -72,6 +85,8 @@ const BlogCenter = () => {
     const [blocks, setBlocks] = useState<Block[]>([emptyBlock('paragraph')]);
     const [linkedMedicines, setLinkedMedicines] = useState<string[]>([]);
     const [medicineInput, setMedicineInput] = useState('');
+    const [uploading, setUploading] = useState<string | null>(null); // tracks which field is uploading
+    const coverInputRef = useRef<HTMLInputElement>(null);
 
 
     useEffect(() => {
@@ -318,7 +333,41 @@ const BlogCenter = () => {
                             <TextField label="Category" fullWidth value={formData.category} placeholder="e.g. Health Tips, Trends" onChange={e => setFormData({ ...formData, category: e.target.value })} />
                             <TextField label="Display Author" fullWidth value={formData.authorName} placeholder="e.g. Dr. Pharma" onChange={e => setFormData({ ...formData, authorName: e.target.value })} />
                         </Box>
-                        <TextField label="Cover Image URL (card thumbnail)" fullWidth value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+                        {/* Cover Image Upload */}
+                        <Box>
+                            <Typography variant="caption" sx={{ color: 'var(--gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, mb: 1, display: 'block' }}>
+                                Cover Image (card thumbnail)
+                            </Typography>
+                            <input ref={coverInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploading('cover');
+                                    try {
+                                        const url = await uploadImage(file, 'covers');
+                                        setFormData(f => ({ ...f, imageUrl: url }));
+                                    } catch { alert('Upload failed. Try again.'); }
+                                    finally { setUploading(null); }
+                                }}
+                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => coverInputRef.current?.click()}
+                                    disabled={uploading === 'cover'}
+                                    startIcon={uploading === 'cover' ? <CircularProgress size={14} /> : null}
+                                    sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, color: 'var(--green)', borderColor: 'rgba(15,110,86,0.3)', '&:hover': { borderColor: 'var(--green)', bgcolor: 'rgba(15,110,86,0.04)' } }}
+                                >
+                                    {uploading === 'cover' ? 'Uploading…' : formData.imageUrl ? 'Replace Image' : 'Upload Image'}
+                                </Button>
+                                {formData.imageUrl && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box component="img" src={formData.imageUrl} sx={{ height: 48, width: 48, objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.08)' }} />
+                                        <IconButton size="small" onClick={() => setFormData(f => ({ ...f, imageUrl: '' }))} sx={{ color: '#ff4d4d' }}><DeleteIcon sx={{ fontSize: 16 }} /></IconButton>
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
 
                         {/* Block Editor */}
                         <Box>
@@ -350,20 +399,52 @@ const BlogCenter = () => {
                                                     <IconButton size="small" onClick={() => removeBlock(index)} sx={{ color: '#ff4d4d', p: 0.5 }}><DeleteIcon sx={{ fontSize: 16 }} /></IconButton>
                                                 </Box>
                                             </Box>
-                                            <TextField
-                                                fullWidth
-                                                size="small"
-                                                multiline={block.type === 'paragraph' || block.type === 'quote'}
-                                                rows={block.type === 'paragraph' ? 4 : block.type === 'quote' ? 2 : 1}
-                                                placeholder={cfg.placeholder}
-                                                value={block.content}
-                                                onChange={e => updateBlock(index, { content: e.target.value })}
-                                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
-                                            />
+                                            {block.type === 'image' ? (
+                                                <Box>
+                                                    <input type="file" accept="image/*" style={{ display: 'none' }} id={`block-img-${index}`}
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+                                                            setUploading(`block-${index}`);
+                                                            try {
+                                                                const url = await uploadImage(file, 'blocks');
+                                                                updateBlock(index, { content: url });
+                                                            } catch { alert('Upload failed. Try again.'); }
+                                                            finally { setUploading(null); }
+                                                        }}
+                                                    />
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Button
+                                                            variant="outlined" size="small"
+                                                            onClick={() => document.getElementById(`block-img-${index}`)?.click()}
+                                                            disabled={uploading === `block-${index}`}
+                                                            startIcon={uploading === `block-${index}` ? <CircularProgress size={12} /> : null}
+                                                            sx={{ borderRadius: '8px', textTransform: 'none', fontSize: '12px', fontWeight: 700, color: '#0f6e56', borderColor: 'rgba(15,110,86,0.3)' }}
+                                                        >
+                                                            {uploading === `block-${index}` ? 'Uploading…' : block.content ? 'Replace' : 'Upload Image'}
+                                                        </Button>
+                                                        {block.content && (
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Box component="img" src={block.content} sx={{ height: 44, width: 44, objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.08)' }} />
+                                                                <IconButton size="small" onClick={() => updateBlock(index, { content: '' })} sx={{ color: '#ff4d4d' }}><DeleteIcon sx={{ fontSize: 14 }} /></IconButton>
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                </Box>
+                                            ) : (
+                                                <TextField
+                                                    fullWidth size="small"
+                                                    multiline={block.type === 'paragraph' || block.type === 'quote'}
+                                                    rows={block.type === 'paragraph' ? 4 : block.type === 'quote' ? 2 : 1}
+                                                    placeholder={cfg.placeholder}
+                                                    value={block.content}
+                                                    onChange={e => updateBlock(index, { content: e.target.value })}
+                                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '13px' } }}
+                                                />
+                                            )}
                                             {(block.type === 'image' || block.type === 'video') && (
                                                 <TextField
-                                                    fullWidth
-                                                    size="small"
+                                                    fullWidth size="small"
                                                     placeholder="Caption (optional)"
                                                     value={block.caption}
                                                     onChange={e => updateBlock(index, { caption: e.target.value })}
