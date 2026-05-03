@@ -121,12 +121,6 @@ export default function HomePage() {
     }
   }, [notificationSyncStatus]);
 
-  // Signal the splash overlay to hide. Fires after React commits and the browser
-  // paints — by this point emotion has already inserted all CSS, so the page is styled.
-  useEffect(() => {
-    window.dispatchEvent(new Event('psx-app-ready'));
-  }, []);
-
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 const [showMiniPrompt, setShowMiniPrompt] = useState(false);
 const [showContinueOnAppMessage, setShowContinueOnAppMessage] = useState(false);
