@@ -14,7 +14,14 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useSession } from "@/context/SessionProvider";
 import { useCart } from "@/contexts/CartContext";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DispatchForm from "@/components/DispatchForm";
+const DispatchForm = dynamicImport(() => import('@/components/DispatchForm'), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+      <CircularProgress sx={{ color: 'var(--green)' }} />
+    </Box>
+  )
+});
 import AboutContent from "@/components/AboutContent";
 import ContactContent from "@/components/ContactContent";
 import FindPharmacyContent from "@/components/FindPharmacyContent";
