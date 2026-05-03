@@ -24,6 +24,7 @@ async function uploadImage(file: File, folder: string): Promise<string> {
     formData.append('file', file);
     formData.append('folder', folder);
     const res = await axios.post('/api/admin/upload-image', formData);
+    if (!res.data.url) throw new Error('No URL returned');
     return res.data.url;
 }
 
@@ -341,7 +342,7 @@ const BlogCenter = () => {
                                     try {
                                         const url = await uploadImage(file, 'covers');
                                         setFormData(f => ({ ...f, imageUrl: url }));
-                                    } catch { alert('Upload failed. Try again.'); }
+                                    } catch (err: any) { alert(`Upload failed: ${err?.response?.data?.message || err.message}`); }
                                     finally { setUploading(null); }
                                 }}
                             />
@@ -404,7 +405,7 @@ const BlogCenter = () => {
                                                             try {
                                                                 const url = await uploadImage(file, 'blocks');
                                                                 updateBlock(index, { content: url });
-                                                            } catch { alert('Upload failed. Try again.'); }
+                                                            } catch (err: any) { alert(`Upload failed: ${err?.response?.data?.message || err.message}`); }
                                                             finally { setUploading(null); }
                                                         }}
                                                     />
