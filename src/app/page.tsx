@@ -1,6 +1,6 @@
 
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef, Suspense } from "react";
 
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
@@ -92,12 +92,7 @@ export default function HomePage() {
     if (vp === 'orderMedicines' || vp === 'findMedicines') return vp;
     return 'home';
   });
-  const [dispatchVisible, setDispatchVisible] = useState(() => {
-    if (!searchParams) return false;
-    if (searchParams.get('requestId')) return false;
-    const vp = searchParams.get('view');
-    return vp === 'orderMedicines' || vp === 'findMedicines';
-  });
+  const dispatchWrapperRef = useRef<HTMLDivElement>(null);
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -311,6 +306,16 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }, 2500);
     return () => clearTimeout(timer);
   }, [wordIndex]);
+
+  useLayoutEffect(() => {
+    const el = dispatchWrapperRef.current;
+    if (!el) return;
+    if (view === 'orderMedicines') {
+      el.style.opacity = '1';
+    } else {
+      el.style.opacity = '0';
+    }
+  }, [view]);
 
   useEffect(() => {
     if (view === 'orderMedicines') {
@@ -760,7 +765,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto', visibility: dispatchVisible ? 'visible' : 'hidden' }}>
+            <div ref={dispatchWrapperRef} style={{ flexGrow: 1, overflowY: 'auto', opacity: 0 }}>
               <DispatchForm initialSearchValue={inputValue}
                 setView={setView} 
                 setSelectedRequestId={setSelectedRequestId}
@@ -770,7 +775,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                 initialScanRx={shouldTriggerScan}
                 onInstallPWA={() => setShowInstallPrompt(true)}
               />
-            </Box>
+            </div>
           </Box>
         );
         case 'storeManagement':
