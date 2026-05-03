@@ -85,6 +85,7 @@ const emptyBlock = (type: Block['type']): Block => ({ type, content: '', caption
 const BlogCenter = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [open, setOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<Post | null>(null);
     const [activeTab, setActiveTab] = useState<'manage' | 'insights'>('manage');
@@ -110,15 +111,15 @@ const BlogCenter = () => {
         fetchInsights();
     }, []);
 
-    const fetchPosts = async () => {
+    const fetchPosts = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await axios.get('/api/posts');
             setPosts(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Failed to fetch posts:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -199,6 +200,8 @@ const BlogCenter = () => {
     };
 
     const handleSave = async () => {
+        if (saving) return;
+        setSaving(true);
         const payload = {
             ...formData,
             id: editingPost?._id,
@@ -213,10 +216,12 @@ const BlogCenter = () => {
             } else {
                 await axios.post('/api/posts', payload);
             }
-            fetchPosts();
             setOpen(false);
-        } catch (err) {
-            alert('Failed to save post. Check console.');
+            fetchPosts(true);
+        } catch (err: any) {
+            alert(err?.response?.data?.message || 'Failed to save post.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -533,9 +538,15 @@ const BlogCenter = () => {
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpen(false)} sx={{ color: 'var(--gray)' }}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSave} sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 4, '&:hover': { bgcolor: '#0b5643' } }}>
-                        Save Post
+                    <Button onClick={() => setOpen(false)} disabled={saving} sx={{ color: 'var(--gray)' }}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSave}
+                        disabled={saving}
+                        startIcon={saving ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : null}
+                        sx={{ bgcolor: 'var(--green)', borderRadius: '12px', px: 4, '&:hover': { bgcolor: '#0b5643' } }}
+                    >
+                        {saving ? 'Saving…' : 'Save Post'}
                     </Button>
                 </DialogActions>
             </Dialog>
