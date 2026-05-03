@@ -19,11 +19,31 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 
-async function uploadImage(file: File, folder: string): Promise<string> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', folder);
-    const res = await axios.post('/api/admin/upload-image', formData);
+function resizeAndEncode(file: File, maxWidth = 1200): Promise<{ data: string; contentType: string }> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            img.onload = () => {
+                const scale = Math.min(1, maxWidth / img.width);
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const data = canvas.toDataURL('image/jpeg', 0.85);
+                resolve({ data, contentType: 'image/jpeg' });
+            };
+            img.onerror = reject;
+            img.src = e.target!.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function uploadImage(file: File): Promise<string> {
+    const { data, contentType } = await resizeAndEncode(file);
+    const res = await axios.post('/api/admin/upload-image', { data, contentType, filename: file.name });
     if (!res.data.url) throw new Error('No URL returned');
     return res.data.url;
 }
@@ -340,7 +360,7 @@ const BlogCenter = () => {
                                     if (!file) return;
                                     setUploading('cover');
                                     try {
-                                        const url = await uploadImage(file, 'covers');
+                                        const url = await uploadImage(file);
                                         setFormData(f => ({ ...f, imageUrl: url }));
                                     } catch (err: any) { alert(`Upload failed: ${err?.response?.data?.message || err.message}`); }
                                     finally { setUploading(null); }
@@ -403,7 +423,7 @@ const BlogCenter = () => {
                                                             if (!file) return;
                                                             setUploading(`block-${index}`);
                                                             try {
-                                                                const url = await uploadImage(file, 'blocks');
+                                                                const url = await uploadImage(file);
                                                                 updateBlock(index, { content: url });
                                                             } catch (err: any) { alert(`Upload failed: ${err?.response?.data?.message || err.message}`); }
                                                             finally { setUploading(null); }
