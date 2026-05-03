@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
+import SubscribeModal from '../SubscribeModal';
 
 export const revalidate = 60;
 
@@ -125,9 +126,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 <Link href="/pulse" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#555', fontSize: '14px', fontWeight: 600 }}>
                     <span>←</span> <span>PSX Pulse</span>
                 </Link>
-                <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
-                    Open App
-                </Link>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <SubscribeModal />
+                    <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
+                        Open App
+                    </Link>
+                </div>
             </div>
 
             {/* Article */}
