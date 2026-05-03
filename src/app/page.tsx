@@ -319,6 +319,8 @@ useEffect(() => {
     setActiveRequestId(requestIdParam);
     setView('orderMedicines');
   } else if (viewParam === 'orderMedicines') {
+    const searchParam = searchParams.get('search');
+    if (searchParam) setInputValue(searchParam);
     setView('orderMedicines');
   }
 
