@@ -77,15 +77,32 @@ export default function HomePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
-  const [inputValue, setInputValue] = useState("");
+  const searchParams = useSearchParams();
+
+  const [inputValue, setInputValue] = useState(() => {
+    const vp = searchParams?.get('view');
+    const sp = searchParams?.get('search');
+    return (vp === 'orderMedicines' && sp) ? sp : '';
+  });
   const [wordIndex, setWordIndex] = useState(0);
-  const [view, setView] = useState('home');
-  const [dispatchVisible, setDispatchVisible] = useState(false);
+  const [view, setView] = useState(() => {
+    if (!searchParams) return 'home';
+    if (searchParams.get('requestId')) return 'orderMedicines';
+    const vp = searchParams.get('view');
+    if (vp === 'orderMedicines' || vp === 'findMedicines') return vp;
+    return 'home';
+  });
+  const [dispatchVisible, setDispatchVisible] = useState(() => {
+    if (!searchParams) return false;
+    if (searchParams.get('requestId')) return false;
+    const vp = searchParams.get('view');
+    return vp === 'orderMedicines' || vp === 'findMedicines';
+  });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(() => searchParams?.get('requestId') || null);
   const [showNotification, setShowNotification] = useState(false);
   const [permission, setPermission] = useState<'default' | 'granted' | 'denied'>('default');
   const [notificationSyncStatus, setNotificationSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
@@ -311,30 +328,9 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }
   };
 
-  const searchParams = useSearchParams();
-
 useEffect(() => {
-  if (!searchParams) return;
-
-  const viewParam = searchParams.get('view');
-  const verificationParam = searchParams.get('verification');
-  const requestIdParam = searchParams.get('requestId');
-
-  if (verificationParam === 'success') {
+  if (searchParams?.get('verification') === 'success') {
     setShowNotification(true);
-  }
-
-  if (requestIdParam) {
-    setActiveRequestId(requestIdParam);
-    setView('orderMedicines');
-  } else if (viewParam === 'orderMedicines') {
-    const searchParam = searchParams.get('search');
-    if (searchParam) setInputValue(searchParam);
-    setView('orderMedicines');
-  }
-
-  if (viewParam === 'findMedicines') {
-    setView('findMedicines');
   }
 }, [searchParams]);
 
