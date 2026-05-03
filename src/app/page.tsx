@@ -16,6 +16,7 @@ import ReactiveQuoteOverlay from '@/components/ReactiveQuoteOverlay';
 import WhatsAppButton from "@/components/WhatsAppButton";
 import PremiumLanding from "@/components/PremiumLanding";
 import BottomNav from "@/components/BottomNav";
+import DispatchForm from "@/components/DispatchForm";
 import AskRxChat from "@/components/AskRxChat";
 import Image from 'next/image';
 import { Modal, Fade, Backdrop } from '@mui/material';
@@ -32,9 +33,6 @@ const NavSkeleton = () => (
   </Box>
 );
 
-const DispatchForm = dynamic(() => import("@/components/DispatchForm"), { 
-    loading: () => <Box sx={{ p: 10, display: 'flex', justifyContent: 'center' }}><CircularProgress sx={{ color: 'var(--green)' }} /></Box> 
-});
 const AboutContent = dynamic(() => import("@/components/AboutContent"), { loading: () => <NavSkeleton /> });
 const ContactContent = dynamic(() => import("@/components/ContactContent"), { loading: () => <NavSkeleton /> });
 const FindPharmacyContent = dynamic(() => import("@/components/FindPharmacyContent"), { loading: () => <NavSkeleton /> });

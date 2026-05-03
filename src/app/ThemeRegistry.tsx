@@ -30,7 +30,8 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
         if (names.length === 0) return null;
         let styles = '';
         for (const name of names) {
-            styles += cache.inserted[name];
+            const style = cache.inserted[name];
+            if (typeof style === 'string') styles += style;
         }
         return (
             <style
