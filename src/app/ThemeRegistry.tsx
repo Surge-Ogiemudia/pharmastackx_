@@ -6,8 +6,7 @@ import { useState } from 'react';
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
     const [{ cache, flush }] = useState(() => {
-        const cache = createCache({ key: 'mui' });
-        cache.compat = true;
+        const cache = createCache({ key: 'mui', prepend: true });
         const prevInsert = cache.insert;
         let inserted: string[] = [];
         cache.insert = (...args: Parameters<typeof prevInsert>) => {
