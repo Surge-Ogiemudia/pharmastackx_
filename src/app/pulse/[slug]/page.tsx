@@ -184,7 +184,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     <p style={{ color: '#888', fontSize: '14px', margin: '0 0 20px' }}>
                         Verified pharmacists across Nigeria are ready to help.
                     </p>
-                    <Link href="/" style={{ display: 'inline-block', textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '12px 36px', borderRadius: '12px', fontWeight: 700, fontSize: '15px' }}>
+                    <Link
+                        href={post.linkedMedicines?.length
+                            ? `/?view=orderMedicines&search=${encodeURIComponent(post.linkedMedicines[0])}`
+                            : '/?view=orderMedicines'}
+                        style={{ display: 'inline-block', textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '12px 36px', borderRadius: '12px', fontWeight: 700, fontSize: '15px' }}
+                    >
                         Find Meds on PharmaStackX
                     </Link>
                 </div>
