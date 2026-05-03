@@ -1,6 +1,6 @@
 
 "use client";
-import { useState, useEffect, useCallback, useLayoutEffect, useRef, Suspense, type ReactNode, type CSSProperties } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
@@ -32,8 +32,14 @@ const NavSkeleton = () => (
   </Box>
 );
 
-const DispatchForm = dynamic(() => import("@/components/DispatchForm"), { 
-    loading: () => <Box sx={{ p: 10, display: 'flex', justifyContent: 'center' }}><CircularProgress sx={{ color: 'var(--green)' }} /></Box> 
+const DispatchForm = dynamic(() => import("@/components/DispatchForm"), {
+    ssr: false,
+    loading: () => (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+            <style dangerouslySetInnerHTML={{ __html: `@keyframes psx-spin{to{transform:rotate(360deg)}}` }} />
+            <div style={{ width: 36, height: 36, border: '3px solid rgba(15,110,86,0.15)', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'psx-spin 0.7s linear infinite' }} />
+        </div>
+    )
 });
 const AboutContent = dynamic(() => import("@/components/AboutContent"), { loading: () => <NavSkeleton /> });
 const ContactContent = dynamic(() => import("@/components/ContactContent"), { loading: () => <NavSkeleton /> });
@@ -71,13 +77,6 @@ const MotionPaper = motion(Paper);
 
 const animatedWords = ["pharmacies", "pharmacists", "medicines"];
 
-function RevealOnMount({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (ref.current) ref.current.style.opacity = '1';
-  }, []);
-  return <div ref={ref} style={{ opacity: 0, ...style }}>{children}</div>;
-}
 
 export default function HomePage() {
   const { user, isLoading } = useSession();
@@ -101,7 +100,6 @@ export default function HomePage() {
     return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
-  const [clientMounted, setClientMounted] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
@@ -307,8 +305,6 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     view === 'account' ? { xs: '120px', sm: '140px' } :
     (isSimplifiedTheme && view !== 'orders') ? { xs: '20px', sm: '30px' } : 
     (view === 'home' ? { xs: '140px', sm: '150px' } : { xs: '70px', sm: '80px' });
-
-  useEffect(() => { setClientMounted(true); }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -757,24 +753,17 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <div style={{ flexGrow: 1, overflowY: 'auto' }}>
-              {clientMounted ? (
-                <DispatchForm initialSearchValue={inputValue}
-                  setView={setView}
-                  setSelectedRequestId={setSelectedRequestId}
-                  onViewResponses={handleViewLatestRequest}
-                  isNavigating={isNavigating}
-                  initialRequestId={activeRequestId || undefined}
-                  initialScanRx={shouldTriggerScan}
-                  onInstallPWA={() => setShowInstallPrompt(true)}
-                />
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-                  <style>{`@keyframes psx-spin{to{transform:rotate(360deg)}}`}</style>
-                  <div style={{ width: 36, height: 36, border: '3px solid rgba(15,110,86,0.15)', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'psx-spin 0.7s linear infinite' }} />
-                </div>
-              )}
-            </div>
+            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+              <DispatchForm initialSearchValue={inputValue}
+                setView={setView}
+                setSelectedRequestId={setSelectedRequestId}
+                onViewResponses={handleViewLatestRequest}
+                isNavigating={isNavigating}
+                initialRequestId={activeRequestId || undefined}
+                initialScanRx={shouldTriggerScan}
+                onInstallPWA={() => setShowInstallPrompt(true)}
+              />
+            </Box>
           </Box>
         );
         case 'storeManagement':
