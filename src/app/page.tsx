@@ -317,14 +317,6 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }
   }, [view]);
 
-  useEffect(() => {
-    if (view === 'orderMedicines') {
-      setDispatchVisible(false);
-      const raf = requestAnimationFrame(() => setDispatchVisible(true));
-      return () => cancelAnimationFrame(raf);
-    }
-  }, [view]);
-
   const handleSearchInitiation = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value;
     if (value) {
