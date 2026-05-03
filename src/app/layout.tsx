@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { AuthModalProvider } from "@/contexts/AuthModalContext"; // Import the provider
 import MainLayout from "./MainLayout";
 import ThemeRegistry from "./ThemeRegistry";
+import SplashOverlay from "./SplashOverlay";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const sora = Sora({ subsets: ["latin"], weight: ["300", "400", "600", "700", "800"], variable: '--font-sora' });
@@ -58,6 +59,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${poppins.className} ${sora.variable} ${dmSans.variable} ${fraunces.variable}`}>
+        {/* Splash overlay — pure inline styles, zero emotion/MUI dependency, renders instantly */}
+        <div
+          id="psx-splash"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: '#ffffff',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '16px',
+            transition: 'opacity 0.35s ease',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon-192x192.png" alt="PharmaStackX" style={{ width: 80, height: 80, borderRadius: '20px' }} />
+          <div style={{ fontSize: '13px', color: '#aaa', fontFamily: 'sans-serif', letterSpacing: '0.05em' }}>Loading…</div>
+        </div>
+        <SplashOverlay />
+
         <ThemeRegistry>
           <Suspense fallback={null}>
             <SessionProvider>
