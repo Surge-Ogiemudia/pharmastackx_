@@ -80,6 +80,7 @@ export default function HomePage() {
   const [inputValue, setInputValue] = useState("");
   const [wordIndex, setWordIndex] = useState(0);
   const [view, setView] = useState('home');
+  const [dispatchVisible, setDispatchVisible] = useState(false);
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -293,6 +294,14 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }, 2500);
     return () => clearTimeout(timer);
   }, [wordIndex]);
+
+  useEffect(() => {
+    if (view === 'orderMedicines') {
+      setDispatchVisible(false);
+      const raf = requestAnimationFrame(() => setDispatchVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [view]);
 
   const handleSearchInitiation = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value;
@@ -755,8 +764,8 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              <DispatchForm initialSearchValue={inputValue} 
+            <Box sx={{ flexGrow: 1, overflowY: 'auto', visibility: dispatchVisible ? 'visible' : 'hidden' }}>
+              <DispatchForm initialSearchValue={inputValue}
                 setView={setView} 
                 setSelectedRequestId={setSelectedRequestId}
                 onViewResponses={handleViewLatestRequest}
