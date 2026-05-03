@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
-import SubscribeForm from './SubscribeForm';
+import SubscribeModal from './SubscribeModal';
 
 export const revalidate = 60;
 
@@ -60,9 +60,12 @@ export default async function PulsePage({ searchParams }: { searchParams: Promis
                         PharmaStack<span style={{ color: '#e91e8c' }}>X</span>
                     </span>
                 </Link>
-                <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
-                    Open App
-                </Link>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <SubscribeModal />
+                    <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
+                        Open App
+                    </Link>
+                </div>
             </div>
 
             {subscribed === 'true' && (
@@ -78,7 +81,7 @@ export default async function PulsePage({ searchParams }: { searchParams: Promis
 
             <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px 80px' }}>
                 {/* Hero */}
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '48px' }}>
                     <h1 style={{ fontFamily: 'var(--font-fraunces), serif', fontSize: 'clamp(36px, 8vw, 56px)', fontWeight: 900, letterSpacing: '-2px', margin: '0 0 12px', color: '#1a1a1a' }}>
                         PSX <em style={{ color: '#0f6e56', fontStyle: 'italic' }}>Pulse</em>
                     </h1>
@@ -86,8 +89,6 @@ export default async function PulsePage({ searchParams }: { searchParams: Promis
                         Real-time trends, pharmacist insights, and health vlogs.
                     </p>
                 </div>
-
-                <SubscribeForm />
 
                 {posts.length === 0 && (
                     <p style={{ textAlign: 'center', color: '#aaa' }}>No articles published yet.</p>
