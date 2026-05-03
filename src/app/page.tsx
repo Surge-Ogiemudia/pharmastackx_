@@ -77,14 +77,22 @@ export default function HomePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
-  const [inputValue, setInputValue] = useState("");
+  const searchParams = useSearchParams();
+
+  // Initialize from URL params on first render — prevents the home→search flash
+  const [inputValue, setInputValue] = useState(() => searchParams?.get('search') || '');
   const [wordIndex, setWordIndex] = useState(0);
-  const [view, setView] = useState('home');
+  const [view, setView] = useState<string>(() => {
+    const v = searchParams?.get('view');
+    if (searchParams?.get('requestId')) return 'orderMedicines';
+    if (v === 'orderMedicines' || v === 'findMedicines') return v;
+    return 'home';
+  });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(() => searchParams?.get('requestId') || null);
   const [showNotification, setShowNotification] = useState(false);
   const [permission, setPermission] = useState<'default' | 'granted' | 'denied'>('default');
   const [notificationSyncStatus, setNotificationSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
@@ -302,28 +310,9 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }
   };
 
-  const searchParams = useSearchParams();
-
 useEffect(() => {
-  if (!searchParams) return;
-
-  const viewParam = searchParams.get('view');
-  const verificationParam = searchParams.get('verification');
-  const requestIdParam = searchParams.get('requestId');
-
-  if (verificationParam === 'success') {
+  if (searchParams?.get('verification') === 'success') {
     setShowNotification(true);
-  }
-
-  if (requestIdParam) {
-    setActiveRequestId(requestIdParam);
-    setView('orderMedicines');
-  } else if (viewParam === 'orderMedicines') {
-    setView('orderMedicines');
-  }
-
-  if (viewParam === 'findMedicines') {
-    setView('findMedicines');
   }
 }, [searchParams]);
 
