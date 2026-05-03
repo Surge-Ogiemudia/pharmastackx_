@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import Media from '@/models/Media';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -26,42 +26,19 @@ export async function POST(req: NextRequest) {
     if (!admin) return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
 
     try {
-        const formData = await req.formData();
-        const file = formData.get('file') as File | null;
-        const folder = (formData.get('folder') as string) || 'general';
+        const { data, contentType, filename } = await req.json();
 
-        if (!file) return NextResponse.json({ message: 'No file provided' }, { status: 400 });
-
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const filename = `pulse/${folder}/${Date.now()}.${ext}`;
-
-        const adminInstance = getFirebaseAdmin();
-        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-        if (!bucketName) {
-            return NextResponse.json({ message: 'Storage bucket not configured' }, { status: 500 });
+        if (!data || !contentType) {
+            return NextResponse.json({ message: 'Missing image data' }, { status: 400 });
         }
 
-        const bucket = adminInstance.storage().bucket(bucketName);
-        const fileRef = bucket.file(filename);
+        await dbConnect();
+        const media = await Media.create({ data, contentType, filename: filename || 'image' });
 
-        await fileRef.save(buffer, {
-            resumable: false,
-            metadata: {
-                contentType: file.type || 'image/jpeg',
-                cacheControl: 'public, max-age=31536000',
-            },
-        });
-
-        await fileRef.makePublic();
-
-        const url = `https://storage.googleapis.com/${bucketName}/${filename}`;
+        const url = `/api/media/${media._id}`;
         return NextResponse.json({ url });
     } catch (error: any) {
-        console.error('UPLOAD_IMAGE_ERROR', error.message, error.code);
+        console.error('UPLOAD_IMAGE_ERROR', error.message);
         return NextResponse.json({ message: error.message || 'Upload failed' }, { status: 500 });
     }
 }
