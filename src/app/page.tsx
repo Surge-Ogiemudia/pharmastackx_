@@ -101,6 +101,7 @@ export default function HomePage() {
     return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
+  const [clientMounted, setClientMounted] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
@@ -306,6 +307,8 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     view === 'account' ? { xs: '120px', sm: '140px' } :
     (isSimplifiedTheme && view !== 'orders') ? { xs: '20px', sm: '30px' } : 
     (view === 'home' ? { xs: '140px', sm: '150px' } : { xs: '70px', sm: '80px' });
+
+  useEffect(() => { setClientMounted(true); }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -754,17 +757,24 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <RevealOnMount style={{ flexGrow: 1, overflowY: 'auto' }}>
-              <DispatchForm initialSearchValue={inputValue}
-                setView={setView}
-                setSelectedRequestId={setSelectedRequestId}
-                onViewResponses={handleViewLatestRequest}
-                isNavigating={isNavigating}
-                initialRequestId={activeRequestId || undefined}
-                initialScanRx={shouldTriggerScan}
-                onInstallPWA={() => setShowInstallPrompt(true)}
-              />
-            </RevealOnMount>
+            <div style={{ flexGrow: 1, overflowY: 'auto' }}>
+              {clientMounted ? (
+                <DispatchForm initialSearchValue={inputValue}
+                  setView={setView}
+                  setSelectedRequestId={setSelectedRequestId}
+                  onViewResponses={handleViewLatestRequest}
+                  isNavigating={isNavigating}
+                  initialRequestId={activeRequestId || undefined}
+                  initialScanRx={shouldTriggerScan}
+                  onInstallPWA={() => setShowInstallPrompt(true)}
+                />
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                  <style>{`@keyframes psx-spin{to{transform:rotate(360deg)}}`}</style>
+                  <div style={{ width: 36, height: 36, border: '3px solid rgba(15,110,86,0.15)', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'psx-spin 0.7s linear infinite' }} />
+                </div>
+              )}
+            </div>
           </Box>
         );
         case 'storeManagement':
