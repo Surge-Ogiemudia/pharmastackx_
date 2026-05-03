@@ -1,6 +1,6 @@
 
 "use client";
-import { useState, useEffect, useCallback, useLayoutEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef, Suspense, type ReactNode, type CSSProperties } from "react";
 
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
@@ -71,6 +71,14 @@ const MotionPaper = motion(Paper);
 
 const animatedWords = ["pharmacies", "pharmacists", "medicines"];
 
+function RevealOnMount({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) ref.current.style.opacity = '1';
+  }, []);
+  return <div ref={ref} style={{ opacity: 0, ...style }}>{children}</div>;
+}
+
 export default function HomePage() {
   const { user, isLoading } = useSession();
   const { getTotalItems } = useCart();
@@ -92,7 +100,6 @@ export default function HomePage() {
     if (vp === 'orderMedicines' || vp === 'findMedicines') return vp;
     return 'home';
   });
-  const dispatchWrapperRef = useRef<HTMLDivElement>(null);
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -306,16 +313,6 @@ const normalizedUser: UnifiedUser | null = user ? { ...user, _id: (user as any).
     }, 2500);
     return () => clearTimeout(timer);
   }, [wordIndex]);
-
-  useLayoutEffect(() => {
-    const el = dispatchWrapperRef.current;
-    if (!el) return;
-    if (view === 'orderMedicines') {
-      el.style.opacity = '1';
-    } else {
-      el.style.opacity = '0';
-    }
-  }, [view]);
 
   const handleSearchInitiation = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value;
@@ -757,9 +754,9 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <div ref={dispatchWrapperRef} style={{ flexGrow: 1, overflowY: 'auto', opacity: 0 }}>
+            <RevealOnMount style={{ flexGrow: 1, overflowY: 'auto' }}>
               <DispatchForm initialSearchValue={inputValue}
-                setView={setView} 
+                setView={setView}
                 setSelectedRequestId={setSelectedRequestId}
                 onViewResponses={handleViewLatestRequest}
                 isNavigating={isNavigating}
@@ -767,7 +764,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
                 initialScanRx={shouldTriggerScan}
                 onInstallPWA={() => setShowInstallPrompt(true)}
               />
-            </div>
+            </RevealOnMount>
           </Box>
         );
         case 'storeManagement':
