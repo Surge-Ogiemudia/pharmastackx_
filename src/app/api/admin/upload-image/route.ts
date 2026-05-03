@@ -35,24 +35,33 @@ export async function POST(req: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const ext = file.name.split('.').pop() || 'jpg';
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const filename = `pulse/${folder}/${Date.now()}.${ext}`;
 
         const adminInstance = getFirebaseAdmin();
         const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-        const bucket = adminInstance.storage().bucket(bucketName);
 
+        if (!bucketName) {
+            return NextResponse.json({ message: 'Storage bucket not configured' }, { status: 500 });
+        }
+
+        const bucket = adminInstance.storage().bucket(bucketName);
         const fileRef = bucket.file(filename);
+
         await fileRef.save(buffer, {
-            contentType: file.type,
-            public: true,
-            metadata: { cacheControl: 'public, max-age=31536000' },
+            resumable: false,
+            metadata: {
+                contentType: file.type || 'image/jpeg',
+                cacheControl: 'public, max-age=31536000',
+            },
         });
+
+        await fileRef.makePublic();
 
         const url = `https://storage.googleapis.com/${bucketName}/${filename}`;
         return NextResponse.json({ url });
     } catch (error: any) {
-        console.error('UPLOAD_IMAGE_ERROR', error);
-        return NextResponse.json({ message: 'Upload failed', error: error.message }, { status: 500 });
+        console.error('UPLOAD_IMAGE_ERROR', error.message, error.code);
+        return NextResponse.json({ message: error.message || 'Upload failed' }, { status: 500 });
     }
 }
