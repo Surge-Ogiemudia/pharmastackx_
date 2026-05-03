@@ -16,6 +16,7 @@ import ReactiveQuoteOverlay from '@/components/ReactiveQuoteOverlay';
 import WhatsAppButton from "@/components/WhatsAppButton";
 import PremiumLanding from "@/components/PremiumLanding";
 import BottomNav from "@/components/BottomNav";
+import DispatchForm from "@/components/DispatchForm";
 import AskRxChat from "@/components/AskRxChat";
 import Image from 'next/image';
 import { Modal, Fade, Backdrop } from '@mui/material';
@@ -32,15 +33,6 @@ const NavSkeleton = () => (
   </Box>
 );
 
-const DispatchForm = dynamic(() => import("@/components/DispatchForm"), {
-    ssr: false,
-    loading: () => (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-            <style dangerouslySetInnerHTML={{ __html: `@keyframes psx-spin{to{transform:rotate(360deg)}}` }} />
-            <div style={{ width: 36, height: 36, border: '3px solid rgba(15,110,86,0.15)', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'psx-spin 0.7s linear infinite' }} />
-        </div>
-    )
-});
 const AboutContent = dynamic(() => import("@/components/AboutContent"), { loading: () => <NavSkeleton /> });
 const ContactContent = dynamic(() => import("@/components/ContactContent"), { loading: () => <NavSkeleton /> });
 const FindPharmacyContent = dynamic(() => import("@/components/FindPharmacyContent"), { loading: () => <NavSkeleton /> });
@@ -86,17 +78,13 @@ export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [inputValue, setInputValue] = useState(() => {
-    const vp = searchParams?.get('view');
-    const sp = searchParams?.get('search');
-    return (vp === 'orderMedicines' && sp) ? sp : '';
-  });
+  // Initialize from URL params on first render — prevents the home→search flash
+  const [inputValue, setInputValue] = useState(() => searchParams?.get('search') || '');
   const [wordIndex, setWordIndex] = useState(0);
-  const [view, setView] = useState(() => {
-    if (!searchParams) return 'home';
-    if (searchParams.get('requestId')) return 'orderMedicines';
-    const vp = searchParams.get('view');
-    if (vp === 'orderMedicines' || vp === 'findMedicines') return vp;
+  const [view, setView] = useState<string>(() => {
+    const v = searchParams?.get('view');
+    if (searchParams?.get('requestId')) return 'orderMedicines';
+    if (v === 'orderMedicines' || v === 'findMedicines') return v;
     return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
