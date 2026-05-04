@@ -222,6 +222,8 @@ export default function PulseAnalyticsPage() {
 
             {activeTab === 'posts' && (
                 <Box sx={{ background: '#fff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                    <Box sx={{ overflowX: 'auto' }}>
+                        <Box sx={{ minWidth: '700px' }}>
                     <Box sx={{ p: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'grid', gridTemplateColumns: '1fr 60px 60px 60px 60px 200px', gap: 1, alignItems: 'center' }}>
                         {['Post', 'Views', 'Likes', 'Shares', 'Cmts', 'Public visibility toggles'].map(h => (
                             <Typography key={h} sx={{ fontSize: '10px', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</Typography>
@@ -252,6 +254,8 @@ export default function PulseAnalyticsPage() {
                             </Box>
                         </Box>
                     ))}
+                        </Box>
+                    </Box>
                 </Box>
             )}
 
