@@ -20,14 +20,33 @@ interface Comment {
     createdAt: string;
 }
 
+const HeartIcon = ({ filled }: { filled: boolean }) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#e91e8c' : 'none'} stroke={filled ? '#e91e8c' : '#888'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+);
+
+const CommentIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+);
+
+const ShareIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+);
+
 const actionBtn: React.CSSProperties = {
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '6px',
-    fontSize: '14px',
+    gap: '5px',
+    fontSize: '13px',
     fontWeight: 600,
     fontFamily: 'inherit',
     padding: '8px 0',
@@ -124,47 +143,33 @@ export default function ArticleInteractions({
             {/* View count — only if admin toggled on */}
             {showViews && (
                 <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 16px' }}>
-                    👁 {initialViews.toLocaleString()} views
+                    {initialViews.toLocaleString()} views
                 </p>
             )}
 
             {/* Action bar — always visible */}
             <div style={{ display: 'flex', gap: '24px', alignItems: 'center', borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)', padding: '4px 0', marginBottom: '28px' }}>
                 {/* Like */}
-                <button
-                    onClick={handleLike}
-                    style={{ ...actionBtn, color: liked ? '#e91e8c' : '#555' }}
-                    title={liked ? 'Unlike' : 'Like'}
-                >
-                    <span style={{ fontSize: '18px' }}>{liked ? '♥' : '♡'}</span>
+                <button onClick={handleLike} style={actionBtn} title={liked ? 'Unlike' : 'Like'}>
+                    <HeartIcon filled={liked} />
                     {showLikes && (
-                        <span style={{ fontSize: '13px', color: liked ? '#e91e8c' : '#888' }}>
-                            {likes.toLocaleString()}
-                        </span>
+                        <span style={{ color: liked ? '#e91e8c' : '#888' }}>{likes.toLocaleString()}</span>
                     )}
                 </button>
 
                 {/* Comment */}
-                <button
-                    onClick={() => setShowForm(f => !f)}
-                    style={{ ...actionBtn, color: showForm ? '#0f6e56' : '#555' }}
-                    title="Comment"
-                >
-                    <span style={{ fontSize: '18px' }}>💬</span>
+                <button onClick={() => setShowForm(f => !f)} style={actionBtn} title="Comment">
+                    <CommentIcon />
                     {showComments && (
-                        <span style={{ fontSize: '13px', color: '#888' }}>
-                            {comments.length.toLocaleString()}
-                        </span>
+                        <span style={{ color: '#888' }}>{comments.length.toLocaleString()}</span>
                     )}
                 </button>
 
                 {/* Share */}
-                <button onClick={handleShare} style={{ ...actionBtn }} title="Share">
-                    <span style={{ fontSize: '18px' }}>↗</span>
+                <button onClick={handleShare} style={actionBtn} title="Share">
+                    <ShareIcon />
                     {showShares && (
-                        <span style={{ fontSize: '13px', color: '#888' }}>
-                            {shares.toLocaleString()}
-                        </span>
+                        <span style={{ color: '#888' }}>{shares.toLocaleString()}</span>
                     )}
                 </button>
             </div>
