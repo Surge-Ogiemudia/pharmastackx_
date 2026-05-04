@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from "@/context/SessionProvider";
 import { Box, Typography, Avatar, Button, List, ListItem, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, Chip } from "@mui/material";
-import { Person, VpnKey, Info, ContactMail, Business, LocationOn, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive, Security } from "@mui/icons-material";
+import { Person, VpnKey, Info, ContactMail, Business, LocationOn, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive, Security, BarChart } from "@mui/icons-material";
 import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -352,6 +352,11 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         <MedicationIcon style={{ color: 'var(--primary-green)' }} />
                                         <span className="profile-row-label">Consultations</span>
                                         {consultations.length > 0 && <Chip label={consultations.length} size="small" sx={{ ml: 1, bgcolor: '#B45309', color: '#fff' }} />}
+                                        <span className="profile-chevron">›</span>
+                                    </div>
+                                    <div className="profile-row-action" onClick={() => window.open('https://www.pharmastackx.com/admin/pulse-analytics', '_blank')}>
+                                        <BarChart style={{ color: 'var(--primary-green)' }} />
+                                        <span className="profile-row-label">Pulse Analytics</span>
                                         <span className="profile-chevron">›</span>
                                     </div>
                                     <div className="profile-row-action" onClick={() => setProfileMode('godmode')}>
