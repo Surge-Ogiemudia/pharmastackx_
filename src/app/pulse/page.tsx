@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
-import SubscribeModal from './SubscribeModal';
+import SubscribeModal from '@/components/SubscribeModal';
 
 export const revalidate = 60;
 
