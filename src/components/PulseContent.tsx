@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SubscribeModal from './SubscribeModal';
+import ArticleInteractions from './ArticleInteractions';
 import {
     Box,
     Typography,
@@ -36,6 +37,13 @@ interface Post {
     status: 'draft' | 'published';
     author: { name: string };
     createdAt: string;
+    views?: number;
+    likes?: number;
+    shares?: number;
+    showViews?: boolean;
+    showLikes?: boolean;
+    showComments?: boolean;
+    showShares?: boolean;
 }
 
 interface PulseContentProps {
@@ -299,23 +307,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             <div className="back-arrow">←</div>
                             <span>Back to Pulse feed</span>
                         </div>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         <SubscribeModal />
-                        <Button
-                            size="small"
-                            onClick={() => {
-                                const url = `${window.location.origin}/pulse/${selectedPost.slug}`;
-                                if (navigator.share) {
-                                    navigator.share({ title: selectedPost.title, url });
-                                } else {
-                                    navigator.clipboard.writeText(url);
-                                }
-                            }}
-                            sx={{ borderRadius: '20px', textTransform: 'none', fontSize: '12px', fontWeight: 700, color: 'var(--green)', border: '1px solid rgba(15,110,86,0.2)', px: 2, '&:hover': { bgcolor: 'rgba(15,110,86,0.05)' } }}
-                        >
-                            Share ↗
-                        </Button>
-                        </Box>
                     </Box>
 
                     <Box sx={{ maxWidth: '720px', mx: 'auto' }}>
@@ -350,6 +342,17 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                         }
 
                         <Divider sx={{ mt: 6, mb: 4 }} />
+
+                        <ArticleInteractions
+                            slug={selectedPost.slug}
+                            initialViews={selectedPost.views || 0}
+                            initialLikes={selectedPost.likes || 0}
+                            initialShares={selectedPost.shares || 0}
+                            showViews={selectedPost.showViews || false}
+                            showLikes={selectedPost.showLikes || false}
+                            showComments={selectedPost.showComments || false}
+                            showShares={selectedPost.showShares || false}
+                        />
 
                         {/* CTA */}
                         <Box sx={{ p: { xs: 3, sm: 4 }, borderRadius: '24px', bgcolor: 'rgba(15,110,86,0.05)', textAlign: 'center', mb: 4 }}>

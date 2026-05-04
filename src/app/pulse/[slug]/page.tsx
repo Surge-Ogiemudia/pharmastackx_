@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
 import SubscribeModal from '@/components/SubscribeModal';
+import ArticleInteractions from '@/components/ArticleInteractions';
 
 export const revalidate = 60;
 
@@ -179,6 +180,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 }
 
                 <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.08)', margin: '48px 0 32px' }} />
+
+                <ArticleInteractions
+                    slug={post.slug}
+                    initialViews={post.views || 0}
+                    initialLikes={post.likes || 0}
+                    initialShares={post.shares || 0}
+                    showViews={post.showViews || false}
+                    showLikes={post.showLikes || false}
+                    showComments={post.showComments || false}
+                    showShares={post.showShares || false}
+                />
 
                 {/* CTA */}
                 <div style={{ background: 'rgba(15,110,86,0.05)', borderRadius: '20px', padding: '32px', textAlign: 'center' }}>
