@@ -86,6 +86,7 @@ async function authorizeAdmin() {
     if (!sessionToken || !sessionToken.value) return null;
     try {
         const payload: any = jwt.verify(sessionToken.value, JWT_SECRET);
+        await dbConnect();
         const user = await User.findById(payload.userId).lean();
         if (user && user.role === 'admin') return user;
         return null;
