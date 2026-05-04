@@ -8,7 +8,7 @@ import { track } from '@/lib/track';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const showNavbar = pathname !== '/find-medicines' && pathname !== '/product-demo';
+  const showNavbar = pathname !== '/find-medicines' && pathname !== '/product-demo' && pathname !== '/pulse' && !pathname?.startsWith('/pulse/');
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change
