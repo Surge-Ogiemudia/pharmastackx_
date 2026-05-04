@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
+import SubscribeModal from '@/components/SubscribeModal';
 
 export const revalidate = 60;
 
@@ -125,9 +126,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 <Link href="/pulse" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: '#555', fontSize: '14px', fontWeight: 600 }}>
                     <span>←</span> <span>PSX Pulse</span>
                 </Link>
-                <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
-                    Open App
-                </Link>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <SubscribeModal />
+                    <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
+                        Open App
+                    </Link>
+                </div>
             </div>
 
             {/* Article */}
@@ -184,7 +188,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                     <p style={{ color: '#888', fontSize: '14px', margin: '0 0 20px' }}>
                         Verified pharmacists across Nigeria are ready to help.
                     </p>
-                    <Link href="/" style={{ display: 'inline-block', textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '12px 36px', borderRadius: '12px', fontWeight: 700, fontSize: '15px' }}>
+                    <Link
+                        href={post.linkedMedicines?.length
+                            ? `/?view=orderMedicines&search=${encodeURIComponent(post.linkedMedicines[0])}`
+                            : '/?view=orderMedicines'}
+                        style={{ display: 'inline-block', textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '12px 36px', borderRadius: '12px', fontWeight: 700, fontSize: '15px' }}
+                    >
                         Find Meds on PharmaStackX
                     </Link>
                 </div>

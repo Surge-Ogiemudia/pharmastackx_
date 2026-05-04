@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SubscribeModal from './SubscribeModal';
 import {
     Box,
     Typography,
@@ -196,9 +197,10 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                         <Typography className="fraunces" variant="h4" sx={{ fontWeight: 900, color: 'var(--black)', letterSpacing: '-1.5px', mb: 1 }}>
                             PSX <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>Pulse</em>
                         </Typography>
-                        <Typography variant="body1" className="sora" sx={{ color: 'var(--gray)', fontWeight: 300 }}>
+                        <Typography variant="body1" className="sora" sx={{ color: 'var(--gray)', fontWeight: 300, mb: 2 }}>
                             Real-time trends, pharmacist insights, and health vlogs.
                         </Typography>
+                        <SubscribeModal />
                     </Box>
 
                     {loading ? (
@@ -297,6 +299,8 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                             <div className="back-arrow">←</div>
                             <span>Back to Pulse feed</span>
                         </div>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <SubscribeModal />
                         <Button
                             size="small"
                             onClick={() => {
@@ -311,6 +315,7 @@ const PulseContent = ({ onBack, onFindMeds }: PulseContentProps) => {
                         >
                             Share ↗
                         </Button>
+                        </Box>
                     </Box>
 
                     <Box sx={{ maxWidth: '720px', mx: 'auto' }}>

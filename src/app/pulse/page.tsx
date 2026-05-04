@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
+import SubscribeModal from '@/components/SubscribeModal';
 
 export const revalidate = 60;
 
@@ -46,8 +47,9 @@ function getExcerpt(post: any): string {
     return (post.content || '').slice(0, 160);
 }
 
-export default async function PulsePage() {
+export default async function PulsePage({ searchParams }: { searchParams: Promise<{ subscribed?: string }> }) {
     const posts = await getPosts();
+    const { subscribed } = await searchParams;
 
     return (
         <div style={{ minHeight: '100vh', background: '#fafaf8', fontFamily: 'var(--font-sora), sans-serif' }}>
@@ -58,10 +60,24 @@ export default async function PulsePage() {
                         PharmaStack<span style={{ color: '#e91e8c' }}>X</span>
                     </span>
                 </Link>
-                <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
-                    Open App
-                </Link>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <SubscribeModal />
+                    <Link href="/" style={{ textDecoration: 'none', background: '#0f6e56', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: 700 }}>
+                        Open App
+                    </Link>
+                </div>
             </div>
+
+            {subscribed === 'true' && (
+                <div style={{ background: '#0f6e56', color: '#fff', textAlign: 'center', padding: '14px 24px', fontSize: '14px', fontWeight: 600 }}>
+                    🎉 You&apos;re subscribed! Welcome to PSX Pulse.
+                </div>
+            )}
+            {subscribed === 'error' && (
+                <div style={{ background: '#fff3e0', color: '#e65100', textAlign: 'center', padding: '14px 24px', fontSize: '14px', fontWeight: 600 }}>
+                    That confirmation link is invalid or already used. Try subscribing again.
+                </div>
+            )}
 
             <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px 80px' }}>
                 {/* Hero */}
