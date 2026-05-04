@@ -237,17 +237,17 @@ export default function PulseAnalyticsPage() {
                                     <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1a1a1a', lineHeight: 1.3 }}>{post.title}</Typography>
                                     <Chip label={post.category} size="small" sx={{ mt: 0.5, height: 16, fontSize: '9px', bgcolor: 'rgba(15,110,86,0.06)', color: '#0f6e56', fontWeight: 700 }} />
                                 </Box>
-                                <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>{post.views.toLocaleString()}</Typography>
-                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#e91e8c' }}>{post.likes}</Typography>
-                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#0f6e56' }}>{post.shares}</Typography>
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>{(post.views || 0).toLocaleString()}</Typography>
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#e91e8c' }}>{post.likes || 0}</Typography>
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#0f6e56' }}>{post.shares || 0}</Typography>
                                 <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>
-                                    {post.comments}{post.pendingComments > 0 && <span style={{ color: '#e91e8c', fontSize: '10px', marginLeft: '3px' }}>+{post.pendingComments}</span>}
+                                    {post.comments || 0}{(post.pendingComments || 0) > 0 && <span style={{ color: '#e91e8c', fontSize: '10px', marginLeft: '3px' }}>+{post.pendingComments}</span>}
                                 </Typography>
                                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                    <Toggle label="Views" value={post.showViews} onChange={v => toggleSetting(post._id, 'showViews', v)} />
-                                    <Toggle label="Likes" value={post.showLikes} onChange={v => toggleSetting(post._id, 'showLikes', v)} />
-                                    <Toggle label="Cmts" value={post.showComments} onChange={v => toggleSetting(post._id, 'showComments', v)} />
-                                    <Toggle label="Shares" value={post.showShares} onChange={v => toggleSetting(post._id, 'showShares', v)} />
+                                    <Toggle label="Views" value={!!post.showViews} onChange={v => toggleSetting(post._id, 'showViews', v)} />
+                                    <Toggle label="Likes" value={!!post.showLikes} onChange={v => toggleSetting(post._id, 'showLikes', v)} />
+                                    <Toggle label="Cmts" value={!!post.showComments} onChange={v => toggleSetting(post._id, 'showComments', v)} />
+                                    <Toggle label="Shares" value={!!post.showShares} onChange={v => toggleSetting(post._id, 'showShares', v)} />
                                 </Box>
                             </Box>
                         </Box>
