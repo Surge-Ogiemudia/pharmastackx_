@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { dbConnect } from '@/lib/mongoConnect';
 import Post from '@/models/Post';
-import SubscribeModal from '../SubscribeModal';
+import SubscribeModal from '@/components/SubscribeModal';
 
 export const revalidate = 60;
 
