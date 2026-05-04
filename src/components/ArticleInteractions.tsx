@@ -139,7 +139,7 @@ export default function ArticleInteractions({
     };
 
     return (
-        <div style={{ marginTop: '32px' }}>
+        <div style={{ marginTop: '32px', marginBottom: '40px' }}>
             {/* View count — only if admin toggled on */}
             {showViews && (
                 <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 16px' }}>
