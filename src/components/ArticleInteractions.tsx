@@ -10,7 +10,7 @@ interface Props {
     showLikes: boolean;
     showComments: boolean;
     showShares: boolean;
-    trackView?: boolean; // only true for the first mount on the actual article page
+    trackView?: boolean;
 }
 
 interface Comment {
@@ -20,19 +20,19 @@ interface Comment {
     createdAt: string;
 }
 
-const btn: React.CSSProperties = {
+const actionBtn: React.CSSProperties = {
     background: 'transparent',
-    border: '1.5px solid rgba(0,0,0,0.1)',
-    borderRadius: '20px',
-    padding: '6px 14px',
+    border: 'none',
     cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: 600,
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
+    fontSize: '14px',
+    fontWeight: 600,
     fontFamily: 'inherit',
-    transition: 'all 0.15s',
+    padding: '8px 0',
+    color: '#555',
+    transition: 'color 0.15s',
 };
 
 export default function ArticleInteractions({
@@ -57,16 +57,13 @@ export default function ArticleInteractions({
                 body: JSON.stringify({ action: 'view', slug }),
             }).catch(() => {});
         }
-        const alreadyLiked = localStorage.getItem(`psx_liked_${slug}`) === '1';
-        setLiked(alreadyLiked);
+        setLiked(localStorage.getItem(`psx_liked_${slug}`) === '1');
 
-        if (showComments) {
-            fetch(`/api/pulse/comments?slug=${slug}`)
-                .then(r => r.json())
-                .then(data => Array.isArray(data) && setComments(data))
-                .catch(() => {});
-        }
-    }, [slug, trackView, showComments]);
+        fetch(`/api/pulse/comments?slug=${slug}`)
+            .then(r => r.json())
+            .then(data => Array.isArray(data) && setComments(data))
+            .catch(() => {});
+    }, [slug, trackView]);
 
     const handleLike = () => {
         const action = liked ? 'unlike' : 'like';
@@ -122,94 +119,109 @@ export default function ArticleInteractions({
         }
     };
 
-    const anyVisible = showViews || showLikes || showShares || showComments;
-    if (!anyVisible) return null;
-
     return (
         <div style={{ marginTop: '32px' }}>
-            {/* Stats / action bar */}
-            {(showViews || showLikes || showShares) && (
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: showComments ? '28px' : '0' }}>
-                    {showViews && (
-                        <span style={{ ...btn, cursor: 'default', color: '#888', borderColor: 'rgba(0,0,0,0.07)' }}>
-                            👁 {initialViews.toLocaleString()} views
+            {/* View count — only if admin toggled on */}
+            {showViews && (
+                <p style={{ fontSize: '12px', color: '#aaa', margin: '0 0 16px' }}>
+                    👁 {initialViews.toLocaleString()} views
+                </p>
+            )}
+
+            {/* Action bar — always visible */}
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'center', borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)', padding: '4px 0', marginBottom: '28px' }}>
+                {/* Like */}
+                <button
+                    onClick={handleLike}
+                    style={{ ...actionBtn, color: liked ? '#e91e8c' : '#555' }}
+                    title={liked ? 'Unlike' : 'Like'}
+                >
+                    <span style={{ fontSize: '18px' }}>{liked ? '♥' : '♡'}</span>
+                    {showLikes && (
+                        <span style={{ fontSize: '13px', color: liked ? '#e91e8c' : '#888' }}>
+                            {likes.toLocaleString()}
                         </span>
                     )}
-                    {showLikes && (
-                        <button
-                            onClick={handleLike}
-                            style={{ ...btn, color: liked ? '#e91e8c' : '#555', borderColor: liked ? 'rgba(233,30,140,0.3)' : 'rgba(0,0,0,0.1)', background: liked ? 'rgba(233,30,140,0.05)' : 'transparent' }}
-                        >
-                            {liked ? '♥' : '♡'} {likes.toLocaleString()} {likes === 1 ? 'like' : 'likes'}
-                        </button>
+                </button>
+
+                {/* Comment */}
+                <button
+                    onClick={() => setShowForm(f => !f)}
+                    style={{ ...actionBtn, color: showForm ? '#0f6e56' : '#555' }}
+                    title="Comment"
+                >
+                    <span style={{ fontSize: '18px' }}>💬</span>
+                    {showComments && (
+                        <span style={{ fontSize: '13px', color: '#888' }}>
+                            {comments.length.toLocaleString()}
+                        </span>
                     )}
+                </button>
+
+                {/* Share */}
+                <button onClick={handleShare} style={{ ...actionBtn }} title="Share">
+                    <span style={{ fontSize: '18px' }}>↗</span>
                     {showShares && (
-                        <button onClick={handleShare} style={{ ...btn, color: '#0f6e56', borderColor: 'rgba(15,110,86,0.2)' }}>
-                            ↗ {shares.toLocaleString()} {shares === 1 ? 'share' : 'shares'}
-                        </button>
+                        <span style={{ fontSize: '13px', color: '#888' }}>
+                            {shares.toLocaleString()}
+                        </span>
                     )}
+                </button>
+            </div>
+
+            {/* Comment form */}
+            {showForm && (
+                <form onSubmit={handleComment} style={{ background: '#f8f9fa', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#1a1a1a' }}>Leave a comment</h4>
+                    <input
+                        type="text" placeholder="Your name *" value={name} required
+                        onChange={e => setName(e.target.value)}
+                        style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)', fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: '#fff' }}
+                    />
+                    <textarea
+                        placeholder="Write your comment…" value={commentText} required rows={4}
+                        onChange={e => setCommentText(e.target.value)}
+                        style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)', fontSize: '14px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', background: '#fff' }}
+                    />
+                    {submitStatus === 'error' && (
+                        <p style={{ margin: 0, color: '#e53935', fontSize: '13px' }}>{submitMsg}</p>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <button type="button" onClick={() => setShowForm(false)} style={{ background: 'transparent', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: '10px', padding: '9px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: '#666' }}>
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={submitStatus === 'loading'} style={{ background: '#0f6e56', color: '#fff', border: 'none', borderRadius: '10px', padding: '9px 24px', fontSize: '13px', fontWeight: 700, cursor: submitStatus === 'loading' ? 'not-allowed' : 'pointer', opacity: submitStatus === 'loading' ? 0.7 : 1, fontFamily: 'inherit' }}>
+                            {submitStatus === 'loading' ? 'Submitting…' : 'Submit'}
+                        </button>
+                    </div>
+                </form>
+            )}
+
+            {submitStatus === 'success' && (
+                <div style={{ background: 'rgba(15,110,86,0.08)', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#0f6e56', fontWeight: 600 }}>
+                    ✓ {submitMsg}
                 </div>
             )}
 
-            {/* Comments section */}
-            {showComments && (
+            {/* Approved comments — always shown */}
+            {comments.length > 0 && (
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#1a1a1a' }}>
-                            Comments {comments.length > 0 && <span style={{ color: '#888', fontWeight: 400 }}>({comments.length})</span>}
-                        </h3>
-                        <button onClick={() => setShowForm(f => !f)} style={{ ...btn, color: '#0f6e56', borderColor: 'rgba(15,110,86,0.25)' }}>
-                            {showForm ? '✕ Cancel' : '+ Leave a comment'}
-                        </button>
-                    </div>
-
-                    {submitStatus === 'success' && (
-                        <div style={{ background: 'rgba(15,110,86,0.08)', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', fontSize: '14px', color: '#0f6e56', fontWeight: 600 }}>
-                            ✓ {submitMsg}
-                        </div>
-                    )}
-
-                    {showForm && (
-                        <form onSubmit={handleComment} style={{ background: '#f8f9fa', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <input
-                                type="text" placeholder="Your name *" value={name} required
-                                onChange={e => setName(e.target.value)}
-                                style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)', fontSize: '14px', fontFamily: 'inherit', outline: 'none' }}
-                            />
-                            <textarea
-                                placeholder="Write your comment…" value={commentText} required rows={4}
-                                onChange={e => setCommentText(e.target.value)}
-                                style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)', fontSize: '14px', fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
-                            />
-                            {submitStatus === 'error' && (
-                                <p style={{ margin: 0, color: '#e53935', fontSize: '13px' }}>{submitMsg}</p>
-                            )}
-                            <button
-                                type="submit" disabled={submitStatus === 'loading'}
-                                style={{ alignSelf: 'flex-end', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: submitStatus === 'loading' ? 'not-allowed' : 'pointer', opacity: submitStatus === 'loading' ? 0.7 : 1, fontFamily: 'inherit' }}
-                            >
-                                {submitStatus === 'loading' ? 'Submitting…' : 'Submit'}
-                            </button>
-                        </form>
-                    )}
-
-                    {comments.length === 0 ? (
-                        <p style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '24px 0' }}>No comments yet. Be the first!</p>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {comments.map(c => (
-                                <div key={c._id} style={{ background: '#f8f9fa', borderRadius: '14px', padding: '16px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <span style={{ fontWeight: 700, fontSize: '14px', color: '#1a1a1a' }}>{c.name}</span>
-                                        <span style={{ fontSize: '12px', color: '#bbb' }}>
-                                            {new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </span>
-                                    </div>
-                                    <p style={{ margin: 0, fontSize: '14px', color: '#444', lineHeight: 1.6 }}>{c.content}</p>
+                    <h4 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 800, color: '#1a1a1a' }}>
+                        Comments{showComments && <span style={{ color: '#888', fontWeight: 400 }}> ({comments.length})</span>}
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {comments.map(c => (
+                            <div key={c._id} style={{ background: '#f8f9fa', borderRadius: '14px', padding: '14px 16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#1a1a1a' }}>{c.name}</span>
+                                    <span style={{ fontSize: '11px', color: '#ccc' }}>
+                                        {new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <p style={{ margin: 0, fontSize: '14px', color: '#444', lineHeight: 1.6 }}>{c.content}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
