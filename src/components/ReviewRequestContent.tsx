@@ -246,13 +246,22 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
     // Initial fetch
     fetchRequestAndDistances();
 
-    // SSE — refetch instantly when a new quote arrives
-    // EventSource reconnects automatically on drop — don't close on error
-    const sse = new EventSource(`/api/requests/${requestId}/stream`);
-    sse.onmessage = () => fetchRequestAndDistances();
-    sse.onopen = () => fetchRequestAndDistances(); // catch up after reconnect
+    // Pusher — real-time quote updates across Vercel instances
+    let pusherInstance: any = null;
+    import('pusher-js').then(({ default: Pusher }) => {
+        pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        });
+        const channel = pusherInstance.subscribe(`request-${requestId}`);
+        channel.bind('new-quote', () => fetchRequestAndDistances());
+    });
 
-    return () => sse.close();
+    return () => {
+        if (pusherInstance) {
+            pusherInstance.unsubscribe(`request-${requestId}`);
+            pusherInstance.disconnect();
+        }
+    };
   }, [requestId, requestUserLocation]);
 
   const handleRetryPayment = (quoteId: string, itemsToAdd: any[]) => {
