@@ -4,7 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import RequestModel from '@/models/Request';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
-import { emitQuoteUpdate } from '@/lib/eventEmitter';
+import { triggerQuoteUpdate } from '@/lib/pusher';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -201,7 +201,7 @@ export async function PATCH(req: NextRequest, { params: paramsPromise }: { param
         const savedRequest = await originalRequest.save();
 
         // Push real-time update to the patient watching this request
-        emitQuoteUpdate(originalRequest._id.toString());
+        triggerQuoteUpdate(originalRequest._id.toString()).catch(err => console.error('PUSHER_ERROR', err.message));
 
         return NextResponse.json({ ...savedRequest.toObject(), shouldNotifyDelivery }, { status: 200 });
 
