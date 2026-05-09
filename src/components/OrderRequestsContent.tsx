@@ -312,24 +312,35 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
   }, []);
 
   useEffect(() => {
-    if (!selectedRequestId) {
-      const fetchRequests = async () => {
-        try {
-          const response = await fetch('/api/requests?forPharmacist=true');
-          if (!response.ok) throw new Error('Failed to fetch requests');
-          const data = await response.json();
-          setRequests(data);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchRequests();
-      const interval = setInterval(fetchRequests, 10000);
-      return () => clearInterval(interval);
+    if (selectedRequestId) return;
+
+    const fetchRequests = async () => {
+      try {
+        const response = await fetch('/api/requests?forPharmacist=true');
+        if (!response.ok) throw new Error('Failed to fetch requests');
+        const data = await response.json();
+        setRequests(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchRequests();
+
+    // SSE — refetch instantly when a new request arrives in this state
+    const state = (user as any)?.stateOfPractice || (user as any)?.state;
+    let sse: EventSource | null = null;
+    if (state) {
+      sse = new EventSource(`/api/requests/stream?state=${encodeURIComponent(state)}`);
+      sse.onmessage = () => fetchRequests();
+      sse.onerror = () => sse?.close();
     }
-  }, [selectedRequestId]);
+
+    return () => sse?.close();
+  }, [selectedRequestId, user]);
 
   const calculateDistance = (patientCoords?: [number, number]) => {
     if (!pharmacistCoords || !patientCoords) return null;

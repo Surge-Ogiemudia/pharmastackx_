@@ -221,6 +221,8 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
   }, [fetchDistances]);
 
   useEffect(() => {
+    if (!requestId) return;
+
     const fetchRequestAndDistances = async () => {
       try {
         const response = await fetch(`/api/requests/${requestId}`);
@@ -240,12 +242,16 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
         setLoading(false);
       }
     };
-    
-    if (requestId) {
-      fetchRequestAndDistances();
-      const interval = setInterval(fetchRequestAndDistances, 5000);
-      return () => clearInterval(interval);
-    }
+
+    // Initial fetch
+    fetchRequestAndDistances();
+
+    // SSE — refetch instantly when a new quote arrives
+    const sse = new EventSource(`/api/requests/${requestId}/stream`);
+    sse.onmessage = () => fetchRequestAndDistances();
+    sse.onerror = () => sse.close();
+
+    return () => sse.close();
   }, [requestId, requestUserLocation]);
 
   const handleRetryPayment = (quoteId: string, itemsToAdd: any[]) => {
