@@ -247,9 +247,10 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
     fetchRequestAndDistances();
 
     // SSE — refetch instantly when a new quote arrives
+    // EventSource reconnects automatically on drop — don't close on error
     const sse = new EventSource(`/api/requests/${requestId}/stream`);
     sse.onmessage = () => fetchRequestAndDistances();
-    sse.onerror = () => sse.close();
+    sse.onopen = () => fetchRequestAndDistances(); // catch up after reconnect
 
     return () => sse.close();
   }, [requestId, requestUserLocation]);
