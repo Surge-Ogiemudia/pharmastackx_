@@ -330,16 +330,26 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
     // Initial fetch
     fetchRequests();
 
-    // SSE — refetch instantly when a new request arrives in this state
+    // Pusher — real-time new request updates across Vercel instances
     const state = (user as any)?.stateOfPractice || (user as any)?.state;
-    let sse: EventSource | null = null;
+    let cleanup: (() => void) | null = null;
     if (state) {
-      sse = new EventSource(`/api/requests/stream?state=${encodeURIComponent(state)}`);
-      sse.onmessage = () => fetchRequests();
-      sse.onopen = () => fetchRequests(); // catch up after reconnect
+      (async () => {
+        const Pusher = (await import('pusher-js')).default;
+        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        });
+        const channel = pusher.subscribe(`pharmacist-${state.toLowerCase().trim()}`);
+        channel.bind('new-request', () => fetchRequests());
+        cleanup = () => {
+          channel.unbind_all();
+          pusher.unsubscribe(`pharmacist-${state.toLowerCase().trim()}`);
+          pusher.disconnect();
+        };
+      })();
     }
 
-    return () => sse?.close();
+    return () => cleanup?.();
   }, [selectedRequestId, user]);
 
   const calculateDistance = (patientCoords?: [number, number]) => {
