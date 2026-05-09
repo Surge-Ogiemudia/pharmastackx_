@@ -336,7 +336,7 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
     if (state) {
       sse = new EventSource(`/api/requests/stream?state=${encodeURIComponent(state)}`);
       sse.onmessage = () => fetchRequests();
-      sse.onerror = () => sse?.close();
+      sse.onopen = () => fetchRequests(); // catch up after reconnect
     }
 
     return () => sse?.close();
