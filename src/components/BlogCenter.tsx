@@ -227,11 +227,16 @@ const BlogCenter = () => {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Delete this post?')) return;
+        // Optimistic update — remove immediately so UI reflects the change
+        setPosts(prev => prev.filter((p: any) => p._id !== id));
         try {
             await axios.delete(`/api/posts?id=${id}`);
-            fetchPosts();
+            // Cache-bust refetch to sync any server-side state
+            fetchPosts(true);
         } catch (err) {
-            alert('Failed to delete post.');
+            // Restore on failure
+            fetchPosts(true);
+            alert('Failed to delete post. Please try again.');
         }
     };
 
