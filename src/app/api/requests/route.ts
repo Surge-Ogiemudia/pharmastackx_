@@ -5,7 +5,7 @@ import RequestModel from '@/models/Request';
 import UserModel from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { transporter } from '@/lib/nodemailer';
-import { emitNewRequest } from '@/lib/eventEmitter';
+import { triggerNewRequest } from '@/lib/pusher';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     console.log('[LOG] Save successful! Document ID:', newRequest._id);
 
     // Push real-time update to pharmacists in this state
-    if (state) emitNewRequest(state);
+    if (state) triggerNewRequest(state).catch(err => console.error('PUSHER_ERROR', err.message));
 
     // --- Start Email Notification Async ---
     (async () => {
