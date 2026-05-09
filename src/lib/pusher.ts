@@ -1,0 +1,19 @@
+import Pusher from 'pusher';
+
+export const pusherServer = new Pusher({
+    appId: process.env.PUSHER_APP_ID!,
+    key: process.env.PUSHER_KEY!,
+    secret: process.env.PUSHER_SECRET!,
+    cluster: process.env.PUSHER_CLUSTER!,
+    useTLS: true,
+});
+
+// Notify patient watching a specific request that a new quote arrived
+export function triggerQuoteUpdate(requestId: string) {
+    return pusherServer.trigger(`request-${requestId}`, 'new-quote', {});
+}
+
+// Notify pharmacists in a state that a new request was created
+export function triggerNewRequest(state: string) {
+    return pusherServer.trigger(`pharmacist-${state.toLowerCase().trim()}`, 'new-request', {});
+}
