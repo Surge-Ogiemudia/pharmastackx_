@@ -226,8 +226,8 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
 
     let active = true;
 
-    const doFetch = async () => {
-      setLoading(true);
+    const doFetch = async (attempt = 1) => {
+      if (attempt === 1) setLoading(true);
       try {
         const response = await fetch(`/api/requests/${requestId}`);
         if (!response.ok) throw new Error('Failed to fetch your request details.');
@@ -235,6 +235,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
         if (!active) return;
         setRequest(data);
         setError(null);
+        setLoading(false);
         if (data.status === 'quoted' && data.quotes.length > 0) {
             requestUserLocation();
         } else {
@@ -242,10 +243,14 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
         }
       } catch (err) {
         if (!active) return;
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        setIsFetchingDistances(false);
-      } finally {
-        if (active) setLoading(false);
+        // Auto-retry up to 3 times with 1.5s delay — spinner stays on during retries
+        if (attempt < 3) {
+            setTimeout(() => { if (active) doFetch(attempt + 1); }, 1500);
+        } else {
+            setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            setIsFetchingDistances(false);
+            setLoading(false);
+        }
       }
     };
 
