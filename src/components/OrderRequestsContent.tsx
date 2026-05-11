@@ -311,6 +311,7 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
     }
   }, []);
 
+  // Fetch requests — only re-runs when selectedRequestId changes
   useEffect(() => {
     if (selectedRequestId) return;
 
@@ -327,30 +328,40 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
       }
     };
 
-    // Initial fetch
     fetchRequests();
+  }, [selectedRequestId]);
 
-    // Pusher — real-time new request updates across Vercel instances
+  // Pusher subscription — only wires up once user/state is known
+  useEffect(() => {
     const state = (user as any)?.stateOfPractice || (user as any)?.state;
+    if (!state || selectedRequestId) return;
+
+    const fetchRequests = async () => {
+      try {
+        const response = await fetch('/api/requests?forPharmacist=true');
+        if (!response.ok) return;
+        const data = await response.json();
+        setRequests(data);
+      } catch { /* silent */ }
+    };
+
     let cleanup: (() => void) | null = null;
-    if (state) {
-      (async () => {
-        const Pusher = (await import('pusher-js')).default;
-        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
-        });
-        const channel = pusher.subscribe(`pharmacist-${state.toLowerCase().trim()}`);
-        channel.bind('new-request', () => fetchRequests());
-        cleanup = () => {
-          channel.unbind_all();
-          pusher.unsubscribe(`pharmacist-${state.toLowerCase().trim()}`);
-          pusher.disconnect();
-        };
-      })();
-    }
+    (async () => {
+      const Pusher = (await import('pusher-js')).default;
+      const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      });
+      const channel = pusher.subscribe(`pharmacist-${state.toLowerCase().trim()}`);
+      channel.bind('new-request', () => fetchRequests());
+      cleanup = () => {
+        channel.unbind_all();
+        pusher.unsubscribe(`pharmacist-${state.toLowerCase().trim()}`);
+        pusher.disconnect();
+      };
+    })();
 
     return () => cleanup?.();
-  }, [selectedRequestId, user]);
+  }, [user, selectedRequestId]);
 
   const calculateDistance = (patientCoords?: [number, number]) => {
     if (!pharmacistCoords || !patientCoords) return null;
