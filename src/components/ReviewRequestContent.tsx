@@ -256,7 +256,10 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
 
     doFetch();
 
-    // Pusher — real-time quote updates across Vercel instances
+    // Polling fallback — guarantees updates even if Pusher doesn't fire
+    const poll = setInterval(() => { if (active) doFetch(); }, 8000);
+
+    // Pusher — fires instantly when it works
     let pusherInstance: any = null;
     import('pusher-js').then(({ default: Pusher }) => {
         if (!active) return;
@@ -269,6 +272,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
 
     return () => {
         active = false;
+        clearInterval(poll);
         if (pusherInstance) {
             pusherInstance.unsubscribe(`request-${requestId}`);
             pusherInstance.disconnect();
