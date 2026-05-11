@@ -223,12 +223,16 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
   useEffect(() => {
     if (!requestId) return;
 
+    let hasLoaded = false;
+
     const fetchRequestAndDistances = async () => {
       try {
         const response = await fetch(`/api/requests/${requestId}`);
         if (!response.ok) throw new Error('Failed to fetch your request details.');
         const data = await response.json();
+        hasLoaded = true;
         setRequest(data);
+        setError(null);
 
         if (data.status === 'quoted' && data.quotes.length > 0) {
             requestUserLocation();
@@ -236,8 +240,11 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
             setIsFetchingDistances(false);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        setIsFetchingDistances(false);
+        // Only surface the error if request data hasn't loaded yet
+        if (!hasLoaded) {
+            setError(err instanceof Error ? err.message : 'An unknown error occurred');
+            setIsFetchingDistances(false);
+        }
       } finally {
         setLoading(false);
       }
@@ -356,7 +363,14 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
   }, [enrichedQuotes, sortBy]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}><CircularProgress /></Box>;
-  if (!request) return <div className="review-request-container" style={{padding: '2rem'}}><Alert severity="warning">Could not load your request details.</Alert></div>;
+  if (!request) return (
+    <div className="review-request-container" style={{padding: '2rem', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+      <Alert severity="warning">Could not load your request details. Check your connection and try again.</Alert>
+      <button onClick={() => window.location.reload()} style={{alignSelf: 'flex-start', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'}}>
+        Retry
+      </button>
+    </div>
+  );
 
   const requestSummary = request.items.map(item => `${item.name} (${item.quantity})`).join(' · ');
 
