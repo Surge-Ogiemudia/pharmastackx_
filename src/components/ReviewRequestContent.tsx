@@ -176,6 +176,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
   const { initializeCart } = useCart();
 
   const [request, setRequest] = useState<Request | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [distances, setDistances] = useState<{ [pharmacyId: string]: string }>({});
   const [isFetchingDistances, setIsFetchingDistances] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -220,51 +221,55 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
     );
   }, [fetchDistances]);
 
-  const fetchRequestAndDistances = useCallback(async () => {
-    if (!requestId) return;
-    try {
-      const response = await fetch(`/api/requests/${requestId}`);
-      if (!response.ok) throw new Error('Failed to fetch your request details.');
-      const data = await response.json();
-      setRequest(data);
-      setError(null);
-      if (data.status === 'quoted' && data.quotes.length > 0) {
-          requestUserLocation();
-      } else {
-          setIsFetchingDistances(false);
-      }
-    } catch (err) {
-      if (!request) {
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
-          setIsFetchingDistances(false);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [requestId, requestUserLocation, request]);
-
   useEffect(() => {
     if (!requestId) return;
 
-    fetchRequestAndDistances();
+    let active = true;
+
+    const doFetch = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/requests/${requestId}`);
+        if (!response.ok) throw new Error('Failed to fetch your request details.');
+        const data = await response.json();
+        if (!active) return;
+        setRequest(data);
+        setError(null);
+        if (data.status === 'quoted' && data.quotes.length > 0) {
+            requestUserLocation();
+        } else {
+            setIsFetchingDistances(false);
+        }
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setIsFetchingDistances(false);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    doFetch();
 
     // Pusher — real-time quote updates across Vercel instances
     let pusherInstance: any = null;
     import('pusher-js').then(({ default: Pusher }) => {
+        if (!active) return;
         pusherInstance = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
             cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
         });
         const channel = pusherInstance.subscribe(`request-${requestId}`);
-        channel.bind('new-quote', () => fetchRequestAndDistances());
+        channel.bind('new-quote', () => { if (active) doFetch(); });
     });
 
     return () => {
+        active = false;
         if (pusherInstance) {
             pusherInstance.unsubscribe(`request-${requestId}`);
             pusherInstance.disconnect();
         }
     };
-  }, [requestId]);
+  }, [requestId, retryCount, requestUserLocation]);
 
   const handleRetryPayment = (quoteId: string, itemsToAdd: any[]) => {
       const validItems = itemsToAdd.filter(item => item.isAvailable && item.price && item.pharmacyQuantity > 0);
@@ -361,7 +366,7 @@ const ReviewRequestContent: React.FC<{ requestId: string; setView: (view: string
   if (!request) return (
     <div className="review-request-container" style={{padding: '2rem', display: 'flex', flexDirection: 'column', gap: '12px'}}>
       <Alert severity="warning">Could not load your request details. Check your connection and try again.</Alert>
-      <button onClick={fetchRequestAndDistances} style={{alignSelf: 'flex-start', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'}}>
+      <button onClick={() => setRetryCount(c => c + 1)} style={{alignSelf: 'flex-start', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'}}>
         Retry
       </button>
     </div>
