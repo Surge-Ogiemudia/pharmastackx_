@@ -41,7 +41,7 @@ async function extractTextFromFile(buffer: Buffer, mimeType: string, filename: s
 }
 
 async function parseInventoryWithAI(rawText: string): Promise<{ medicineName: string; price: number | null }[]> {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
 
     const prompt = `You are extracting a pharmacy medicine inventory from raw text.
 
