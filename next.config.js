@@ -10,6 +10,7 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   turbopack: {},
+  serverExternalPackages: ['pdf-parse', 'mammoth'],
 };
 
 module.exports = withPWA(nextConfig);
