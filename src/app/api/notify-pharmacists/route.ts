@@ -170,7 +170,13 @@ export async function POST(req: NextRequest) {
 
         // --- WhatsApp dispatch to top contacts ---
         try {
-            const topContactDoc = await TopContact.findOne({ state: (request as any).state });
+            let requestState = ((request as any).state || '').replace(/\bstate\b/gi, '').trim();
+            if (/fct|abuja/i.test(requestState)) {
+                requestState = 'FCT';
+            }
+            const topContactDoc = await TopContact.findOne({
+                state: new RegExp(`^${requestState}$`, 'i')
+            });
             if (topContactDoc?.contacts?.length > 0) {
                 let activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive);
 

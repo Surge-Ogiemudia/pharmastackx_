@@ -25,7 +25,11 @@ function googleMapsLink(coords: [number, number]): string {
   return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
-const normalizeState = (s: string) => (s || '').toLowerCase().replace(/state/g, '').trim();
+const normalizeState = (s: string) => {
+  const norm = (s || '').toLowerCase().replace(/state/g, '').trim();
+  if (/fct|abuja/i.test(norm)) return 'fct';
+  return norm;
+};
 
 export async function POST(req: NextRequest) {
   try { await dbConnect(); } catch (e: any) {
