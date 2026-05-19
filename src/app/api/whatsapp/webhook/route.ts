@@ -602,7 +602,7 @@ export async function POST(req: NextRequest) {
         
         // Whapi sends messages in messages array
         const messages = payload.messages || [];
-        
+
         // 1. Establish DB Connection synchronously for reliable serverless execution
         // This is fast if a connection is cached.
         await dbConnect();
@@ -610,6 +610,71 @@ export async function POST(req: NextRequest) {
         // 2. Process all messages synchronously so Vercel doesn't suspend the function
         try {
             const FIVE_MINUTES_AGO = Math.floor(Date.now() / 1000) - 300;
+            const TWO_MIN_AGO = new Date(Date.now() - 2 * 60 * 1000);
+
+            // ── Build group name map from chats_updates ──────────────────────────
+            // Whapi embeds the group name in chats_updates.after_update.name.
+            // The /chats and /groups API endpoints return 402 on the current plan,
+            // so this is the only reliable source of group names.
+            const groupNameMap: Record<string, string> = {};
+            for (const update of (payload.chats_updates || [])) {
+                const chatId = update.after_update?.id;
+                const name   = update.after_update?.name;
+                if (chatId && name && chatId.endsWith('@g.us')) {
+                    groupNameMap[chatId] = name;
+                    console.log(`📋 [chats_updates] Group name: "${name}" (${chatId})`);
+                }
+            }
+
+            // ── Process drug requests from chats_updates directly ────────────────
+            // When Whapi sends chats_updates and messages as separate HTTP calls,
+            // whichever arrives first will own the processing. Dedup prevents double.
+            for (const update of (payload.chats_updates || [])) {
+                try {
+                    const lastMsg   = update.after_update?.last_message;
+                    const groupName = update.after_update?.name;
+                    if (!lastMsg || !groupName || lastMsg.from_me || lastMsg.type !== 'text') continue;
+                    if (!lastMsg.chat_id?.endsWith('@g.us')) continue;
+                    if (lastMsg.timestamp && lastMsg.timestamp < FIVE_MINUTES_AGO) continue;
+
+                    const msgText = lastMsg.text?.body || '';
+                    if (!msgText || !DRUG_KEYWORDS.test(msgText) || NOISE_KEYWORDS.test(msgText)) continue;
+
+                    // Dedup: skip if already created for this group+text in last 2 min
+                    const dup = await WhatsAppRequest.findOne({ groupId: lastMsg.chat_id, rawText: msgText, createdAt: { $gt: TWO_MIN_AGO } });
+                    if (dup) { console.log(`⏭️ [chats_updates] Duplicate, skipping: "${msgText.substring(0, 50)}"`); continue; }
+
+                    console.log(`🤖 [chats_updates] Classifying drug request in: ${groupName}`);
+                    const cls = await classifyWhatsAppMessage(msgText, groupName);
+                    if (!cls?.isDrugRequest || cls.confidence <= 0.6) continue;
+
+                    let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
+                    if (!botUser) botUser = await UserModel.create({ username: 'whatsapp_bot', email: 'whatsapp@pharmastackx.com', password: 'system_bot_password_123', role: 'customer', name: 'WhatsApp Automated Bot' });
+
+                    let state = extractState(cls.location || '') || extractState(groupName);
+                    if (!state) { state = await extractStateFromGroupName(groupName); if (state) console.log(`🗺️ AI state from group "${groupName}" → ${state}`); }
+                    state = state || 'National';
+
+                    const pr = await RequestModel.create({
+                        user: botUser._id, phoneNumber: lastMsg.from || 'WhatsApp', state,
+                        requestType: 'drug-list',
+                        items: (cls.medicines || []).map((m: any) => ({ name: m.name, strength: m.strength, form: m.form, quantity: m.quantity || 1 })),
+                        status: 'pending',
+                        notes: `[WHAPI AUTOMATED] From Group: ${groupName}\nRaw: ${msgText}`,
+                    });
+                    const waReq = await WhatsAppRequest.create({
+                        source: 'whatsapp_group', groupId: lastMsg.chat_id, groupName, rawText: msgText,
+                        medicines: cls.medicines, location: state, urgency: cls.urgency || 'normal',
+                        confidence: cls.confidence, status: 'open', platform_request_id: pr._id,
+                        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+                    });
+                    console.log(`✅ [chats_updates] Saved: ${cls.medicines?.[0]?.name} in ${state}`);
+                    await notifyPharmacists(waReq);
+                } catch (err: any) {
+                    console.error('[chats_updates] Error processing update:', err.message);
+                }
+            }
+
             for (const msg of messages) {
                 // 0. Ignore old backlogged messages
                 if (msg.timestamp && msg.timestamp < FIVE_MINUTES_AGO) {
@@ -699,50 +764,29 @@ export async function POST(req: NextRequest) {
                     continue; // Skip other types (audio, video, etc.)
                 }
 
-                // 2. Extract Group Name via Whapi API if not in payload
-                let chatName = payload.chat_name || "WhatsApp Group";
-                if (!payload.chat_name && msg.chat_id && msg.chat_id.endsWith('@g.us')) {
+                // 2. Resolve Group Name
+                // Priority: same-payload chats_updates map → payload field → API (may be 402)
+                let chatName: string = payload.chat_name || groupNameMap[msg.chat_id] || '';
+                if (!chatName && msg.chat_id && msg.chat_id.endsWith('@g.us')) {
                     try {
                         const whapiToken = process.env.WHAPI_TOKEN;
                         if (whapiToken) {
-                            // Try /chats/{chat_id} first
                             const chatRes = await fetch(`https://gate.whapi.cloud/chats/${msg.chat_id}`, {
                                 headers: { 'Authorization': `Bearer ${whapiToken}`, 'Accept': 'application/json' }
                             });
                             if (chatRes.ok) {
                                 const chatData = await chatRes.json();
-                                const fetched = chatData.name || chatData.chat?.name || chatData.subject;
-                                if (fetched) {
-                                    chatName = fetched;
-                                    console.log(`📋 [Group Name] "${chatName}" (via /chats)`);
-                                } else {
-                                    console.warn(`⚠️ [Group Name] /chats OK but no name field. Keys: ${Object.keys(chatData).join(', ')}`);
-                                }
+                                chatName = chatData.name || chatData.chat?.name || chatData.subject || '';
+                                if (chatName) console.log(`📋 [Group Name] "${chatName}" (via /chats)`);
                             } else {
-                                console.warn(`⚠️ [Group Name] /chats returned ${chatRes.status} for ${msg.chat_id} — trying /groups`);
-                                // Fallback: /groups/{group_id} (id without @g.us)
-                                const groupId = msg.chat_id.split('@')[0];
-                                const groupRes = await fetch(`https://gate.whapi.cloud/groups/${groupId}`, {
-                                    headers: { 'Authorization': `Bearer ${whapiToken}`, 'Accept': 'application/json' }
-                                });
-                                if (groupRes.ok) {
-                                    const groupData = await groupRes.json();
-                                    const fetched = groupData.name || groupData.subject;
-                                    if (fetched) {
-                                        chatName = fetched;
-                                        console.log(`📋 [Group Name] "${chatName}" (via /groups)`);
-                                    } else {
-                                        console.warn(`⚠️ [Group Name] /groups OK but no name. Keys: ${Object.keys(groupData).join(', ')}`);
-                                    }
-                                } else {
-                                    console.warn(`⚠️ [Group Name] /groups also returned ${groupRes.status} for ${groupId}. State detection will be limited.`);
-                                }
+                                console.warn(`⚠️ [Group Name] /chats returned ${chatRes.status} for ${msg.chat_id}`);
                             }
                         }
                     } catch (err) {
                         console.error("⚠️ [Group Name] Fetch threw:", err);
                     }
                 }
+                chatName = chatName || 'WhatsApp Group';
 
                 // 3. AI Classification
                 if (isImage && mediaBase64) {
@@ -754,8 +798,12 @@ export async function POST(req: NextRequest) {
                 }
 
                 if (classification?.isDrugRequest && classification.confidence > 0.6) {
+                    // Dedup: skip if chats_updates already created this request
+                    const dupCheck = await WhatsAppRequest.findOne({ groupId: msg.chat_id, rawText: rawText || '', createdAt: { $gt: TWO_MIN_AGO } });
+                    if (dupCheck) { console.log(`⏭️ [messages] Duplicate skipped (chats_updates already processed it)`); continue; }
+
                     console.log("✅ Verified Request. Saving to DB...");
-                    
+
                     // 4. Create/Find WhatsApp System User
                     let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
                     if (!botUser) {
