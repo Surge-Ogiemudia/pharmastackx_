@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import pdfParse from 'pdf-parse';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -11,6 +10,7 @@ async function extractTextFromFile(buffer: Buffer, mimeType: string, filename: s
 
     // PDF
     if (mimeType === 'application/pdf' || ext === 'pdf') {
+        const pdfParse = (await import('pdf-parse')).default;
         const data = await pdfParse(buffer);
         return data.text;
     }
