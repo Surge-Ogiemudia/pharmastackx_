@@ -81,45 +81,61 @@ function cleanJson(text: string) {
 }
 
 export async function classifyWhatsAppMessage(text: string, chat_name?: string) {
-    try {
-        const result = await model.generateContent([
-            { text: SYSTEM_PROMPT + `\n\nCONTEXT:\n- WhatsApp Group Name: "${chat_name || 'Unknown'}"` },
-            { text: `MESSAGE TO ANALYZE: "${text}"` }
-        ]);
-        
-        const responseText = result.response.text();
-        console.log("🤖 [Classifier Response]:", responseText);
-        const jsonContent = cleanJson(responseText);
-        return JSON.parse(jsonContent);
-    } catch (error) {
-        console.error("AI Classification Error:", error);
-        return { isDrugRequest: false, error: "Classification failed" };
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const result = await model.generateContent([
+                { text: SYSTEM_PROMPT + `\n\nCONTEXT:\n- WhatsApp Group Name: "${chat_name || 'Unknown'}"` },
+                { text: `MESSAGE TO ANALYZE: "${text}"` }
+            ]);
+            
+            const responseText = result.response.text();
+            console.log("🤖 [Classifier Response]:", responseText);
+            const jsonContent = cleanJson(responseText);
+            return JSON.parse(jsonContent);
+        } catch (error: any) {
+            lastError = error;
+            console.warn(`⚠️ [Classifier Attempt ${attempt}/3 failed]:`, error?.message || error);
+            if (attempt < 3) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
     }
+    console.error("AI Classification Error (all attempts failed):", lastError);
+    return { isDrugRequest: false, error: "Classification failed" };
 }
 
 export async function classifyWhatsAppImage(base64Data: string, chat_name?: string) {
-    try {
-        const generationModel = genAI.getGenerativeModel({ 
-            model: "gemma-4-26b-a4b-it", 
-            generationConfig: { responseMimeType: "application/json" } 
-        });
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const generationModel = genAI.getGenerativeModel({ 
+                model: "gemma-4-26b-a4b-it", 
+                generationConfig: { responseMimeType: "application/json" } 
+            });
 
-        const result = await generationModel.generateContent([
-            IMAGE_PROMPT + `\n\nCONTEXT: WhatsApp Group Name: "${chat_name || 'Unknown'}"`,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: "image/jpeg",
+            const result = await generationModel.generateContent([
+                IMAGE_PROMPT + `\n\nCONTEXT: WhatsApp Group Name: "${chat_name || 'Unknown'}"`,
+                {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: "image/jpeg",
+                    },
                 },
-            },
-        ]);
+            ]);
 
-        const responseText = result.response.text();
-        console.log("🤖 [Image Classifier Response]:", responseText);
-        const jsonContent = cleanJson(responseText);
-        return JSON.parse(jsonContent);
-    } catch (error) {
-        console.error("AI Image Classification Error:", error);
-        return { isDrugRequest: false, error: "Image classification failed" };
+            const responseText = result.response.text();
+            console.log("🤖 [Image Classifier Response]:", responseText);
+            const jsonContent = cleanJson(responseText);
+            return JSON.parse(jsonContent);
+        } catch (error: any) {
+            lastError = error;
+            console.warn(`⚠️ [Image Classifier Attempt ${attempt}/3 failed]:`, error?.message || error);
+            if (attempt < 3) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
     }
+    console.error("AI Image Classification Error (all attempts failed):", lastError);
+    return { isDrugRequest: false, error: "Image classification failed" };
 }
