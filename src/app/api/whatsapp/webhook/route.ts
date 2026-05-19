@@ -208,52 +208,6 @@ export async function handleQuoteReply(senderPhone: string, messageText: string)
                 await sendWhatsAppMessage(targetJid, patientMessage);
             } catch (apiErr: any) {
                 console.error(`[webhook] Failed to send WhatsApp message to patient ${targetJid}:`, apiErr.message);
-
-                // Fallback: Notify Admin via WhatsApp & Email
-                try {
-                    const cleanPhone = targetJid.split('@')[0];
-                    const patientWaLink = `https://wa.me/${cleanPhone}`;
-
-                    const fallbackAlert = 
-                        `⚠️ *URGENT: Patient WhatsApp Delivery Failed* ⚠️\n\n` +
-                        `We couldn't DM the patient directly. Please copy the message below and send it to them manually.\n\n` +
-                        `👤 *Patient Chat Link:* ${patientWaLink}\n\n` +
-                        `----------------------------------------\n\n` +
-                        patientMessage;
-
-                    console.log(`⚠️ Triggering admin fallback WhatsApp alert...`);
-                    const adminPhone = process.env.ADMIN_WHATSAPP_NUMBER;
-                    if (adminPhone) {
-                        const adminJid = adminPhone.includes('@') ? adminPhone : `${adminPhone.replace(/[\+\s]/g, '')}@s.whatsapp.net`;
-                        await sendWhatsAppMessage(adminJid, fallbackAlert).catch(err => {
-                            console.error(`[webhook] Failed to notify admin via WhatsApp fallback:`, err.message);
-                        });
-                    }
-
-                    // Email fallback to pharmastackxsales@gmail.com
-                    console.log(`✉️ Triggering admin fallback Email alert to pharmastackxsales@gmail.com...`);
-                    const { transporter } = await import('@/lib/nodemailer');
-                    const emailUser = process.env.EMAIL_USER;
-                    if (emailUser && transporter) {
-                        const mailText = fallbackAlert.replace(/\*/g, '');
-                        await transporter.sendMail({
-                            from: emailUser,
-                            to: 'pharmastackxsales@gmail.com',
-                            subject: `🚨 [URGENT] WhatsApp Delivery Failed for Request: ${String(request._id).slice(-6).toUpperCase()}`,
-                            text: mailText,
-                            html: `<p><strong>🚨 [URGENT] Patient WhatsApp Delivery Failed</strong></p>` +
-                                  `<p>We couldn't DM the patient directly. Please copy the message below and send it to them manually.</p>` +
-                                  `<p>👤 <strong>Patient Chat Link:</strong> <a href="${patientWaLink}">${patientWaLink}</a></p>` +
-                                  `<hr/>` +
-                                  `<pre>${patientMessage.replace(/\*/g, '')}</pre>`
-                        });
-                        console.log(`✅ Fallback email sent successfully to pharmastackxsales@gmail.com`);
-                    } else {
-                        console.warn(`⚠️ EMAIL_USER or transporter is missing. Email fallback skipped.`);
-                    }
-                } catch (fallbackErr: any) {
-                    console.error(`❌ Failed to run fallback handlers:`, fallbackErr.message);
-                }
             }
         } else {
             console.log(`ℹ️ Request phone number (${patientPhone}) is not a valid WhatsApp patient. Skipping WhatsApp notify.`);
