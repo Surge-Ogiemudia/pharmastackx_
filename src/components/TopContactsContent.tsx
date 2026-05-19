@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, TextField, IconButton, CircularProgress, Chip } from '@mui/material';
-import { Add, Delete, Save } from '@mui/icons-material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, TextField, IconButton, CircularProgress, Chip, Collapse } from '@mui/material';
+import { Add, Delete, Save, UploadFile, ExpandMore, ExpandLess } from '@mui/icons-material';
 
 const NIGERIAN_STATES = [
     'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
@@ -18,6 +18,9 @@ export default function TopContactsContent() {
     const [msg, setMsg] = useState('');
     const [draft, setDraft] = useState({ name: '', phone: '', address: '', coordsInput: '' });
     const [coordsError, setCoordsError] = useState('');
+    const [inventoryExpanded, setInventoryExpanded] = useState<Record<number, boolean>>({});
+    const [uploadingInventory, setUploadingInventory] = useState<Record<number, boolean>>({});
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
     const parseCoordsInput = (raw: string): { lng: number; lat: number } | null => {
         const cleaned = raw.trim().replace(/[()]/g, '');
@@ -103,6 +106,83 @@ export default function TopContactsContent() {
         }
     };
 
+    const parseCsvInventory = (text: string): { medicineName: string; price: number | null }[] => {
+        return text
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .flatMap(line => {
+                const parts = line.split(',').map(p => p.trim());
+                const medicineName = parts[0];
+                if (!medicineName || /^(medicine|name|drug|item)/i.test(medicineName)) return [];
+                const rawPrice = parts[1] ? parseFloat(parts[1].replace(/[^0-9.]/g, '')) : NaN;
+                const price = isNaN(rawPrice) ? null : rawPrice;
+                return [{ medicineName, price }];
+            });
+    };
+
+    const isCsvOrText = (file: File) => {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        return ext === 'csv' || ext === 'txt' || file.type === 'text/csv' || file.type === 'text/plain';
+    };
+
+    const handleInventoryUpload = async (contactIndex: number, file: File) => {
+        setUploadingInventory(prev => ({ ...prev, [contactIndex]: true }));
+        setMsg('');
+        try {
+            let inventory: { medicineName: string; price: number | null }[];
+
+            if (isCsvOrText(file)) {
+                const text = await file.text();
+                inventory = parseCsvInventory(text);
+                if (inventory.length === 0) {
+                    setMsg('No valid items found in file.');
+                    return;
+                }
+            } else {
+                // PDF, Excel, Word — send to server for extraction + AI parsing
+                const form = new FormData();
+                form.append('file', file);
+                const parseRes = await fetch('/api/admin/top-contacts/parse-inventory', {
+                    method: 'POST',
+                    body: form
+                });
+                if (!parseRes.ok) {
+                    const err = await parseRes.json();
+                    setMsg(err.error || 'Failed to parse file.');
+                    return;
+                }
+                const parseData = await parseRes.json();
+                inventory = parseData.inventory;
+                if (!inventory?.length) {
+                    setMsg('No medicine items found in file.');
+                    return;
+                }
+            }
+
+            const contact = contacts[contactIndex];
+            const saveRes = await fetch('/api/admin/top-contacts/inventory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: selectedState, phone: contact.phone, inventory })
+            });
+
+            if (saveRes.ok) {
+                setContacts(prev => prev.map((c, i) => i === contactIndex ? { ...c, inventory } : c));
+                setMsg(`Inventory updated — ${inventory.length} items for ${contact.name}`);
+                setTimeout(() => setMsg(''), 4000);
+            } else {
+                const err = await saveRes.json();
+                setMsg(err.error || 'Failed to save inventory.');
+            }
+        } catch {
+            setMsg('Error processing file.');
+        } finally {
+            setUploadingInventory(prev => ({ ...prev, [contactIndex]: false }));
+            if (fileInputRefs.current[contactIndex]) fileInputRefs.current[contactIndex]!.value = '';
+        }
+    };
+
     return (
         <Box sx={{ fontFamily: 'Sora, sans-serif', pb: 4 }}>
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -167,25 +247,86 @@ export default function TopContactsContent() {
                 ) : (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {contacts.map((c, i) => (
-                            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: '10px' }}>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</Typography>
-                                    <Typography sx={{ fontSize: '11px', color: '#888' }}>+{c.phone}</Typography>
-                                    {c.address && (
-                                        <Typography sx={{ fontSize: '11px', color: '#aaa' }}>📍 {c.address}</Typography>
+                            <Box key={i} sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: '10px' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Box sx={{ flex: 1 }}>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</Typography>
+                                        <Typography sx={{ fontSize: '11px', color: '#888' }}>+{c.phone}</Typography>
+                                        {c.address && (
+                                            <Typography sx={{ fontSize: '11px', color: '#aaa' }}>📍 {c.address}</Typography>
+                                        )}
+                                        {c.coordinates && (
+                                            <Typography sx={{ fontSize: '10px', color: '#0F6E56', fontFamily: 'monospace' }}>
+                                                {c.coordinates[1].toFixed(4)}, {c.coordinates[0].toFixed(4)}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    {c.userId && (
+                                        <Chip label="App User" size="small" sx={{ fontSize: '10px', bgcolor: '#F0FDF4', color: '#166534' }} />
                                     )}
-                                    {c.coordinates && (
-                                        <Typography sx={{ fontSize: '10px', color: '#0F6E56', fontFamily: 'monospace' }}>
-                                            {c.coordinates[1].toFixed(4)}, {c.coordinates[0].toFixed(4)}
-                                        </Typography>
-                                    )}
+                                    <IconButton size="small" onClick={() => handleRemove(i)} sx={{ color: '#d32f2f' }}>
+                                        <Delete fontSize="small" />
+                                    </IconButton>
                                 </Box>
-                                {c.userId && (
-                                    <Chip label="App User" size="small" sx={{ fontSize: '10px', bgcolor: '#F0FDF4', color: '#166534' }} />
-                                )}
-                                <IconButton size="small" onClick={() => handleRemove(i)} sx={{ color: '#d32f2f' }}>
-                                    <Delete fontSize="small" />
-                                </IconButton>
+
+                                {/* Inventory section */}
+                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                    <Chip
+                                        label={`${(c.inventory || []).length} inventory items`}
+                                        size="small"
+                                        onClick={() => setInventoryExpanded(prev => ({ ...prev, [i]: !prev[i] }))}
+                                        icon={(c.inventory || []).length > 0
+                                            ? (inventoryExpanded[i] ? <ExpandLess sx={{ fontSize: '14px !important' }} /> : <ExpandMore sx={{ fontSize: '14px !important' }} />)
+                                            : undefined}
+                                        sx={{
+                                            fontSize: '10px',
+                                            height: '22px',
+                                            bgcolor: (c.inventory || []).length > 0 ? 'rgba(15,110,86,0.1)' : 'rgba(0,0,0,0.06)',
+                                            color: (c.inventory || []).length > 0 ? '#0F6E56' : '#999',
+                                            cursor: (c.inventory || []).length > 0 ? 'pointer' : 'default'
+                                        }}
+                                    />
+                                    <input
+                                        type="file"
+                                        accept=".csv,.txt,.xlsx,.xls,.pdf,.docx,.doc"
+                                        style={{ display: 'none' }}
+                                        ref={el => { fileInputRefs.current[i] = el; }}
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleInventoryUpload(i, file);
+                                        }}
+                                    />
+                                    <Button
+                                        size="small"
+                                        startIcon={uploadingInventory[i] ? <CircularProgress size={10} /> : <UploadFile sx={{ fontSize: '13px !important' }} />}
+                                        disabled={uploadingInventory[i]}
+                                        onClick={() => fileInputRefs.current[i]?.click()}
+                                        sx={{
+                                            fontSize: '10px',
+                                            height: '22px',
+                                            textTransform: 'none',
+                                            fontFamily: 'Sora, sans-serif',
+                                            color: '#0F6E56',
+                                            px: 1,
+                                            minWidth: 0
+                                        }}
+                                    >
+                                        {uploadingInventory[i] ? 'Uploading...' : 'Upload CSV'}
+                                    </Button>
+                                </Box>
+
+                                <Collapse in={inventoryExpanded[i] && (c.inventory || []).length > 0}>
+                                    <Box sx={{ mt: 1, pl: 1, borderLeft: '2px solid rgba(15,110,86,0.2)', maxHeight: 140, overflowY: 'auto' }}>
+                                        {(c.inventory || []).map((item: any, j: number) => (
+                                            <Box key={j} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
+                                                <Typography sx={{ fontSize: '11px', color: '#333' }}>{item.medicineName}</Typography>
+                                                <Typography sx={{ fontSize: '11px', color: item.price != null ? '#0F6E56' : '#bbb', fontFamily: 'monospace' }}>
+                                                    {item.price != null ? `₦${item.price.toLocaleString()}` : '—'}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                </Collapse>
                             </Box>
                         ))}
                     </Box>

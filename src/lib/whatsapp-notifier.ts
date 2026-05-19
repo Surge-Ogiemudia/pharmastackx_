@@ -7,6 +7,9 @@ import WhatsAppSession from '@/models/WhatsAppSession';
 import { sendWhatsAppMessage } from '@/lib/whapi';
 import { dbConnect } from '@/lib/mongoConnect';
 import GlobalSettings from '@/models/GlobalSettings';
+import { transporter } from '@/lib/nodemailer';
+
+const ALERT_EMAIL = 'pharmastackxsales@gmail.com';
 
 const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
 const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. "2348157788101"
@@ -75,6 +78,85 @@ function createDynamicTitle(drugNames: string[]): string {
     if (count === 2) return `Request for ${drugNames[0]} and ${drugNames[1]}`;
     if (count === 3) return `Request for ${drugNames[0]}, ${drugNames[1]}, and ${drugNames[2]}`;
     return `Request for ${drugNames[0]}, ${drugNames[1]}, ${drugNames[2]}, and ${count - 3} other items`;
+}
+
+async function checkInventoryAndAlert(
+    activeContacts: any[],
+    requestedMedicines: { name: string }[],
+    location: string,
+    requestId: string
+) {
+    const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
+
+    const alertPromises = activeContacts
+        .filter(c => c.inventory?.length)
+        .map(async contact => {
+            const matches = contact.inventory.filter((item: any) => {
+                const inv = item.medicineName.toLowerCase().trim();
+                return requestedNames.some(req => inv.includes(req) || req.includes(inv));
+            });
+
+            if (matches.length === 0) return;
+
+            const matchRows = matches.map((m: any) =>
+                `<tr>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.medicineName}</td>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.price != null ? '#0F6E56' : '#999'}">
+                        ${m.price != null ? `₦${m.price.toLocaleString()}` : 'Price not listed'}
+                    </td>
+                </tr>`
+            ).join('');
+
+            const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+
+            const html = `
+<div style="font-family:sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden">
+    <div style="background:#0F6E56;padding:18px 24px">
+        <h2 style="margin:0;color:#fff;font-size:18px">🚨 Inventory Match Alert</h2>
+    </div>
+    <div style="padding:20px 24px">
+        <p style="margin:0 0 16px;font-size:14px;color:#333">
+            A medicine request in <strong>${location}</strong> matches an inventory on file.
+        </p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 4px">Requested</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#111">${requestedRow}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Supplier</p>
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111">${contact.name}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#555">+${contact.phone} &nbsp;·&nbsp; ${location}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Items</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="background:#f5f5f5">
+                    <th style="padding:6px 12px;text-align:left;color:#555">Medicine</th>
+                    <th style="padding:6px 12px;text-align:left;color:#555">Price</th>
+                </tr>
+            </thead>
+            <tbody>${matchRows}</tbody>
+        </table>
+
+        <div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:6px;font-size:12px;color:#888">
+            Request ID: ${requestId}
+        </div>
+    </div>
+</div>`;
+
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: ALERT_EMAIL,
+                    subject: `🚨 Inventory Match — ${requestedRow} in ${location}`,
+                    html
+                });
+                console.log(`[whatsapp-notifier] 📧 Inventory match email sent for ${contact.name} (${matches.length} match(es))`);
+            } catch (emailErr: any) {
+                console.error(`[whatsapp-notifier] ❌ Failed to send match email:`, emailErr?.message);
+            }
+        });
+
+    await Promise.allSettled(alertPromises);
 }
 
 export async function notifyPharmacists(request: any) {
@@ -173,6 +255,11 @@ export async function notifyPharmacists(request: any) {
 
         const activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive !== false && c.phone);
         console.log(`[whatsapp-notifier] Dispatching to ${activeContacts.length} top contacts in ${normalizedLocation}`);
+
+        // Check inventory matches and send email alert (non-blocking alongside WhatsApp dispatch)
+        checkInventoryAndAlert(activeContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
+            console.error('[whatsapp-notifier] Inventory check error:', err?.message)
+        );
 
         // Fetch platform request items for the proper message format
         let requestItems: any[] = medicines.map((m: any) => ({
