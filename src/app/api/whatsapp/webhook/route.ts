@@ -640,17 +640,22 @@ export async function POST(req: NextRequest) {
                     const msgText = lastMsg.text?.body || '';
                     if (!msgText || !DRUG_KEYWORDS.test(msgText) || NOISE_KEYWORDS.test(msgText)) continue;
 
+                    // Resolve state from group name early — needed for both dedup patch and new request
+                    // (classification may refine it further below if this is a new request)
+                    let stateFromGroup = extractState(groupName);
+                    if (!stateFromGroup) { stateFromGroup = await extractStateFromGroupName(groupName); if (stateFromGroup) console.log(`🗺️ AI state from group "${groupName}" → ${stateFromGroup}`); }
+
                     // Dedup: if messages already created this request, correct its state instead of skipping.
                     // messages arrives before chats_updates so it saves with state "National" (no group name yet).
                     // chats_updates has the group name, so we patch the state and re-notify.
                     const dup = await WhatsAppRequest.findOne({ groupId: lastMsg.chat_id, rawText: msgText, createdAt: { $gt: TWO_MIN_AGO } });
                     if (dup) {
-                        if (dup.location === 'National' && state && state !== 'National') {
-                            dup.location = state;
+                        if (dup.location === 'National' && stateFromGroup) {
+                            dup.location = stateFromGroup;
                             dup.groupName = groupName;
                             await dup.save();
-                            await RequestModel.findByIdAndUpdate(dup.platform_request_id, { state });
-                            console.log(`🔄 [chats_updates] Patched state "National" → "${state}", notifying pharmacists`);
+                            await RequestModel.findByIdAndUpdate(dup.platform_request_id, { state: stateFromGroup });
+                            console.log(`🔄 [chats_updates] Patched state "National" → "${stateFromGroup}", notifying pharmacists`);
                             await notifyPharmacists(dup);
                         } else {
                             console.log(`⏭️ [chats_updates] Duplicate already has state "${dup.location}", skipping`);
@@ -665,9 +670,8 @@ export async function POST(req: NextRequest) {
                     let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
                     if (!botUser) botUser = await UserModel.create({ username: 'whatsapp_bot', email: 'whatsapp@pharmastackx.com', password: 'system_bot_password_123', role: 'customer', name: 'WhatsApp Automated Bot' });
 
-                    let state = extractState(cls.location || '') || extractState(groupName);
-                    if (!state) { state = await extractStateFromGroupName(groupName); if (state) console.log(`🗺️ AI state from group "${groupName}" → ${state}`); }
-                    state = state || 'National';
+                    // Prefer AI-extracted location, fall back to group name resolution
+                    let state = extractState(cls.location || '') || stateFromGroup || 'National';
 
                     const pr = await RequestModel.create({
                         user: botUser._id, phoneNumber: lastMsg.from || 'WhatsApp', state,
