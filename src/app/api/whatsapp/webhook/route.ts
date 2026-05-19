@@ -640,9 +640,23 @@ export async function POST(req: NextRequest) {
                     const msgText = lastMsg.text?.body || '';
                     if (!msgText || !DRUG_KEYWORDS.test(msgText) || NOISE_KEYWORDS.test(msgText)) continue;
 
-                    // Dedup: skip if already created for this group+text in last 2 min
+                    // Dedup: if messages already created this request, correct its state instead of skipping.
+                    // messages arrives before chats_updates so it saves with state "National" (no group name yet).
+                    // chats_updates has the group name, so we patch the state and re-notify.
                     const dup = await WhatsAppRequest.findOne({ groupId: lastMsg.chat_id, rawText: msgText, createdAt: { $gt: TWO_MIN_AGO } });
-                    if (dup) { console.log(`⏭️ [chats_updates] Duplicate, skipping: "${msgText.substring(0, 50)}"`); continue; }
+                    if (dup) {
+                        if (dup.location === 'National' && state && state !== 'National') {
+                            dup.location = state;
+                            dup.groupName = groupName;
+                            await dup.save();
+                            await RequestModel.findByIdAndUpdate(dup.platform_request_id, { state });
+                            console.log(`🔄 [chats_updates] Patched state "National" → "${state}", notifying pharmacists`);
+                            await notifyPharmacists(dup);
+                        } else {
+                            console.log(`⏭️ [chats_updates] Duplicate already has state "${dup.location}", skipping`);
+                        }
+                        continue;
+                    }
 
                     console.log(`🤖 [chats_updates] Classifying drug request in: ${groupName}`);
                     const cls = await classifyWhatsAppMessage(msgText, groupName);
