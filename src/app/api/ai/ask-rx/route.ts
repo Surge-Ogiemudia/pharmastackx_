@@ -137,11 +137,6 @@ export async function POST(req: NextRequest) {
     let aiText: string;
 
     if (image) {
-        const visionModel = genAI.getGenerativeModel({
-            model: "gemma-4-26b-a4b-it",
-            systemInstruction: systemPrompt
-        });
-
         const base64Data = image.includes(',') ? image.split(',')[1] : image;
         const mimeType = image.startsWith('data:image/png') ? 'image/png' :
                          image.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
@@ -154,25 +149,59 @@ export async function POST(req: NextRequest) {
 
         const prompt = `${historyContext}Patient message: ${message || 'What can you tell me about this image?'}\n\nAnalyze the image and respond as Ask Rx.`;
 
-        const result = await visionModel.generateContent([
-            prompt,
-            { inlineData: { data: base64Data, mimeType } }
-        ]);
+        let result;
+        try {
+            const visionModel = genAI.getGenerativeModel({
+                model: "gemma-4-26b-a4b-it",
+                systemInstruction: systemPrompt
+            });
+            result = await visionModel.generateContent([
+                prompt,
+                { inlineData: { data: base64Data, mimeType } }
+            ]);
+        } catch (gemmaErr: any) {
+            console.warn("⚠️ [AskRx API] gemma-4-26b-a4b-it vision failed, falling back to gemini-1.5-flash. Error:", gemmaErr.message || gemmaErr);
+            const fallbackModel = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: systemPrompt
+            });
+            result = await fallbackModel.generateContent([
+                prompt,
+                { inlineData: { data: base64Data, mimeType } }
+            ]);
+        }
 
         aiText = sanitizeResponse(result.response.text().trim());
     } else {
-        const model = genAI.getGenerativeModel({
-            model: "gemma-4-26b-a4b-it",
-            systemInstruction: systemPrompt
-        });
+        let response;
+        try {
+            const model = genAI.getGenerativeModel({
+                model: "gemma-4-26b-a4b-it",
+                systemInstruction: systemPrompt
+            });
 
-        const chat = model.startChat({
-            history: chatHistory,
-            generationConfig: { maxOutputTokens: 500 }
-        });
+            const chat = model.startChat({
+                history: chatHistory,
+                generationConfig: { maxOutputTokens: 500 }
+            });
 
-        const result = await chat.sendMessage(message);
-        const response = await result.response;
+            const result = await chat.sendMessage(message);
+            response = await result.response;
+        } catch (gemmaErr: any) {
+            console.warn("⚠️ [AskRx API] gemma-4-26b-a4b-it text chat failed, falling back to gemini-1.5-flash. Error:", gemmaErr.message || gemmaErr);
+            const fallbackModel = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: systemPrompt
+            });
+
+            const chat = fallbackModel.startChat({
+                history: chatHistory,
+                generationConfig: { maxOutputTokens: 500 }
+            });
+
+            const result = await chat.sendMessage(message);
+            response = await result.response;
+        }
         aiText = sanitizeResponse(response.text().trim());
     }
 
