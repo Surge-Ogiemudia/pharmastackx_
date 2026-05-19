@@ -124,7 +124,7 @@ async function checkInventoryAndAlert(
 
         <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Supplier</p>
         <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111">${contact.name}</p>
-        <p style="margin:0 0 20px;font-size:13px;color:#555">+${contact.phone} &nbsp;·&nbsp; ${location}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#555">+${contact.phone} &nbsp;·&nbsp; ${contact._state || location}</p>
 
         <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Items</p>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -244,9 +244,31 @@ export async function notifyPharmacists(request: any) {
 
     // 4. Dispatch WhatsApp to top contacts in the detected state (same as web flow)
     try {
-        const topContactDoc = await TopContact.findOne({
+        const isNational = normalizedLocation === 'National';
+
+        const topContactDoc = isNational ? null : await TopContact.findOne({
             state: new RegExp(`^${normalizedLocation}$`, 'i')
         }).lean() as any;
+
+        // Inventory match: check state contacts if known, otherwise search all states
+        try {
+            let inventoryContacts: any[];
+            if (!isNational && topContactDoc?.contacts?.length) {
+                inventoryContacts = topContactDoc.contacts.filter((c: any) => c.isActive !== false && c.phone);
+            } else {
+                const allDocs = await TopContact.find().lean() as any[];
+                inventoryContacts = allDocs.flatMap((doc: any) =>
+                    (doc.contacts || [])
+                        .filter((c: any) => c.isActive !== false && c.phone)
+                        .map((c: any) => ({ ...c, _state: doc.state }))
+                );
+            }
+            checkInventoryAndAlert(inventoryContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
+                console.error('[whatsapp-notifier] Inventory check error:', err?.message)
+            );
+        } catch (invErr: any) {
+            console.error('[whatsapp-notifier] Inventory lookup error:', invErr?.message);
+        }
 
         if (!topContactDoc?.contacts?.length) {
             console.log(`[whatsapp-notifier] No top contacts found for state: ${normalizedLocation}`);
@@ -255,11 +277,6 @@ export async function notifyPharmacists(request: any) {
 
         const activeContacts = topContactDoc.contacts.filter((c: any) => c.isActive !== false && c.phone);
         console.log(`[whatsapp-notifier] Dispatching to ${activeContacts.length} top contacts in ${normalizedLocation}`);
-
-        // Check inventory matches and send email alert (non-blocking alongside WhatsApp dispatch)
-        checkInventoryAndAlert(activeContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
-            console.error('[whatsapp-notifier] Inventory check error:', err?.message)
-        );
 
         // Fetch platform request items for the proper message format
         let requestItems: any[] = medicines.map((m: any) => ({
