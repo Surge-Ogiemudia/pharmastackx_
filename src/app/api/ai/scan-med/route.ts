@@ -34,19 +34,37 @@ export async function POST(req: NextRequest) {
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
     console.log("📸 [ScanMed API] base64Data length:", base64Data.length);
 
-    const generationModel = genAI.getGenerativeModel({ 
-      model: "gemma-4-26b-a4b-it",
-    });
+    let result;
+    try {
+      const generationModel = genAI.getGenerativeModel({ 
+        model: "gemma-4-26b-a4b-it",
+      });
 
-    const result = await generationModel.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: "image/jpeg",
+      result = await generationModel.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: "image/jpeg",
+          },
         },
-      },
-    ]);
+      ]);
+    } catch (gemmaErr: any) {
+      console.warn("⚠️ [ScanMed API] gemma-4-26b-a4b-it failed, falling back to gemini-1.5-flash. Error:", gemmaErr.message || gemmaErr);
+      const fallbackModel = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+      });
+
+      result = await fallbackModel.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: "image/jpeg",
+          },
+        },
+      ]);
+    }
 
     const response = await result.response;
     const text = response.text();
