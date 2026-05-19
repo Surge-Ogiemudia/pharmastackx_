@@ -377,18 +377,71 @@ const NIGERIAN_STATES = [
   'taraba','yobe','zamfara',
 ];
 
+// Major Nigerian cities that don't share a name with their state
+const CITY_TO_STATE: Record<string, string> = {
+  'port harcourt': 'Rivers', 'ph': 'Rivers',
+  'benin city': 'Edo',
+  'uyo': 'Akwa Ibom',
+  'owerri': 'Imo',
+  'calabar': 'Cross River',
+  'makurdi': 'Benue',
+  'awka': 'Anambra',
+  'ibadan': 'Oyo',
+  'abeokuta': 'Ogun',
+  'ilorin': 'Kwara',
+  'minna': 'Niger',
+  'gusau': 'Zamfara',
+  'jalingo': 'Taraba',
+  'damaturu': 'Yobe',
+  'dutse': 'Jigawa',
+  'lafia': 'Nasarawa',
+  'lokoja': 'Kogi',
+  'abakaliki': 'Ebonyi',
+  'asaba': 'Delta',
+  'yenagoa': 'Bayelsa',
+  'umuahia': 'Abia',
+  'maiduguri': 'Borno',
+  'sokoto city': 'Sokoto',
+  'katsina city': 'Katsina',
+};
+
 export function extractState(text: string): string | null {
   const lower = text.toLowerCase().replace(/\bstate\b/g, '').trim();
-  // Try exact word-boundary match first
+
+  // Match state names; allow hyphens between words (e.g. "Akwa-Ibom")
   for (const s of NIGERIAN_STATES) {
-    const regex = new RegExp(`\\b${s.replace(' ', '\\s+')}\\b`, 'i');
+    const escaped = s.replace(/\s+/g, '[\\s\\-]+');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
     if (regex.test(lower)) {
-      // Capitalise nicely
       return s === 'fct' || s === 'abuja' ? 'FCT - Abuja' :
         s.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
     }
   }
+
+  // Fall back to city → state lookup
+  for (const [city, state] of Object.entries(CITY_TO_STATE)) {
+    const escaped = city.replace(/\s+/g, '[\\s\\-]+');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) return state;
+  }
+
   return null;
+}
+
+// AI-assisted state extraction when regex can't match (e.g. unusual group name formats)
+async function extractStateFromGroupName(groupName: string): Promise<string | null> {
+  try {
+    const m = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+    const result = await m.generateContent(
+      `Which Nigerian state does this WhatsApp group belong to?\nGroup name: "${groupName}"\n\nOutput ONLY the Nigerian state name (e.g. Lagos, Rivers, Borno) or the word null. No explanation.`
+    );
+    const raw = result.response.text().trim().replace(/['"]/g, '');
+    if (!raw || raw.toLowerCase() === 'null') return null;
+    // Validate the AI output is actually a recognisable state
+    return extractState(raw) || null;
+  } catch {
+    return null;
+  }
 }
 
 async function handlePrivateDm(senderPhone: string, text: string) {
@@ -689,8 +742,15 @@ export async function POST(req: NextRequest) {
                         });
                     }
 
-                    // Resolve normalized state
-                    const resolvedState = extractState(classification.location || "") || extractState(chatName || "") || "National";
+                    // Resolve state: AI location field → group name regex → group name AI → "National"
+                    let resolvedState =
+                      extractState(classification.location || '') ||
+                      extractState(chatName || '');
+                    if (!resolvedState && chatName && chatName !== 'WhatsApp Group') {
+                      resolvedState = await extractStateFromGroupName(chatName);
+                      if (resolvedState) console.log(`🗺️ AI resolved state from group name "${chatName}" → ${resolvedState}`);
+                    }
+                    resolvedState = resolvedState || 'National';
 
                     // 5. Save to Main Platform Requests (Integration)
                     const platformRequest = await RequestModel.create({
