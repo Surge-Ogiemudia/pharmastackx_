@@ -705,16 +705,42 @@ export async function POST(req: NextRequest) {
                     try {
                         const whapiToken = process.env.WHAPI_TOKEN;
                         if (whapiToken) {
+                            // Try /chats/{chat_id} first
                             const chatRes = await fetch(`https://gate.whapi.cloud/chats/${msg.chat_id}`, {
                                 headers: { 'Authorization': `Bearer ${whapiToken}`, 'Accept': 'application/json' }
                             });
                             if (chatRes.ok) {
                                 const chatData = await chatRes.json();
-                                chatName = chatData.name || chatName;
+                                const fetched = chatData.name || chatData.chat?.name || chatData.subject;
+                                if (fetched) {
+                                    chatName = fetched;
+                                    console.log(`📋 [Group Name] "${chatName}" (via /chats)`);
+                                } else {
+                                    console.warn(`⚠️ [Group Name] /chats OK but no name field. Keys: ${Object.keys(chatData).join(', ')}`);
+                                }
+                            } else {
+                                console.warn(`⚠️ [Group Name] /chats returned ${chatRes.status} for ${msg.chat_id} — trying /groups`);
+                                // Fallback: /groups/{group_id} (id without @g.us)
+                                const groupId = msg.chat_id.split('@')[0];
+                                const groupRes = await fetch(`https://gate.whapi.cloud/groups/${groupId}`, {
+                                    headers: { 'Authorization': `Bearer ${whapiToken}`, 'Accept': 'application/json' }
+                                });
+                                if (groupRes.ok) {
+                                    const groupData = await groupRes.json();
+                                    const fetched = groupData.name || groupData.subject;
+                                    if (fetched) {
+                                        chatName = fetched;
+                                        console.log(`📋 [Group Name] "${chatName}" (via /groups)`);
+                                    } else {
+                                        console.warn(`⚠️ [Group Name] /groups OK but no name. Keys: ${Object.keys(groupData).join(', ')}`);
+                                    }
+                                } else {
+                                    console.warn(`⚠️ [Group Name] /groups also returned ${groupRes.status} for ${groupId}. State detection will be limited.`);
+                                }
                             }
                         }
                     } catch (err) {
-                        console.error("⚠️ Failed to fetch group name from Whapi:", err);
+                        console.error("⚠️ [Group Name] Fetch threw:", err);
                     }
                 }
 
