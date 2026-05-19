@@ -72,7 +72,7 @@ Format: {"available": true, "price": 3500}`;
     }
 }
 
-async function handleQuoteReply(senderPhone: string, messageText: string) {
+export async function handleQuoteReply(senderPhone: string, messageText: string) {
     console.log(`💬 Processing potentially a quote reply from ${senderPhone}: "${messageText}"`);
     // 1. Find the most recent active session for this phone
     // Normalize phone from Whapi (e.g. "2348157788101@s.whatsapp.net" -> "2348157788101")
@@ -173,6 +173,48 @@ async function handleQuoteReply(senderPhone: string, messageText: string) {
     } catch (fcmErr: any) {
         console.error('[webhook] FCM notify failed:', fcmErr.message);
     }
+
+    // Notify patient via WhatsApp if request has a valid phone number (e.g. from WhatsApp group or DM)
+    try {
+        const patientPhone = request.phoneNumber;
+        if (patientPhone && patientPhone !== 'WhatsApp' && /^\+?\d+/.test(patientPhone.replace(/\s+/g, ''))) {
+            const targetJid = patientPhone.includes('@') ? patientPhone : `${patientPhone.replace(/[\+\s]/g, '')}@s.whatsapp.net`;
+            
+            const medicineNames = request.items.map((i: any) => i.name).join(', ');
+            const paystackLink = process.env.PAYSTACK_PAYMENT_URL || 'https://paystack.com/pay/pharmastackx';
+            
+            const patientMessage = 
+                `💊 *PharmaStackX Update*\n\n` +
+                `Good news! Your medicine request for *${medicineNames}* is available! 🥳\n\n` +
+                `💰 *Price:* ₦${parsed.price?.toLocaleString()}\n\n` +
+                `💳 *Pay Here:* ${paystackLink}\n\n` +
+                `Once you've made the payment, please reply *DONE* to this chat or upload a screenshot of your payment receipt. Thank you! 🙏`;
+
+            const DmConversation = (await import('@/models/DmConversation')).default;
+            const cleanPhoneOnly = targetJid.split('@')[0];
+            await DmConversation.findOneAndUpdate(
+                { phone: cleanPhoneOnly },
+                {
+                    step: 'awaiting_payment',
+                    requestId: request._id,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours to pay
+                },
+                { upsert: true, new: true }
+            );
+            console.log(`💾 Patient DmConversation updated to 'awaiting_payment' for request ${request._id}`);
+
+            try {
+                console.log(`✉️ Sending WhatsApp payment instructions to patient: ${targetJid}`);
+                await sendWhatsAppMessage(targetJid, patientMessage);
+            } catch (apiErr: any) {
+                console.error(`[webhook] Failed to send WhatsApp message to patient ${targetJid}:`, apiErr.message);
+            }
+        } else {
+            console.log(`ℹ️ Request phone number (${patientPhone}) is not a valid WhatsApp patient. Skipping WhatsApp notify.`);
+        }
+    } catch (waErr: any) {
+        console.error('[webhook] Patient WhatsApp notify failed:', waErr.message);
+    }
 }
 
 async function handleDeliveryReply(senderPhone: string, incomingText: string) {
@@ -231,6 +273,100 @@ async function handleDeliveryReply(senderPhone: string, incomingText: string) {
     return true;
 }
 
+export async function handlePatientPaymentReply(msg: any, session: any) {
+    const phone = msg.from.split('@')[0];
+    const replyTo = msg.from.includes('@') ? msg.from : `${phone}@s.whatsapp.net`;
+    const isImage = msg.type === 'image' || (msg.type === 'document' && msg.document?.mime_type?.startsWith('image/'));
+    const textBody = (msg.text?.body || "").trim().toUpperCase();
+
+    // Check if the reply is a text confirmation like "DONE" or an image receipt
+    const isConfirmed = textBody === 'DONE' || isImage;
+
+    if (!isConfirmed) {
+        // If they replied with something else, gently nudge them
+        await sendWhatsAppMessage(replyTo, 
+            `We are awaiting your payment confirmation. Please reply with *DONE* or upload a screenshot of your payment receipt once you've completed the payment. 🙏`
+        ).catch(() => {});
+        return;
+    }
+
+    try {
+        console.log(`💳 [Payment Confirmation] Received from patient ${phone} for request ${session.requestId}`);
+
+        const RequestModel = (await import('@/models/Request')).default;
+        const request = await RequestModel.findById(session.requestId);
+        if (!request) {
+            console.error(`❌ Request ${session.requestId} not found during payment confirmation!`);
+            return;
+        }
+
+        // Find the accepted quote, or accept the most recent offered quote
+        let quoteToAccept = request.quotes.find((q: any) => q.status === 'accepted');
+        if (!quoteToAccept) {
+            quoteToAccept = request.quotes.find((q: any) => q.status === 'offered');
+            if (quoteToAccept) {
+                quoteToAccept.status = 'accepted';
+            }
+        }
+
+        request.status = 'awaiting-confirmation';
+        await request.save();
+
+        // Mark the patient session as complete
+        session.step = 'complete';
+        await session.save();
+
+        // Send Confirmation reply to Patient
+        await sendWhatsAppMessage(replyTo,
+            `✅ *Payment Received!*\n\nThank you! We've received your payment confirmation. We are verifying it now and notifying the pharmacy to hold your medicine. We will update you shortly! 🙏`
+        );
+
+        // Notify the Quoting Pharmacist
+        if (quoteToAccept && quoteToAccept.externalContact?.phone) {
+            const pharmacistJid = quoteToAccept.externalContact.phone.includes('@') 
+                ? quoteToAccept.externalContact.phone 
+                : `${quoteToAccept.externalContact.phone.replace(/[\+\s]/g, '')}@s.whatsapp.net`;
+            
+            const medicineNames = request.items.map((i: any) => i.name).join(', ');
+            const pharmacistMessage = 
+                `📦 *PharmaStackX Order Alert*\n\n` +
+                `Good news! The patient has completed payment for *${medicineNames}*.\n\n` +
+                `🔒 Please *HOLD* the medicine. We are preparing the payout transfer to your account now. Thank you! 🙏`;
+
+            console.log(`✉️ Notifying pharmacist to hold: ${pharmacistJid}`);
+            await sendWhatsAppMessage(pharmacistJid, pharmacistMessage).catch(err => {
+                console.error(`[webhook] Failed to notify pharmacist ${pharmacistJid}:`, err.message);
+            });
+        }
+
+        // Notify Admin
+        const adminPhone = process.env.ADMIN_WHATSAPP_NUMBER;
+        if (adminPhone) {
+            const adminJid = adminPhone.includes('@') ? adminPhone : `${adminPhone.replace(/[\+\s]/g, '')}@s.whatsapp.net`;
+            const medicineNames = request.items.map((i: any) => i.name).join(', ');
+            const price = quoteToAccept ? quoteToAccept.items.reduce((acc: number, item: any) => acc + (item.price || 0) * (item.pharmacyQuantity || 1), 0) : 0;
+            
+            const adminMessage = 
+                `💳 *Payment Alert (WhatsApp)*\n\n` +
+                `Patient *${phone}* has uploaded payment confirmation for:\n` +
+                `💊 *Items:* ${medicineNames}\n` +
+                `💰 *Total Price:* ₦${price.toLocaleString()}\n` +
+                `🔗 *Request ID:* ${request._id}\n\n` +
+                `Please verify the transaction on Paystack/Dashboard and proceed to dispatch delivery agents.`;
+
+            console.log(`✉️ Notifying admin of payment: ${adminJid}`);
+            await sendWhatsAppMessage(adminJid, adminMessage).catch(err => {
+                console.error(`[webhook] Failed to notify admin ${adminJid}:`, err.message);
+            });
+        }
+    } catch (err: any) {
+        console.error('[webhook] handlePatientPaymentReply error:', err.message);
+        await sendWhatsAppMessage(replyTo, 
+            `Sorry, we encountered an error while processing your payment confirmation. Please try again or contact support. 🙏`
+        ).catch(() => {});
+    }
+}
+
 // ── Private DM conversation handler ─────────────────────────────────────────
 
 const NIGERIAN_STATES = [
@@ -241,7 +377,7 @@ const NIGERIAN_STATES = [
   'taraba','yobe','zamfara',
 ];
 
-function extractState(text: string): string | null {
+export function extractState(text: string): string | null {
   const lower = text.toLowerCase().replace(/\bstate\b/g, '').trim();
   // Try exact word-boundary match first
   for (const s of NIGERIAN_STATES) {
@@ -439,22 +575,36 @@ export async function POST(req: NextRequest) {
 
                 // Private DM — handle conversationally, skip group flow
                 const isDm = msg.chat_id && !msg.chat_id.endsWith('@g.us');
-                if (isDm && msg.type === 'text') {
+                if (isDm) {
+                    const phone = msg.from.split('@')[0];
                     rawText = msg.text?.body || "";
-                    console.log(`📩 [DM] from ${msg.from}: ${rawText.substring(0, 80)}`);
-                    // Delivery agent replies still take priority
-                    const handledByDelivery = await handleDeliveryReply(msg.from, rawText);
-                    if (!handledByDelivery) {
-                        // Also check if they're replying to a pharmacist quote session
-                        const handledByQuote = await (async () => {
-                            const phone = msg.from.split('@')[0];
-                            const session = await WhatsAppSession.findOne({ phone, status: 'waiting', expiresAt: { $gt: new Date() } }).sort({ sentAt: -1 });
-                            if (session) { await handleQuoteReply(msg.from, rawText); return true; }
-                            return false;
-                        })();
-                        if (!handledByQuote) {
-                            await handlePrivateDm(msg.from, rawText);
+
+                    // A. Check if patient is in payment confirmation step
+                    const DmConversation = (await import('@/models/DmConversation')).default;
+                    const paymentSession = await DmConversation.findOne({ phone, step: 'awaiting_payment' });
+                    if (paymentSession) {
+                        await handlePatientPaymentReply(msg, paymentSession);
+                        continue;
+                    }
+
+                    // Only handle conversational text/onboarding if msg.type is text
+                    if (msg.type === 'text') {
+                        console.log(`📩 [DM] from ${msg.from}: ${rawText.substring(0, 80)}`);
+                        // Delivery agent replies still take priority
+                        const handledByDelivery = await handleDeliveryReply(msg.from, rawText);
+                        if (!handledByDelivery) {
+                            // Also check if they're replying to a pharmacist quote session
+                            const handledByQuote = await (async () => {
+                                const session = await WhatsAppSession.findOne({ phone, status: 'waiting', expiresAt: { $gt: new Date() } }).sort({ sentAt: -1 });
+                                if (session) { await handleQuoteReply(msg.from, rawText); return true; }
+                                return false;
+                            })();
+                            if (!handledByQuote) {
+                                await handlePrivateDm(msg.from, rawText);
+                            }
                         }
+                    } else {
+                        console.log(`ℹ️ [DM] Non-text message from ${msg.from} ignored (not in awaiting_payment step).`);
                     }
                     continue;
                 }
@@ -539,11 +689,14 @@ export async function POST(req: NextRequest) {
                         });
                     }
 
+                    // Resolve normalized state
+                    const resolvedState = extractState(classification.location || "") || extractState(chatName || "") || "National";
+
                     // 5. Save to Main Platform Requests (Integration)
                     const platformRequest = await RequestModel.create({
                         user: botUser._id,
                         phoneNumber: msg.from || "WhatsApp",
-                        state: classification.location || "National",
+                        state: resolvedState,
                         requestType: isImage ? 'prescription' : 'drug-list',
                         items: (classification.medicines || []).map((m: any) => ({
                             name: m.name,
@@ -563,7 +716,7 @@ export async function POST(req: NextRequest) {
                         groupName: chatName,
                         rawText: rawText || "[Prescription Image]",
                         medicines: classification.medicines,
-                        location: classification.location || "National",
+                        location: resolvedState,
                         urgency: classification.urgency || "normal",
                         confidence: classification.confidence,
                         status: 'open',

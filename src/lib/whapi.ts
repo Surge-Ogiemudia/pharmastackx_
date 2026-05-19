@@ -25,7 +25,8 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
             headers: { 
                 'Authorization': `Bearer ${WHAPI_TOKEN}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            timeout: 10000
         });
 
         console.log(`[Whapi] Message sent to ${recipient}. ID: ${response.data.message?.id}`);

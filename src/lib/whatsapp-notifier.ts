@@ -86,9 +86,13 @@ export async function notifyPharmacists(request: any) {
     const targetId = platform_request_id || _id;
 
     // Normalize location (e.g., "Bayelsa state" -> "Bayelsa", " Lagos " -> "Lagos")
-    const normalizedLocation = location 
+    let normalizedLocation = location 
         ? location.replace(/\bstate\b/gi, '').trim() 
         : 'National';
+
+    if (/fct|abuja/i.test(normalizedLocation)) {
+        normalizedLocation = 'FCT';
+    }
 
     // 1. Get Recipients (Unified Mirror)
     const tokens = await getRecipientTokens(normalizedLocation);
