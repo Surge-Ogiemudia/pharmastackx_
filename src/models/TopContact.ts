@@ -1,5 +1,10 @@
 import mongoose, { Schema } from 'mongoose';
 
+const InventoryItemSchema = new Schema({
+    medicineName: { type: String, required: true },
+    price: { type: Number, default: null }
+}, { _id: false });
+
 const ContactSchema = new Schema({
     name: { type: String, required: true },
     phone: { type: String, required: true },
@@ -13,7 +18,8 @@ const ContactSchema = new Schema({
             validator: (v: number[]) => !v || v.length === 2,
             message: 'Coordinates must be [longitude, latitude]'
         }
-    }
+    },
+    inventory: { type: [InventoryItemSchema], default: [] }
 }, { _id: true });
 
 const TopContactSchema = new Schema({
