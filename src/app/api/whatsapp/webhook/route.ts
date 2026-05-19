@@ -600,6 +600,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
         
+        // Log payload shape so we know exactly what Whapi is sending
+        console.log(`📨 Payload keys: [${Object.keys(payload).join(', ')}] | messages: ${payload.messages?.length ?? 0} | chats_updates: ${payload.chats_updates?.length ?? 0}`);
+
         // Whapi sends messages in messages array
         const messages = payload.messages || [];
 
