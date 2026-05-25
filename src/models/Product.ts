@@ -18,6 +18,8 @@ export interface IProduct extends Document {
   isPublished: boolean;
   bulkUploadId?: mongoose.Types.ObjectId;
   itemNameVector?: number[];
+  syncBatchId?: string;
+  source?: 'manual' | 'synkk';
   // SIMPLIFIED DEFINITION:
   enrichmentStatus?: string; 
 }
@@ -37,6 +39,8 @@ const productSchema: Schema<IProduct> = new mongoose.Schema({
   manufacturer: { type: String, default: '' },
   expiryDate: { type: Date, default: null },
   slug: { type: String, required: false },
+  syncBatchId: { type: String, required: false },
+  source: { type: String, enum: ['manual', 'synkk'], default: 'manual' },
   isPublished: { type: Boolean, default: false },
   bulkUploadId: { type: mongoose.Schema.Types.ObjectId, ref: 'BulkUpload', default: null },
   // ** THE FIX IS HERE **

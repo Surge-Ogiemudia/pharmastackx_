@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
           coordinates: coordinates || '',
           bulkUploadId: bulkUpload._id,
           enrichmentStatus: 'completed', 
+          source: 'manual',
         });
       } 
       else {
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest) {
           coordinates: coordinates || '',
           bulkUploadId: bulkUpload._id,
           enrichmentStatus: 'pending',
+          source: 'manual',
         });
       }
     }
