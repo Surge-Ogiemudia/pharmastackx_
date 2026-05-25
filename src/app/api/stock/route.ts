@@ -177,7 +177,8 @@ export async function POST(req: NextRequest) {
       expiryDate: expiryDate || null,
       isPublished: true,
       itemNameVector: newVector,
-      enrichmentStatus: 'completed'
+      enrichmentStatus: 'completed',
+      source: 'manual'
     });
 
     const savedProduct = await newProduct.save();
