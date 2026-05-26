@@ -25,29 +25,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Invalid payload schema' }, { status: 400 });
     }
 
-    // 3. Find or Create the Pharmacy User
-    let pharmacyUser = await User.findOne({ slug: pharmacy_slug });
+    // 3. Find the Pharmacy to get their businessName
+    const pharmacyUser = await User.findOne({ slug: pharmacy_slug });
     
-    // If they don't exist, dynamically create them on the fly!
     if (!pharmacyUser) {
-      const crypto = require('crypto');
-      const randomPassword = crypto.randomBytes(16).toString('hex');
-      
-      pharmacyUser = await User.create({
-        username: body.pharmacy_name || pharmacy_slug,
-        email: `${pharmacy_slug}@synkk.pharmastackx.com`,
-        password: randomPassword,
-        role: 'pharmacy',
-        businessName: body.pharmacy_name || 'Unknown Pharmacy',
-        slug: pharmacy_slug,
-        isStorePublished: true,
-        canManageStore: true,
-        businessCoordinates: body.coordinates ? {
-          latitude: body.coordinates.lat,
-          longitude: body.coordinates.lng
-        } : undefined
-      });
-      console.log(`Dynamically created new pharmacy user for slug: ${pharmacy_slug}`);
+      return NextResponse.json({ success: false, error: 'Pharmacy not found for that slug' }, { status: 404 });
     }
     const businessName = pharmacyUser.businessName || 'Unknown Pharmacy';
 
