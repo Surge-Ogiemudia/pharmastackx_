@@ -85,11 +85,11 @@ export async function POST(req: Request) {
       }
 
       const user = await User.findOne({ email: email.toLowerCase() });
-      if (!user) {
+      if (!user || !user.password) {
         return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
       }
 
-      const isMatch = await bcrypt.compare(password, user.password);
+      const isMatch = await bcrypt.compare(password, user.password as string);
       if (!isMatch) {
         return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
       }
