@@ -1,0 +1,6 @@
+{
+  "title": "feat: delivery agent dispatch, UI cleanup and dev tooling sync",
+  "body": "## Summary\n\n- Complete delivery agent WhatsApp dispatch flow (modeling, dispatch engine, webhook, admin UI)\n- Remove unused components: DeliveryStatusModal.tsx, ActiveRequestOverlay.tsx, delivery-status API route\n- Simplify CartContent, ConfirmOrderContent, OrdersContent components\n- Add dev/debug tooling and project config files\n- Update .gitignore, switch-pharmacy API, DeliverySession model\n\n## What a reviewer should know\n\n- DeliveryStatusModal and ActiveRequestOverlay have been fully removed - confirm no other pages reference them before merging\n- Merging will trigger a Vercel production redeploy\n\n## Test plan\n- [ ] Delivery agent dispatch flow end-to-end (WhatsApp notify on order)\n- [ ] Confirm order flow still works after ConfirmOrderContent simplification\n- [ ] Orders and cart pages render correctly\n- [ ] No broken imports from removed components",
+  "head": "claude/clever-greider-9d643f",
+  "base": "main"
+}

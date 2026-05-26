@@ -22,6 +22,26 @@ export async function POST(req: Request) {
       }
     }
 
+    if (action === 'guest') {
+      const crypto = require('crypto');
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const randomId = crypto.randomBytes(4).toString('hex');
+      const guestSlug = `guest-${randomId}`;
+
+      const newUser = await User.create({
+        username: `Guest Pharmacy ${randomId}`,
+        email: `${guestSlug}@synkk.pharmastackx.com`,
+        password: randomPassword, // Ghost password
+        role: 'pharmacy',
+        businessName: `Guest Pharmacy`,
+        slug: guestSlug,
+        isStorePublished: true,
+        canManageStore: true
+      });
+
+      return NextResponse.json({ success: true, slug: newUser.slug, message: 'Guest account created' });
+    }
+
     if (action === 'register') {
       if (!password || !pharmacyName || !phone) {
         return NextResponse.json({ success: false, error: 'Missing registration fields' }, { status: 400 });
