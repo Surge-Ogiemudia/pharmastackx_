@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, email, password, pharmacyName, phone } = body;
 
-    if (!action || !email) {
+    if (!action || (action !== 'guest' && !email)) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
