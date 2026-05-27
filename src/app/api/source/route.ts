@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     // Group by pharmacy slug to fetch contact info efficiently
     const pharmacySlugs = [...new Set(matchingProducts.map(p => p.slug))];
     const pharmacies = await User.find({ slug: { $in: pharmacySlugs } })
-      .select('businessName slug state address phone')
+      .select('businessName slug state address phoneNumber')
       .lean();
 
     const pharmacyMap = pharmacies.reduce((acc, p) => {
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
           name: pharmacy.businessName,
           state: pharmacy.state,
           address: pharmacy.address,
-          phone: pharmacy.phone
+          phoneNumber: pharmacy.phoneNumber
         } : null
       };
     }).filter(p => p.pharmacy !== null); // Drop orphans
