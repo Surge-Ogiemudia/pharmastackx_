@@ -66,12 +66,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   profilePicture: { type: String },
   createdAt: { type: Date, default: Date.now },
   businessCoordinates: {
-    type: {
-      latitude: { type: Number },
-      longitude: { type: Number },
-    },
-    required: false,
-    _id: false 
+    latitude: { type: Number },
+    longitude: { type: Number },
   },
   passwordResetToken: { type: String },
   passwordResetExpires: { type: Date },
