@@ -9,6 +9,7 @@ export interface IUser extends Document {
   role: 'admin' | 'customer' | 'pharmacy' | 'clinic' | 'vendor' | 'agent' | 'stockManager' | 'pharmacist';
   businessName?: string;
   slug?: string;
+  oldGuestSlug?: string;
   businessAddress?: string;
   state?: string;
   city?: string;
@@ -57,6 +58,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   },
   businessName: { type: String },
   slug: { type: String, unique: true, sparse: true },
+  oldGuestSlug: { type: String },
   businessAddress: { type: String },
   state: { type: String },
   city: { type: String },

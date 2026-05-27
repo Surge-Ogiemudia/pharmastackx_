@@ -26,12 +26,18 @@ export async function POST(req: Request) {
     }
 
     // 3. Find the Pharmacy to get their businessName
-    const pharmacyUser = await User.findOne({ slug: pharmacy_slug });
+    const pharmacyUser = await User.findOne({ 
+      $or: [
+        { slug: pharmacy_slug },
+        { oldGuestSlug: pharmacy_slug }
+      ]
+    });
     
     if (!pharmacyUser) {
       return NextResponse.json({ success: false, error: 'Pharmacy not found for that slug' }, { status: 404 });
     }
     const businessName = pharmacyUser.businessName || 'Unknown Pharmacy';
+    const actual_slug = pharmacyUser.slug;
 
     // 4. Bulk Upsert Operations
     // We strictly UPSERT based on itemName and slug so we don't destroy AI-enriched fields (imageUrl, info, etc)
@@ -43,7 +49,7 @@ export async function POST(req: Request) {
 
       return {
         updateOne: {
-          filter: { itemName: itemName, slug: pharmacy_slug },
+          filter: { itemName: itemName, slug: actual_slug },
           update: {
             $set: {
               amount: amount,
@@ -55,7 +61,7 @@ export async function POST(req: Request) {
             $setOnInsert: {
               itemName: itemName,
               businessName: businessName,
-              slug: pharmacy_slug,
+              slug: actual_slug,
               isPublished: true,
               POM: false,
               enrichmentStatus: 'pending' // Flag it so the AI enrichment engine knows to process it later
@@ -74,14 +80,15 @@ export async function POST(req: Request) {
     // 5. Clean up old deleted items
     // Anything that belongs to this pharmacy but does NOT have the new syncBatchId was deleted from their local POS.
     const deleteResult = await Product.deleteMany({
-      slug: pharmacy_slug,
+      slug: actual_slug,
       source: 'synkk',
       syncBatchId: { $ne: sync_batch_id }
     });
 
     return NextResponse.json({
       success: true,
-      message: `Sync complete. Upserted ${inventory.length} items. Removed ${deleteResult.deletedCount} out-of-stock items.`
+      message: `Sync complete. Upserted ${inventory.length} items. Removed ${deleteResult.deletedCount} out-of-stock items.`,
+      newSlug: actual_slug
     });
 
   } catch (error: any) {
