@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
       if (pharmacy && pharmacy.slug) {
         triggerNewOrder(pharmacy.slug, {
-          orderId: newOrder._id.toString(),
+          orderId: String(newOrder._id),
           patientName: newOrder.patientName || 'Patient',
           itemsCount: newOrder.items?.length || 0,
           totalAmount: newOrder.totalAmount
