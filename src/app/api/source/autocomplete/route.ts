@@ -15,11 +15,10 @@ export async function GET(request: Request) {
 
     const regex = new RegExp(query, 'i');
 
-    // Find distinct itemNames that match the query and are in stock and published
+    // Find distinct itemNames that match the query and are published, regardless of quantity
     const matchingProducts = await Product.find({
       itemName: regex,
-      isPublished: true,
-      quantity: { $gt: 0 }
+      isPublished: true
     })
       .select('itemName')
       .limit(20)
