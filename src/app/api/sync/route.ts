@@ -26,12 +26,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Find the Pharmacy to get their businessName
-    const pharmacyUser = await User.findOne({ 
-      $or: [
-        { slug: pharmacy_slug },
-        { oldGuestSlug: pharmacy_slug }
-      ]
-    });
+    const pharmacyUser = await User.findOne({ slug: pharmacy_slug });
     
     if (!pharmacyUser) {
       return NextResponse.json({ success: false, error: 'Pharmacy not found for that slug' }, { status: 404 });
