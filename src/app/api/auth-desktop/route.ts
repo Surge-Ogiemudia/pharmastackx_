@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, email, password, pharmacyName, phone } = body;
 
-    if (!action || (action !== 'guest' && !email)) {
+    if (!action || (action !== 'guest' && action !== 'update-guest' && !email)) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -40,6 +40,39 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({ success: true, slug: newUser.slug, message: 'Guest account created' });
+    }
+
+    if (action === 'update-guest') {
+      const { oldSlug, newSlug, pharmacyName } = body;
+      
+      if (!oldSlug || !newSlug) {
+        return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+      }
+
+      if (oldSlug !== newSlug) {
+        const existingUser = await User.findOne({ slug: newSlug });
+        if (existingUser) {
+          return NextResponse.json({ success: false, error: 'That storefront link is already taken. Please try another one.' }, { status: 400 });
+        }
+      }
+
+      const user = await User.findOne({ slug: oldSlug });
+      if (!user) {
+         return NextResponse.json({ success: false, error: 'Guest account not found.' }, { status: 404 });
+      }
+
+      if (!user.email.endsWith('@synkk.pharmastackx.com')) {
+         return NextResponse.json({ success: false, error: 'Only guest accounts can be updated this way.' }, { status: 403 });
+      }
+
+      user.oldGuestSlug = user.slug;
+      user.slug = newSlug;
+      if (pharmacyName) user.businessName = pharmacyName;
+      user.email = `${newSlug}@synkk.pharmastackx.com`;
+
+      await user.save();
+
+      return NextResponse.json({ success: true, slug: user.slug, message: 'Guest account updated' });
     }
 
     if (action === 'register') {
