@@ -24,6 +24,7 @@ export interface IUser extends Document {
   mobile?: string;
   stateOfPractice?: string;
   licenseNumber?: string;
+  license?: string;
   pharmacy?: string;
   emailVerified: boolean;
   emailVerificationToken?: string;
@@ -76,6 +77,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   mobile: { type: String },
   stateOfPractice: { type: String },
   licenseNumber: { type: String },
+  license: { type: String },
   pharmacy: { type: String },
   emailVerified: { type: Boolean, default: false },
   emailVerificationToken: { type: String },
