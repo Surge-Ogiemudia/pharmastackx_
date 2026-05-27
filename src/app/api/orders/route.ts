@@ -130,12 +130,17 @@ export async function POST(req: NextRequest) {
       // Find the pharmacy slug based on business name
       const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
       if (pharmacy && pharmacy.slug) {
-        triggerNewOrder(pharmacy.slug, {
-          orderId: String(newOrder._id),
-          patientName: newOrder.patientName || 'Patient',
-          itemsCount: newOrder.items?.length || 0,
-          totalAmount: newOrder.totalAmount
-        });
+        try {
+          await triggerNewOrder(pharmacy.slug, {
+            orderId: String(newOrder._id),
+            patientName: newOrder.patientName || 'Patient',
+            itemsCount: newOrder.items?.length || 0,
+            totalAmount: newOrder.totalAmount
+          });
+          console.log(`Pusher notification successfully sent to pharmacy-${pharmacy.slug}`);
+        } catch (pushErr) {
+          console.error("Failed to push notification:", pushErr);
+        }
       }
     }
 
