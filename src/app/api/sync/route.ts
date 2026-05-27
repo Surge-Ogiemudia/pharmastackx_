@@ -19,9 +19,9 @@ export async function POST(req: Request) {
 
     // 2. Parse Payload
     const body = await req.json();
-    const { pharmacy_slug, sync_batch_id, inventory } = body;
+    const { pharmacy_slug, updates, deletes } = body;
 
-    if (!pharmacy_slug || !sync_batch_id || !Array.isArray(inventory)) {
+    if (!pharmacy_slug || !Array.isArray(updates) || !Array.isArray(deletes)) {
       return NextResponse.json({ success: false, error: 'Invalid payload schema' }, { status: 400 });
     }
 
@@ -34,9 +34,9 @@ export async function POST(req: Request) {
     const businessName = pharmacyUser.businessName || 'Unknown Pharmacy';
     const actual_slug = pharmacyUser.slug;
 
-    // 4. Bulk Upsert Operations
+    // 4. Bulk Upsert Operations for Updates
     // We strictly UPSERT based on itemName and slug so we don't destroy AI-enriched fields (imageUrl, info, etc)
-    const bulkOps = inventory.map((item: any) => {
+    const bulkOps = updates.map((item: any) => {
       // Clean up the incoming data
       const itemName = item.name;
       const amount = Number(item.price) || 0;
@@ -49,7 +49,6 @@ export async function POST(req: Request) {
             $set: {
               amount: amount,
               quantity: quantity,
-              syncBatchId: sync_batch_id,
               source: 'synkk'
             },
             // Only set these if it's a completely brand new item being inserted
@@ -68,21 +67,26 @@ export async function POST(req: Request) {
     });
 
     // Execute the bulk upsert
+    let upsertCount = 0;
     if (bulkOps.length > 0) {
-      await Product.bulkWrite(bulkOps);
+      const result = await Product.bulkWrite(bulkOps);
+      upsertCount = (result.upsertedCount || 0) + (result.modifiedCount || 0);
     }
 
-    // 5. Clean up old deleted items
-    // Anything that belongs to this pharmacy but does NOT have the new syncBatchId was deleted from their local POS.
-    const deleteResult = await Product.deleteMany({
-      slug: actual_slug,
-      source: 'synkk',
-      syncBatchId: { $ne: sync_batch_id }
-    });
+    // 5. Delete removed items
+    let deletedCount = 0;
+    if (deletes.length > 0) {
+      const deleteResult = await Product.deleteMany({
+        slug: actual_slug,
+        source: 'synkk',
+        itemName: { $in: deletes }
+      });
+      deletedCount = deleteResult.deletedCount || 0;
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Sync complete. Upserted ${inventory.length} items. Removed ${deleteResult.deletedCount} out-of-stock items.`,
+      message: `Sync complete. Upserted ${upsertCount} items. Removed ${deletedCount} out-of-stock items.`,
       newSlug: actual_slug
     });
 
