@@ -26,8 +26,9 @@ export default function AuthPage() {
   const { refreshSession } = useSession();
   
   // State machine for onboarding flow
-  const initialStep = (searchParams?.get('mode') === 'login' ? 'sign-in' : 'role') as 'role' | 'patient-signup' | 'pharmacist-signup' | 'pharmacy-owner-signup' | 'clinic-signup' | 'sign-in';
-  const [step, setStep] = useState(initialStep);
+  const claimSlug = searchParams?.get('claim_slug');
+  const initialStep = claimSlug ? 'pharmacy-owner-signup' : (searchParams?.get('mode') === 'login' ? 'sign-in' : 'role');
+  const [step, setStep] = useState(initialStep as any);
   const [showPassword, setShowPassword] = useState(false);
 
   // Unified Form State
@@ -92,6 +93,41 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
     setSuccess('');
+
+    if (claimSlug && role === 'pharmacy') {
+      try {
+        await axios.post("/api/auth/claim-pharmacy", {
+          claimSlug,
+          businessName: formData.businessName,
+          state: formData.state,
+          city: formData.city,
+          businessAddress: formData.businessAddress,
+          phoneNumber: formData.phoneNumber,
+          license: formData.licenseNumber,
+          email: formData.email,
+          password: formData.password,
+          username: formData.username
+        });
+        await axios.post('/api/auth/login', { email: formData.email, password: formData.password });
+        setSuccess("Storefront claimed successfully! Redirecting...");
+        await refreshSession();
+        
+        const requestId = searchParams?.get('requestId');
+        const view = searchParams?.get('view');
+        let redirectUrl = '/';
+        const params = new URLSearchParams();
+        if (requestId) params.append('requestId', requestId);
+        if (view) params.append('view', view);
+        const queryString = params.toString();
+        if (queryString) redirectUrl += '?' + queryString;
+        
+        window.location.href = redirectUrl;
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to claim storefront.');
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
       let payload: any = { 
@@ -753,7 +789,12 @@ export default function AuthPage() {
         </Box>
 
         {/* Content */}
-        <Box component="form" onSubmit={(e) => handleSignUp(e, 'pharmacist')}>
+        <Box component="form" onSubmit={(e) => handleSignUp(e, 'pharmacy')}>
+            {claimSlug && !success && !error && (
+                <Alert severity="info" sx={{ mx: 3, mb: 2, borderRadius: '12px', fontSize: 13 }}>
+                    Claim your Synkk Storefront: Finish creating your Pharmacy Owner account below.
+                </Alert>
+            )}
             {(error || success) && (
                 <Alert 
                   severity={error ? 'error' : 'success'} 
@@ -953,7 +994,7 @@ export default function AuthPage() {
         </Box>
 
         {/* Content */}
-        <Box component="form" onSubmit={(e) => handleSignUp(e, 'pharmacist')}>
+        <Box component="form" onSubmit={(e) => handleSignUp(e, 'clinic')}>
             {(error || success) && (
                 <Alert 
                   severity={error ? 'error' : 'success'} 
