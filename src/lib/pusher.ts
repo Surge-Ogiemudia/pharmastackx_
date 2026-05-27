@@ -17,3 +17,8 @@ export function triggerQuoteUpdate(requestId: string) {
 export function triggerNewRequest(state: string) {
     return pusherServer.trigger(`pharmacist-${state.toLowerCase().trim()}`, 'new-request', {});
 }
+
+// Notify a specific pharmacy (by slug) that they have a new online order
+export function triggerNewOrder(slug: string, orderData: any) {
+    return pusherServer.trigger(`pharmacy-${slug}`, 'new-order', orderData);
+}
