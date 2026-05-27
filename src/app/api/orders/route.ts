@@ -125,8 +125,11 @@ export async function POST(req: NextRequest) {
         await RequestModel.findByIdAndUpdate(requestId, { status: 'confirmed' });
     }
 
+    let debugStr = 'Pusher Not Attempted';
+
     // Trigger Pusher notification for Synkk Desktop
     if (businesses && businesses.length > 0) {
+      debugStr = `Attempt: ${businesses[0]}`;
       // Find the pharmacy slug based on business name
       const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
       if (pharmacy) {
@@ -139,14 +142,23 @@ export async function POST(req: NextRequest) {
             itemsCount: newOrder.items?.length || 0,
             totalAmount: newOrder.totalAmount
           });
+          debugStr = `Pusher Success: ${targetSlug}`;
           console.log(`Pusher notification successfully sent to pharmacy-${targetSlug}`);
-        } catch (pushErr) {
+        } catch (pushErr: any) {
+          debugStr = `Pusher Error: ${pushErr.message}`;
           console.error("Failed to push notification:", pushErr);
         }
       } else {
-        console.log(`Pharmacy not found for businessName: ${businesses[0]}`);
+        debugStr = `Pharmacy Not Found in DB: ${businesses[0]}`;
       }
+    } else {
+      debugStr = `Businesses array missing: ${JSON.stringify(businesses)}`;
     }
+
+    // Attach debug string to condition so it's visible in UI
+    await Order.findByIdAndUpdate(newOrder._id, { 
+      patientCondition: (patientCondition ? patientCondition + ' | ' : '') + debugStr 
+    });
 
     return NextResponse.json(newOrder, { status: 201 });
   } catch (error: any) {
