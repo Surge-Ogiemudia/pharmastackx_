@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('query');
+    const excludeSlug = searchParams.get('exclude');
 
     if (!query || query.length < 3) {
       return NextResponse.json({ message: 'Query too short' }, { status: 400 });
@@ -16,11 +17,17 @@ export async function GET(req: NextRequest) {
 
     // Search for products matching the query
     const regex = new RegExp(query, 'i');
-    const matchingProducts = await Product.find({
+    const searchFilter: any = {
       itemName: regex,
       isPublished: true,
       quantity: { $gt: 0 } // Only find items actually in stock
-    }).lean();
+    };
+
+    if (excludeSlug) {
+      searchFilter.slug = { $ne: excludeSlug };
+    }
+
+    const matchingProducts = await Product.find(searchFilter).lean();
 
     if (!matchingProducts.length) {
       return NextResponse.json({ success: true, results: [] });
