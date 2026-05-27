@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const matchingProducts = await Product.find({
       itemName: regex,
       isPublished: true,
-      qty: { $gt: 0 } // Only find items actually in stock
+      quantity: { $gt: 0 } // Only find items actually in stock
     }).lean();
 
     if (!matchingProducts.length) {
@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
       return {
         _id: p._id,
         itemName: p.itemName,
-        price: p.price,
-        qty: p.qty,
+        price: p.amount,
+        qty: p.quantity,
         pharmacy: pharmacy ? {
           name: pharmacy.businessName,
           state: pharmacy.state,
