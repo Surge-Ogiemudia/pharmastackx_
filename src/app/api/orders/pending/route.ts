@@ -22,10 +22,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Pharmacy not found' }, { status: 404 });
     }
 
-    // 2. Fast query: Only Pending and Accepted orders for this pharmacy
+    // 2. Fast query: All orders for this pharmacy (so Desktop can build the Recent Activity archive)
     const pendingOrders = await Order.find({
-      businesses: pharmacy.businessName,
-      status: { $in: ['Pending', 'Accepted'] }
+      businesses: pharmacy.businessName
     }).sort({ createdAt: -1 }).populate('user', 'name email phone');
 
     // 3. Transform to clean payload

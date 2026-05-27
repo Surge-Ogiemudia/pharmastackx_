@@ -151,8 +151,13 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   await dbConnect();
+  
+  // Allow Synkk Desktop app to bypass session via Bearer token
+  const authHeader = req.headers.get('Authorization');
+  const isDesktopApp = authHeader === 'Bearer dev-token';
+  
   const session = await getSession(req);
-  if (!session) {
+  if (!session && !isDesktopApp) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
