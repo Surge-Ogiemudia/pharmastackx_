@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import RequestModel from '@/models/Request.js';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
+import { triggerNewOrder } from '@/lib/pusher';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -122,6 +123,20 @@ export async function POST(req: NextRequest) {
     // If linked to a request, update the request status
     if (requestId && requestId.length === 24) {
         await RequestModel.findByIdAndUpdate(requestId, { status: 'confirmed' });
+    }
+
+    // Trigger Pusher notification for Synkk Desktop
+    if (businesses && businesses.length > 0) {
+      // Find the pharmacy slug based on business name
+      const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
+      if (pharmacy && pharmacy.slug) {
+        triggerNewOrder(pharmacy.slug, {
+          orderId: newOrder._id.toString(),
+          patientName: newOrder.patientName || 'Patient',
+          itemsCount: newOrder.items?.length || 0,
+          totalAmount: newOrder.totalAmount
+        });
+      }
     }
 
     return NextResponse.json(newOrder, { status: 201 });
