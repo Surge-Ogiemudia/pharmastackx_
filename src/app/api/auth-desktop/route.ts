@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     if (action === 'register') {
-      const { slug } = body; // The custom slug chosen by the user in StorefrontSetup
+      const { slug, coordinates } = body; // The custom slug chosen by the user in StorefrontSetup
       if (!password || !pharmacyName || !phone) {
         return NextResponse.json({ success: false, error: 'Missing registration fields' }, { status: 400 });
       }
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-
-      const newUser = await User.create({
+      
+      const userData: any = {
         username: pharmacyName,
         email: email.toLowerCase(),
         password: hashedPassword,
@@ -64,7 +64,16 @@ export async function POST(req: Request) {
         slug: uniqueSlug,
         isStorePublished: true,
         canManageStore: true
-      });
+      };
+      
+      if (coordinates && coordinates.lat && coordinates.lng) {
+        userData.businessCoordinates = {
+          latitude: coordinates.lat,
+          longitude: coordinates.lng
+        };
+      }
+
+      const newUser = await User.create(userData);
 
       return NextResponse.json({ success: true, slug: newUser.slug, message: 'Registration successful' });
     }
