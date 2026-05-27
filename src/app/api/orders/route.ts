@@ -129,18 +129,21 @@ export async function POST(req: NextRequest) {
     if (businesses && businesses.length > 0) {
       // Find the pharmacy slug based on business name
       const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
-      if (pharmacy && pharmacy.slug) {
+      if (pharmacy) {
+        const targetSlug = pharmacy.slug || pharmacy.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         try {
-          await triggerNewOrder(pharmacy.slug, {
+          await triggerNewOrder(targetSlug, {
             orderId: String(newOrder._id),
             patientName: newOrder.patientName || 'Patient',
             itemsCount: newOrder.items?.length || 0,
             totalAmount: newOrder.totalAmount
           });
-          console.log(`Pusher notification successfully sent to pharmacy-${pharmacy.slug}`);
+          console.log(`Pusher notification successfully sent to pharmacy-${targetSlug}`);
         } catch (pushErr) {
           console.error("Failed to push notification:", pushErr);
         }
+      } else {
+        console.log(`Pharmacy not found for businessName: ${businesses[0]}`);
       }
     }
 
