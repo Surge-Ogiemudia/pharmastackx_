@@ -130,7 +130,8 @@ export async function POST(req: NextRequest) {
       // Find the pharmacy slug based on business name
       const pharmacy = await User.findOne({ businessName: businesses[0], role: { $in: ['pharmacy', 'pharmacist'] } });
       if (pharmacy) {
-        const targetSlug = pharmacy.slug || pharmacy.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const fallbackName = pharmacy.businessName || businesses[0] || 'pharmacy';
+        const targetSlug = pharmacy.slug || fallbackName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         try {
           await triggerNewOrder(targetSlug, {
             orderId: String(newOrder._id),
