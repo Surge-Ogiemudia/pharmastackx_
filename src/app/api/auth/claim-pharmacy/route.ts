@@ -48,22 +48,35 @@ export async function POST(req: Request) {
     claimablePharmacy.password = hashedPassword;
     claimablePharmacy.emailVerified = false; 
     
-    if (claimSlug) {
-      if (businessName) claimablePharmacy.businessName = businessName;
+    let finalSlug = claimablePharmacy.slug;
+    if (claimSlug && businessName) {
+      claimablePharmacy.businessName = businessName;
       if (username) claimablePharmacy.username = username;
       if (state) claimablePharmacy.state = state;
       if (city) claimablePharmacy.city = city;
       if (businessAddress) claimablePharmacy.businessAddress = businessAddress;
       if (phoneNumber) claimablePharmacy.phoneNumber = phoneNumber;
       if (license) claimablePharmacy.license = license;
+      
+      let baseSlug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      let uniqueSlug = baseSlug;
+      let counter = 1;
+      while (await User.findOne({ slug: uniqueSlug })) {
+        uniqueSlug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+      
+      claimablePharmacy.oldGuestSlug = claimablePharmacy.slug;
+      claimablePharmacy.slug = uniqueSlug;
+      finalSlug = uniqueSlug;
     }
     
     await claimablePharmacy.save();
     
     if (claimSlug && businessName) {
       await Product.updateMany(
-        { slug: claimablePharmacy.slug },
-        { $set: { businessName } }
+        { slug: claimSlug },
+        { $set: { businessName, slug: finalSlug } }
       );
     }
     
