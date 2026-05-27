@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
       .lean();
 
     const pharmacyMap = pharmacies.reduce((acc, p) => {
-      acc[p.slug] = p;
+      if (p.slug) {
+        acc[p.slug] = p;
+      }
       return acc;
     }, {} as any);
 
