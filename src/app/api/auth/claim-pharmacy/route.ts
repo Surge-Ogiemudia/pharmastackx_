@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
+import Product from '@/models/Product';
 
 export async function POST(req: Request) {
   try {
@@ -58,6 +59,13 @@ export async function POST(req: Request) {
     }
     
     await claimablePharmacy.save();
+    
+    if (claimSlug && businessName) {
+      await Product.updateMany(
+        { slug: claimablePharmacy.slug },
+        { $set: { businessName } }
+      );
+    }
     
     return NextResponse.json({ message: 'Pharmacy claimed successfully. You can now log in.' }, { status: 200 });
 
