@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, email, password, pharmacyName, phone } = body;
 
-    if (!action || (action !== 'guest' && action !== 'update-guest' && !email)) {
+    if (!action || (action !== 'login' && action !== 'register' && action !== 'check')) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -22,60 +22,8 @@ export async function POST(req: Request) {
       }
     }
 
-    if (action === 'guest') {
-      const crypto = require('crypto');
-      const randomPassword = crypto.randomBytes(16).toString('hex');
-      const randomId = crypto.randomBytes(4).toString('hex');
-      const guestSlug = `guest-${randomId}`;
-
-      const newUser = await User.create({
-        username: `Guest Pharmacy ${randomId}`,
-        email: `${guestSlug}@synkk.pharmastackx.com`,
-        password: randomPassword, // Ghost password
-        role: 'pharmacy',
-        businessName: `Guest Pharmacy`,
-        slug: guestSlug,
-        isStorePublished: true,
-        canManageStore: true
-      });
-
-      return NextResponse.json({ success: true, slug: newUser.slug, message: 'Guest account created' });
-    }
-
-    if (action === 'update-guest') {
-      const { oldSlug, newSlug, pharmacyName } = body;
-      
-      if (!oldSlug || !newSlug) {
-        return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-      }
-
-      if (oldSlug !== newSlug) {
-        const existingUser = await User.findOne({ slug: newSlug });
-        if (existingUser) {
-          return NextResponse.json({ success: false, error: 'That storefront link is already taken. Please try another one.' }, { status: 400 });
-        }
-      }
-
-      const user = await User.findOne({ slug: oldSlug });
-      if (!user) {
-         return NextResponse.json({ success: false, error: 'Guest account not found.' }, { status: 404 });
-      }
-
-      if (!user.email.endsWith('@synkk.pharmastackx.com')) {
-         return NextResponse.json({ success: false, error: 'Only guest accounts can be updated this way.' }, { status: 403 });
-      }
-
-      user.oldGuestSlug = user.slug;
-      user.slug = newSlug;
-      if (pharmacyName) user.businessName = pharmacyName;
-      user.email = `${newSlug}@synkk.pharmastackx.com`;
-
-      await user.save();
-
-      return NextResponse.json({ success: true, slug: user.slug, message: 'Guest account updated' });
-    }
-
     if (action === 'register') {
+      const { slug } = body; // The custom slug chosen by the user in StorefrontSetup
       if (!password || !pharmacyName || !phone) {
         return NextResponse.json({ success: false, error: 'Missing registration fields' }, { status: 400 });
       }
@@ -86,13 +34,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'User already exists' }, { status: 400 });
       }
 
-      // Generate slug from pharmacy name
-      let baseSlug = pharmacyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-      let uniqueSlug = baseSlug;
-      let counter = 1;
-      while (await User.findOne({ slug: uniqueSlug })) {
-        uniqueSlug = `${baseSlug}-${counter}`;
-        counter++;
+      let uniqueSlug = '';
+      if (slug) {
+        // User provided a custom slug from the desktop app setup screen
+        uniqueSlug = slug.toLowerCase().replace(/[^a-z0-9\-]+/g, '');
+        if (await User.findOne({ slug: uniqueSlug })) {
+          return NextResponse.json({ success: false, error: 'That storefront link is already taken. Please choose another.' }, { status: 400 });
+        }
+      } else {
+        // Generate slug from pharmacy name
+        let baseSlug = pharmacyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        uniqueSlug = baseSlug;
+        let counter = 1;
+        while (await User.findOne({ slug: uniqueSlug })) {
+          uniqueSlug = `${baseSlug}-${counter}`;
+          counter++;
+        }
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -127,7 +84,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
       }
 
-      return NextResponse.json({ success: true, slug: user.slug, message: 'Login successful' });
+      return NextResponse.json({ success: true, slug: user.slug, name: user.businessName, message: 'Login successful' });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
