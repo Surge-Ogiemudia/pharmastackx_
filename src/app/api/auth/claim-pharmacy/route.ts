@@ -7,10 +7,11 @@ import User from '@/models/User';
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { businessName, email, password } = await req.json();
+    const body = await req.json();
+    const { businessName, email, password, claimSlug, username, state, city, businessAddress, phoneNumber, license } = body;
 
-    if (!businessName || !email || !password) {
-      return NextResponse.json({ error: 'Business name, email, and password are required.' }, { status: 400 });
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
     }
     
     const emailExists = await User.findOne({ email });
@@ -18,11 +19,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'This email is already in use. Please choose another one.' }, { status: 409 });
     }
 
-    const claimablePharmacy = await User.findOne({
-      businessName,
-      role: 'pharmacy',
-      email: { $regex: /@pharmacy\.placeholder$/, $options: 'i' }
-    });
+    let claimablePharmacy;
+    if (claimSlug) {
+      claimablePharmacy = await User.findOne({
+        slug: claimSlug,
+        role: 'pharmacy',
+        email: { $regex: /@synkk\.pharmastackx\.com$/, $options: 'i' }
+      });
+    } else {
+      if (!businessName) {
+        return NextResponse.json({ error: 'Business name is required.' }, { status: 400 });
+      }
+      claimablePharmacy = await User.findOne({
+        businessName,
+        role: 'pharmacy',
+        email: { $regex: /@pharmacy\.placeholder$/, $options: 'i' }
+      });
+    }
 
     if (!claimablePharmacy) {
       return NextResponse.json({ error: 'This pharmacy is not available to be claimed. It may have already been registered by another user.' }, { status: 404 });
@@ -33,6 +46,16 @@ export async function POST(req: Request) {
     claimablePharmacy.email = email;
     claimablePharmacy.password = hashedPassword;
     claimablePharmacy.emailVerified = false; 
+    
+    if (claimSlug) {
+      if (businessName) claimablePharmacy.businessName = businessName;
+      if (username) claimablePharmacy.username = username;
+      if (state) claimablePharmacy.state = state;
+      if (city) claimablePharmacy.city = city;
+      if (businessAddress) claimablePharmacy.businessAddress = businessAddress;
+      if (phoneNumber) claimablePharmacy.phoneNumber = phoneNumber;
+      if (license) claimablePharmacy.license = license;
+    }
     
     await claimablePharmacy.save();
     

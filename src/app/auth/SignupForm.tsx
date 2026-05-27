@@ -6,6 +6,7 @@ import axios from "axios";
 import CreatePharmacyModal from "../components/CreatePharmacyModal";
 import ClaimPharmacyModal from "../components/ClaimPharmacyModal"; // Import the new modal
 import { useSession } from "@/context/SessionProvider";
+import { useSearchParams } from 'next/navigation';
 
 const nigerianStates = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
@@ -25,6 +26,9 @@ interface Pharmacy {
 
 export default function SignupForm({ redirectUrl }: { redirectUrl: string | null; }) {
   const { refreshSession } = useSession();
+  const searchParams = useSearchParams();
+  const claimSlug = searchParams?.get('claim_slug');
+
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -46,8 +50,8 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showProviderStep, setShowProviderStep] = useState(false);
-  const [providerType, setProviderType] = useState("");
+  const [showProviderStep, setShowProviderStep] = useState(!!claimSlug);
+  const [providerType, setProviderType] = useState(claimSlug ? "pharmacy" : "");
   const [unclaimedPharmacies, setUnclaimedPharmacies] = useState<Pharmacy[]>([]);
   const [isClaimModalOpen, setClaimModalOpen] = useState(false);
   const [isPharmacyClaimed, setIsPharmacyClaimed] = useState(false);
@@ -127,6 +131,31 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
     setSuccess("");
     setProviderLoading(true);
   
+    if (claimSlug) {
+      try {
+        await axios.post("/api/auth/claim-pharmacy", {
+          claimSlug,
+          businessName: form.businessName,
+          username: form.username,
+          state: form.state,
+          city: form.city,
+          businessAddress: form.businessAddress,
+          phoneNumber: form.phoneNumber,
+          license: form.license,
+          email: form.email,
+          password: form.password,
+        });
+        const loginResponse = await axios.post("/api/auth/login", { email: form.email, password: form.password });
+        setSuccess("Storefront claimed successfully! Redirecting...");
+        await refreshSession();
+        redirectToApp(loginResponse.data.user?.role);
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to claim storefront.");
+        setProviderLoading(false);
+      }
+      return;
+    }
+
     if (isPharmacyClaimed) {
       try {
         await axios.post("/api/auth/claim-pharmacy", {
@@ -203,9 +232,14 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
 
   return (
     <>
-     {(error || success) && (
+      {(error || success) && (
         <Alert severity={error ? "error" : "success"} sx={{ mb: 2, mt: 1, whiteSpace: 'pre-wrap' }}>
           {error || success}
+        </Alert>
+      )}
+      {claimSlug && !success && !error && (
+        <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
+          Claim your Synkk Storefront: Finish creating your Pharmacy Owner account below.
         </Alert>
       )}
       {!showProviderStep ? (
@@ -290,7 +324,7 @@ export default function SignupForm({ redirectUrl }: { redirectUrl: string | null
                 ),
               }}
             />
-            <TextField select label="Provider Type" name="providerType" value={providerType} onChange={(e) => setProviderType(e.target.value)} fullWidth margin="normal" required disabled={providerLoading || isPharmacyClaimed} >
+            <TextField select label="Provider Type" name="providerType" value={providerType} onChange={(e) => setProviderType(e.target.value)} fullWidth margin="normal" required disabled={providerLoading || isPharmacyClaimed || !!claimSlug} >
               {providerTypes.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
             </TextField>
             
