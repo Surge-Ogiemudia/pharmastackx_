@@ -58,9 +58,9 @@ export default async function MedicinesPage() {
                   <td className="p-4 text-sm text-slate-400 font-medium text-emerald-400">{product.businessName}</td>
                   <td className="p-4 text-sm text-slate-300">₦{product.amount?.toLocaleString()}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${product.quantity > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${(product.quantity || 0) > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                       <Hash className="w-3.5 h-3.5" />
-                      {product.quantity}
+                      {product.quantity || 0}
                     </span>
                   </td>
                   <td className="p-4 text-sm text-slate-400">{product.category || 'N/A'}</td>
