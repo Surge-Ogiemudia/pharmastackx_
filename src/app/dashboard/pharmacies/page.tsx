@@ -98,7 +98,7 @@ export default async function PharmaciesList() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className={\`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border \${statusStyles[pharmacy.status as keyof typeof statusStyles]}\`}>
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[pharmacy.status as keyof typeof statusStyles]}`}>
                       {pharmacy.status === 'healthy' && <CheckCircle2 className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'warning' && <AlertCircle className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'critical' && <ServerCrash className="w-3.5 h-3.5" />}
@@ -107,7 +107,7 @@ export default async function PharmaciesList() {
                   </td>
                   <td className="p-4 text-right">
                     <Link 
-                      href={\`/dashboard/pharmacies/\${pharmacy.id}\`}
+                      href={`/dashboard/pharmacies/${pharmacy.id}`}
                       className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                     >
                       <ChevronRight className="w-5 h-5" />
