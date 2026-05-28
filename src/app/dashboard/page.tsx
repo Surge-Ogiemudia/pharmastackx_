@@ -1,4 +1,5 @@
 import { ArrowUpRight, Activity, Users, Store, DollarSign } from 'lucide-react';
+import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import Product from '@/models/Product';
@@ -24,10 +25,10 @@ export default async function AdminDashboardOverview() {
   const totalPosCalls = posStats.reduce((acc, pos) => acc + (pos.successCount || 0), 0);
 
   const stats = [
-    { name: 'Total Live Pharmacies', value: totalPharmacies.toLocaleString(), change: 'Live Data', icon: Store },
-    { name: 'Total Medicines Indexed', value: totalMedicines.toLocaleString(), change: 'Live Data', icon: Activity },
-    { name: 'Total Storefront Views', value: totalViews.toLocaleString(), change: 'Live Data', icon: Users },
-    { name: 'Orders Generated', value: totalOrders.toLocaleString(), change: 'Live Data', icon: DollarSign },
+    { name: 'Total Live Pharmacies', value: totalPharmacies.toLocaleString(), change: 'Live Data', icon: Store, href: '/dashboard/pharmacies' },
+    { name: 'Total Medicines Indexed', value: totalMedicines.toLocaleString(), change: 'Live Data', icon: Activity, href: '/dashboard/medicines' },
+    { name: 'Total Storefront Views', value: totalViews.toLocaleString(), change: 'Live Data', icon: Users, href: '/dashboard' },
+    { name: 'Orders Generated', value: totalOrders.toLocaleString(), change: 'Live Data', icon: DollarSign, href: '/dashboard/orders' },
   ];
 
   return (
@@ -42,7 +43,7 @@ export default async function AdminDashboardOverview() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <div key={stat.name} className="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-slate-800/50 p-6 backdrop-blur-sm transition-all hover:bg-slate-900/80 hover:border-slate-700/50">
+          <Link key={stat.name} href={stat.href} className="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-slate-800/50 p-6 backdrop-blur-sm transition-all hover:bg-slate-800 hover:border-slate-600 cursor-pointer block">
             <div className="absolute top-0 right-0 p-4 opacity-5">
               <stat.icon size={80} />
             </div>
@@ -59,7 +60,7 @@ export default async function AdminDashboardOverview() {
               <p className="text-sm font-medium text-slate-400">{stat.name}</p>
               <p className="text-3xl font-semibold tracking-tight text-slate-50 mt-1">{stat.value}</p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
