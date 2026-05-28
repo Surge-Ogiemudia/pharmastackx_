@@ -338,6 +338,71 @@
   padding: 32px 24px;
 }
 
+/* ── PAGINATION ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 0 60px;
+}
+.pageBtn {
+  background: var(--white);
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  cursor: pointer;
+  font-family: 'Geist', sans-serif;
+  transition: all 0.15s;
+}
+.pageBtn:hover:not(:disabled) {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.pageBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pageNumbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pageNum {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  background: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: 'Geist', sans-serif;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pageNum:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.pageNum.pageActive {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.pageEllipsis {
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 /* ── SECTION HEADER ── */
 .sectionHeader {
   display: flex;
@@ -992,5 +1057,18 @@
   }
   .toast.show {
     transform: translateY(0);
+  }
+  .pagination {
+    gap: 6px;
+    padding: 20px 0 80px;
+  }
+  .pageBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .pageNum {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
   }
 }
