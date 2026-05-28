@@ -1,4 +1,5 @@
-import { Search, ShoppingBag, Clock, DollarSign, ExternalLink } from 'lucide-react';
+import { Search, ShoppingBag, Clock, DollarSign, ExternalLink, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import Order from '@/models/Order';
 
@@ -9,6 +10,11 @@ export default async function OrdersPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+        <ArrowLeft size={16} />
+        Back to Dashboard
+      </Link>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-slate-100">Global Orders</h2>
