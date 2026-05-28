@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Container, Grid } from '@mui/material';
+import { Box, Typography, Container, Grid, Button } from '@mui/material';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import DotCanvas from './DotCanvas';
 import SearchIcon from '@mui/icons-material/Search';
