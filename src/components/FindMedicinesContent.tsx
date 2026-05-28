@@ -368,6 +368,50 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           </div>
         )}
 
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+          <div className={styles.pagination}>
+            <button
+              className={styles.pageBtn}
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(currentPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              ← Prev
+            </button>
+            <div className={styles.pageNumbers}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .reduce((acc: (number | string)[], p, i, arr) => {
+                  if (i > 0 && typeof arr[i - 1] === 'number' && (p as number) - (arr[i - 1] as number) > 1) {
+                    acc.push('...');
+                  }
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${i}`} className={styles.pageEllipsis}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      className={`${styles.pageNum} ${currentPage === p ? styles.pageActive : ''}`}
+                      onClick={() => { setCurrentPage(p as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+            </div>
+            <button
+              className={styles.pageBtn}
+              disabled={currentPage === totalPages}
+              onClick={() => { setCurrentPage(currentPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Next →
+            </button>
+          </div>
+        )}
+
       </main>
 
       {/* FOOTER */}
