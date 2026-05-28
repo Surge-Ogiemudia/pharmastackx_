@@ -74,7 +74,7 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
         <nav className="p-4 space-y-1 flex-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             return (
               <Link
                 key={item.name}
