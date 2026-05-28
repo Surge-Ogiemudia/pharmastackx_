@@ -8,6 +8,7 @@ import { sendWhatsAppMessage } from '@/lib/whapi';
 import { dbConnect } from '@/lib/mongoConnect';
 import GlobalSettings from '@/models/GlobalSettings';
 import { transporter } from '@/lib/nodemailer';
+import Product from '@/models/Product';
 
 const ALERT_EMAIL = 'pharmastackxsales@gmail.com';
 
@@ -159,6 +160,144 @@ async function checkInventoryAndAlert(
     await Promise.allSettled(alertPromises);
 }
 
+async function checkSynkkInventoryAndAlert(
+    requestedMedicines: { name: string }[],
+    location: string,
+    requestId: string,
+    platformRequestId?: string
+) {
+    try {
+        await dbConnect();
+        const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
+        
+        // Build regex conditions for each requested medicine name to search itemName
+        const orConditions = requestedNames.map(req => ({
+            itemName: { $regex: req, $options: 'i' }
+        }));
+
+        if (orConditions.length === 0) return;
+
+        // Query Product collection nationwide for Synkk inventory matches
+        const matches = await Product.find({
+            source: 'synkk',
+            $or: orConditions
+        }).lean() as any[];
+
+        if (matches.length === 0) return;
+
+        // Group matches by pharmacy (businessName)
+        const matchesByPharmacy = matches.reduce((acc: any, item: any) => {
+            const biz = item.businessName || 'Unknown Pharmacy';
+            if (!acc[biz]) acc[biz] = [];
+            acc[biz].push(item);
+            return acc;
+        }, {});
+
+        // Try to get patient phone if platformRequestId is provided
+        let patientPhone = '';
+        if (platformRequestId) {
+            try {
+                const platformReq = await RequestModel.findById(platformRequestId).lean() as any;
+                if (platformReq?.phoneNumber && platformReq.phoneNumber !== 'WhatsApp') {
+                    patientPhone = platformReq.phoneNumber;
+                }
+            } catch (err) { /* ignore */ }
+        }
+
+        // Send an email alert for each pharmacy that has matches
+        for (const [pharmacyName, items] of Object.entries(matchesByPharmacy)) {
+            const matchRows = (items as any[]).map((m: any) =>
+                `<tr>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.itemName}</td>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.amount != null ? '#0F6E56' : '#999'}">
+                        ${m.amount != null ? `₦${m.amount.toLocaleString()}` : 'Price not listed'}
+                    </td>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee">
+                        ${m.quantity != null ? m.quantity : 'N/A'}
+                    </td>
+                </tr>`
+            ).join('');
+
+            const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+
+            const html = `
+<div style="font-family:sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden">
+    <div style="background:#1e3a8a;padding:18px 24px">
+        <h2 style="margin:0;color:#fff;font-size:18px">🔄 Synkk Desktop App Match!</h2>
+    </div>
+    <div style="padding:20px 24px">
+        <p style="margin:0 0 16px;font-size:14px;color:#333">
+            A WhatsApp drug request in <strong>${location}</strong> matches live inventory synced from a desktop app.
+        </p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 4px">Requested</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#111">${requestedRow}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Pharmacy (Synkk)</p>
+        <p style="margin:0 0 20px;font-size:14px;font-weight:700;color:#111">${pharmacyName}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Items</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="background:#f5f5f5">
+                    <th style="padding:6px 12px;text-align:left;color:#555">Medicine</th>
+                    <th style="padding:6px 12px;text-align:left;color:#555">Price</th>
+                    <th style="padding:6px 12px;text-align:left;color:#555">Stock Qty</th>
+                </tr>
+            </thead>
+            <tbody>${matchRows}</tbody>
+        </table>
+
+        <div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:6px;font-size:12px;color:#888">
+            Request ID: ${requestId}
+        </div>
+    </div>
+</div>`;
+
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: ALERT_EMAIL,
+                    subject: `🔄 SYNKK MATCH — ${requestedRow} (${pharmacyName})`,
+                    html
+                });
+                console.log(`[whatsapp-notifier] 📧 Synkk match email sent for ${pharmacyName}`);
+            } catch (emailErr: any) {
+                console.error(`[whatsapp-notifier] ❌ Failed to send Synkk match email:`, emailErr?.message);
+            }
+
+            // =======================================================================
+            // FUTURE IMPLEMENTATION: Auto-reply to patient via WhatsApp with +20% markup
+            // =======================================================================
+            /*
+            if (patientPhone) {
+                try {
+                    // Calculate total price of matched items + 20% markup
+                    const totalPrice = (items as any[]).reduce((sum, item) => sum + (item.amount || 0), 0);
+                    const markupPrice = Math.ceil(totalPrice * 1.20);
+                    
+                    const matchedItemNames = (items as any[]).map(i => i.itemName).join(', ');
+                    const replyJid = patientPhone.includes('@') ? patientPhone : \`\${patientPhone.replace(/[\\+\\s]/g, '')}@s.whatsapp.net\`;
+
+                    const dmMessage = 
+                        \`✅ *Good news!*\n\nWe found *${matchedItemNames}* available right now.\n\n\` +
+                        \`💰 *Total Price:* ₦\${markupPrice.toLocaleString()}\n\n\` +
+                        \`Reply with *BUY* if you'd like to proceed with payment and delivery. 🙏\`;
+
+                    // Uncomment to send the message via Whapi
+                    // await sendWhatsAppMessage(replyJid, dmMessage);
+                    console.log(\`[whatsapp-notifier] (Disabled) Would have sent DM to \${patientPhone} for ₦\${markupPrice}\`);
+                } catch (waErr: any) {
+                    console.error(\`[whatsapp-notifier] Failed to send Synkk auto-reply DM:\`, waErr?.message);
+                }
+            }
+            */
+        }
+    } catch (err: any) {
+        console.error('[whatsapp-notifier] Synkk check error:', err?.message);
+    }
+}
+
 export async function notifyPharmacists(request: any) {
     const { medicines, location, _id, platform_request_id } = request;
     const medicineNamesArray = medicines.map((m: any) => m.name);
@@ -266,6 +405,12 @@ export async function notifyPharmacists(request: any) {
             checkInventoryAndAlert(inventoryContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
                 console.error('[whatsapp-notifier] Inventory check error:', err?.message)
             );
+
+            // --- NEW CODE: Check Synkk Database non-blocking (Nationwide) ---
+            checkSynkkInventoryAndAlert(medicines, normalizedLocation, String(targetId), String(platform_request_id)).catch(err =>
+                console.error('[whatsapp-notifier] Synkk DB check error:', err?.message)
+            );
+            // ----------------------------------------------------------------
         } catch (invErr: any) {
             console.error('[whatsapp-notifier] Inventory lookup error:', invErr?.message);
         }

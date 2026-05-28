@@ -252,8 +252,7 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
                 
                 <Button
                   component="a"
-                  href="/downloads/Synkk Setup 1.0.0.exe"
-                  download
+                  href="https://github.com/Surge-Ogiemudia/synkk/releases/download/v1.0.0/Synkk%20Setup%201.0.0.exe"
                   variant="contained"
                   sx={{ 
                     bgcolor: '#fff', 

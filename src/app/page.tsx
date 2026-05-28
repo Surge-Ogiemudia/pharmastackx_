@@ -84,7 +84,7 @@ export default function HomePage() {
   const [view, setView] = useState<string>(() => {
     const v = searchParams?.get('view');
     if (searchParams?.get('requestId')) return 'orderMedicines';
-    if (v === 'orderMedicines' || v === 'findMedicines') return v;
+    if (v) return v;
     return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
@@ -138,7 +138,14 @@ const [lastQuoteCount, setLastQuoteCount] = useState(0);
 const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
-    // Don't do anything until the user's session is loaded.
+    // Redirect to auth if trying to access protected views without a user
+    if (!isLoading && !user) {
+      if (['account', 'storeManagement', 'orders', 'conversations'].includes(view)) {
+        router.push(`/auth?view=${view}`);
+      }
+    }
+    
+    // Don't do anything else until the user's session is loaded.
     if (!user) return;
   
     // Check if the app is running as an installed PWA.
