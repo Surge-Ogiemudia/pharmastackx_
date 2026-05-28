@@ -55,6 +55,7 @@ export default function Navbar() {
 
   return (
     <Box
+      id="main-navbar"
       component={Paper}
       elevation={0}
       sx={{

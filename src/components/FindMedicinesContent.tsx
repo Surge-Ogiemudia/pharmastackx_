@@ -189,6 +189,19 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   }, [slug]);
 
   useEffect(() => {
+    // Hide the main navbar when this component is active
+    const navbar = document.getElementById('main-navbar');
+    if (navbar) {
+      navbar.style.display = 'none';
+    }
+    return () => {
+      if (navbar) {
+        navbar.style.display = 'flex';
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const url = slug ? `https://${slug}.psx.ng` : 'https://psx.ng';
     QRCode.toDataURL(url, { margin: 1, color: { dark: '#000000', light: '#FFFFFF' } })
       .then(url => setQrCodeDataUrl(url))
