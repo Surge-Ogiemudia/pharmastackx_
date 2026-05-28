@@ -2,22 +2,6 @@ import { Search, Filter, MoreVertical, Store, Clock, AlertCircle, CheckCircle2, 
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
-import UploadLog from '@/models/UploadLog';
-
-export default async function PharmaciesList() {
-  await dbConnect();
-  const users = await User.find({ role: 'pharmacy' }).lean();
-  
-  const networkData = await Promise.all(users.map(async (user) => {
-    const lastLog = await UploadLog.findOne({ userId: user._id }).sort({ createdAt: -1 });
-    
-
-  const statusStyles = {
-    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    critical: 'bg-red-500/10 text-red-400 border-red-500/20'
-  };
-
   return (
     <div className="space-y-6">
       
