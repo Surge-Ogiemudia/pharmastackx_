@@ -54,8 +54,8 @@ export default async function OrdersPage() {
                     </div>
                   </td>
                   <td className="p-4 text-sm text-slate-300">
-                    <p className="font-medium">{order.firstName} {order.lastName}</p>
-                    <p className="text-xs text-slate-500">{order.email}</p>
+                    <p className="font-medium">{order.patientName}</p>
+                    <p className="text-xs text-slate-500">{order.deliveryEmail}</p>
                   </td>
                   <td className="p-4 text-sm text-emerald-400 font-medium">
                     {Array.isArray(order.businesses) ? order.businesses.join(', ') : order.businesses || 'N/A'}
