@@ -331,7 +331,13 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                     {medicine.image ? (
                       <img src={medicine.image} alt={medicine.name} />
                     ) : (
-                      <div className={styles.productImgIcon}>💊</div>
+                      <svg className={styles.productImgSvg} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="24" y="16" width="32" height="48" rx="16" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.15" strokeWidth="1.5"/>
+                        <line x1="24" y1="40" x2="56" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1.5" strokeDasharray="3 2"/>
+                        <circle cx="40" cy="30" r="3" fill="currentColor" fillOpacity="0.12"/>
+                        <circle cx="40" cy="50" r="3" fill="currentColor" fillOpacity="0.08"/>
+                        <path d="M34 22 a6 6 0 0 1 12 0" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1"/>
+                      </svg>
                     )}
                     {medicine.drugClass && (
                       <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
