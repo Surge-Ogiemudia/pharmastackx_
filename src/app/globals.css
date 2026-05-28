@@ -15,8 +15,12 @@
 }
 
 html, body {
-  overflow-x: hidden;
   max-width: 100vw;
+}
+
+/* overflow-x on html/body breaks position:sticky — use a wrapper instead */
+body > div:first-child {
+  overflow-x: hidden;
 }
 
 body {

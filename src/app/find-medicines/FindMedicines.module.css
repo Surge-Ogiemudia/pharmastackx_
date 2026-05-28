@@ -255,6 +255,40 @@
   letter-spacing: 1px;
   text-transform: uppercase;
 }
+.qrUrlRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 8px;
+  padding: 4px 8px;
+  width: 100%;
+  justify-content: space-between;
+}
+.qrUrl {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink);
+  font-family: 'Geist Mono', monospace;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qrCopyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--green);
+  padding: 2px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.qrCopyBtn:hover { opacity: 0.7; }
 
 /* ── SEARCH BAR ── */
 .searchSection {
@@ -530,6 +564,9 @@
   color: var(--muted);
   font-family: 'Geist Mono', monospace;
   margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .productFooter {
   display: flex;
