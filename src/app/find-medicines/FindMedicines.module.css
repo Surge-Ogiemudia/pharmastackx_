@@ -230,6 +230,31 @@
   font-weight: 400;
   letter-spacing: 0.5px;
 }
+.qrCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 12px;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  z-index: 10;
+  margin-left: auto;
+}
+.qrImg {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+}
+.qrLabel {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-top: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
 
 /* ── SEARCH BAR ── */
 .searchSection {
@@ -916,7 +941,29 @@
 
 @media(max-width: 600px) {
   .heroTitle { font-size: 28px; }
-  .heroInner { padding: 32px 16px; }
+  .heroInner { 
+    padding: 32px 16px; 
+    flex-direction: column; 
+    align-items: flex-start;
+  }
+  .qrCard {
+    margin-left: 0;
+    margin-top: 12px;
+    flex-direction: row;
+    gap: 12px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .qrImg {
+    width: 48px;
+    height: 48px;
+  }
+  .qrLabel {
+    margin-top: 0;
+    font-size: 12px;
+  }
   .productGrid { grid-template-columns: repeat(2, 1fr); }
   .cartDrawer { width: 100%; }
   .btnSearch { width: 160px; }
