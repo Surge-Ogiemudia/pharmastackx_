@@ -372,7 +372,9 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       <div className={`${styles.cartDrawer} ${isCartOpen ? styles.open : ''}`}>
         <div className={styles.cartHeader}>
           <div className={styles.cartTitle}>Your order</div>
-          <button className={styles.cartClose} onClick={() => setIsCartOpen(false)}>✕</button>
+          <button className={styles.cartClose} onClick={() => setIsCartOpen(false)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
         </div>
         
         {cart.length === 0 ? (
