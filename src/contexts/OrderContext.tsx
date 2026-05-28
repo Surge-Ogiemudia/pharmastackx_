@@ -84,6 +84,9 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         setLoading(prev => prev && orders.length === 0);
         
         const response = await fetch('/api/orders');
+        if (response.status === 401) {
+          return; // Not logged in — skip silently
+        }
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
         }

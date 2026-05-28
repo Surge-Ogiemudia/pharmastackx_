@@ -51,6 +51,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [urlCopied, setUrlCopied] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -223,8 +224,8 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       <header className={styles.header}>
         <div className={styles.headerInner} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            {slug && (
-              <button 
+            {!slug && (
+              <button
                 onClick={() => setView?.('orderMedicines')}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -270,6 +271,23 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             <div className={styles.qrCard}>
               <img src={qrCodeDataUrl} alt="Store QR Code" className={styles.qrImg} />
               <div className={styles.qrLabel}>Scan to visit</div>
+              <div className={styles.qrUrlRow}>
+                <span className={styles.qrUrl}>{slug ? `${slug}.psx.ng` : 'psx.ng'}</span>
+                <button
+                  className={styles.qrCopyBtn}
+                  onClick={() => {
+                    navigator.clipboard.writeText(slug ? `https://${slug}.psx.ng` : 'https://psx.ng');
+                    setUrlCopied(true);
+                    setTimeout(() => setUrlCopied(false), 2000);
+                  }}
+                >
+                  {urlCopied ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </div>
