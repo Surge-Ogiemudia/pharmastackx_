@@ -33,15 +33,15 @@ export async function POST(req: NextRequest) {
     const { data, error } = await resend.emails.send({
       from: 'Synkk Alerts <onboarding@resend.dev>',
       to: ['pogiemudia@gmail.com'],
-      subject: \`🚨 Synkk Alert: \${pharmacyName} Sync Failure\`,
-      html: \`
+      subject: `🚨 Synkk Alert: ${pharmacyName} Sync Failure`,
+      html: `
         <h2>Sync Failure Alert</h2>
-        <p><strong>Pharmacy:</strong> \${pharmacyName} (\${pharmacyId})</p>
+        <p><strong>Pharmacy:</strong> ${pharmacyName} (${pharmacyId})</p>
         <p><strong>Status:</strong> Critical</p>
-        <p><strong>Reason:</strong> \${reason || 'Unknown parsing failure'}</p>
+        <p><strong>Reason:</strong> ${reason || 'Unknown parsing failure'}</p>
         <br/>
         <p>Please check the Synkk Admin Dashboard for full diagnostic logs.</p>
-      \`,
+      `,
     });
 
     if (error) {
