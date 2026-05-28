@@ -64,7 +64,7 @@ export default async function PharmacyDetail({ params }: { params: { id: string 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'POS Software', value: pharmacy.posSoftware || 'Unknown', icon: Database },
+          { label: 'POS Software', value: (pharmacy as any).posSystem || 'Auto-Detected AI', icon: Database },
           { label: 'Indexed Medicines', value: productsCount.toLocaleString(), icon: Activity },
           { label: 'Storefront Views', value: storefrontViews.toString(), icon: RefreshCw },
           { label: 'Orders Generated', value: ordersCount.toString(), icon: ShoppingCart },

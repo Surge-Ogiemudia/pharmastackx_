@@ -11,20 +11,6 @@ export default async function PharmaciesList() {
   const networkData = await Promise.all(users.map(async (user) => {
     const lastLog = await UploadLog.findOne({ userId: user._id }).sort({ createdAt: -1 });
     
-    let status = 'healthy';
-    if (!lastLog) status = 'critical';
-    else if (Date.now() - new Date(lastLog.createdAt).getTime() > 24 * 60 * 60 * 1000) status = 'warning';
-
-    return {
-      id: user._id.toString(),
-      name: user.pharmacyName || 'Unnamed Pharmacy',
-      location: user.location || 'Unknown',
-      pos: user.posSystem || 'Standard',
-      installedAt: user.createdAt?.toLocaleDateString() || 'N/A',
-      lastSync: lastLog ? new Date(lastLog.createdAt).toLocaleString() : 'Never',
-      status
-    };
-  }));
 
   const statusStyles = {
     healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
