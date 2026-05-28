@@ -1,7 +1,37 @@
-import { Search, Filter, MoreVertical, Store, Clock, AlertCircle, CheckCircle2, ChevronRight, ServerCrash } from 'lucide-react';
+import { Search, Filter, Store, Clock, AlertCircle, CheckCircle2, ChevronRight, ServerCrash } from 'lucide-react';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
+import UploadLog from '@/models/UploadLog';
+
+export default async function PharmaciesList() {
+  await dbConnect();
+  const users = await User.find({ role: 'pharmacy' }).lean();
+  
+  const networkData = await Promise.all(users.map(async (user) => {
+    const lastLog = await UploadLog.findOne({ userId: user._id }).sort({ createdAt: -1 });
+    
+    let status = 'healthy';
+    if (!lastLog) status = 'critical';
+    else if (Date.now() - new Date(lastLog.createdAt).getTime() > 24 * 60 * 60 * 1000) status = 'warning';
+
+    return {
+      id: user._id.toString(),
+      name: user.businessName || user.username || 'Unnamed Pharmacy',
+      location: user.businessAddress || user.city || 'Unknown Location',
+      pos: (user as any).posSystem || 'Auto-Detected',
+      installedAt: user.createdAt?.toLocaleDateString() || 'N/A',
+      lastSync: lastLog ? new Date(lastLog.createdAt).toLocaleString() : 'Never',
+      status
+    };
+  }));
+
+  const statusStyles = {
+    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    critical: 'bg-red-500/10 text-red-400 border-red-500/20'
+  };
+
   return (
     <div className="space-y-6">
       
@@ -68,7 +98,7 @@ import User from '@/models/User';
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[pharmacy.status as keyof typeof statusStyles]}`}>
+                    <div className={\`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border \${statusStyles[pharmacy.status as keyof typeof statusStyles]}\`}>
                       {pharmacy.status === 'healthy' && <CheckCircle2 className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'warning' && <AlertCircle className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'critical' && <ServerCrash className="w-3.5 h-3.5" />}
@@ -77,7 +107,7 @@ import User from '@/models/User';
                   </td>
                   <td className="p-4 text-right">
                     <Link 
-                      href={`/dashboard/pharmacies/${pharmacy.id}`}
+                      href={\`/dashboard/pharmacies/\${pharmacy.id}\`}
                       className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                     >
                       <ChevronRight className="w-5 h-5" />
