@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { dbConnect } from '@/lib/mongoConnect';
+import POSIntelligence from '@/models/POSIntelligence';
+import crypto from 'crypto';
 
 export const maxDuration = 60;
 
@@ -11,6 +14,30 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json({ error: 'Missing Gemini API Key on Vercel Backend' }, { status: 500 });
     }
+
+    await dbConnect();
+
+    // 1. Generate Header Signature
+    const firstLines = typeof sampleData === 'string' ? sampleData.split('\\n').slice(0, 5).join('\\n') : '';
+    const headerSignature = crypto.createHash('sha256').update(firstLines).digest('hex');
+
+    // 2. Check Intelligence Engine
+    const existingIntelligence = await POSIntelligence.findOne({ headerSignature });
+    
+    if (existingIntelligence) {
+      // CACHE HIT: Synkk instantly knows the schema!
+      existingIntelligence.successCount += 1;
+      existingIntelligence.lastUsedAt = new Date();
+      await existingIntelligence.save();
+      
+      return NextResponse.json({ 
+        status: 'analyzed', 
+        schemaMapping: existingIntelligence.mappingSchema,
+        source: 'intelligence_cache' 
+      });
+    }
+
+    // 3. CACHE MISS: Let Gemini map it from scratch
 
     let contextStr = '';
     if (globalContext && Array.isArray(globalContext) && globalContext.length > 0) {
@@ -59,7 +86,17 @@ ${sampleData}`;
       return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 500 });
     }
 
-    return NextResponse.json({ status: 'analyzed', schemaMapping });
+    // 4. Save new Intelligence for the global network
+    await POSIntelligence.create({
+      headerSignature,
+      posName: pathOrUrl?.split(/[\\\\/]/).pop()?.split('.')[0] || 'Unknown System',
+      fileExtension: pathOrUrl?.split('.').pop() || 'csv',
+      typicalFilePathPattern: pathOrUrl || '',
+      mappingSchema: schemaMapping,
+      confidenceScore: 0.95
+    });
+
+    return NextResponse.json({ status: 'analyzed', schemaMapping, source: 'gemini' });
 
   } catch (error: any) {
     console.error('Error in analyze-pos route:', error);

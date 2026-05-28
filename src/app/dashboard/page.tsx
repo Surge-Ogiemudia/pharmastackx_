@@ -1,13 +1,35 @@
 import { ArrowUpRight, Activity, Users, Store, DollarSign } from 'lucide-react';
+import { dbConnect } from '@/lib/mongoConnect';
+import User from '@/models/User';
+import Product from '@/models/Product';
+import Order from '@/models/Order';
+import POSIntelligence from '@/models/POSIntelligence';
+import PageView from '@/models/PageView';
 
-const stats = [
-  { name: 'Total Live Pharmacies', value: '142', change: '+12 this week', icon: Store },
-  { name: 'Total Medicines Indexed', value: '428,591', change: '+15k this week', icon: Activity },
-  { name: 'Total Storefront Views', value: '2.4M', change: '+18% vs last month', icon: Users },
-  { name: 'Revenue Share (YTD)', value: '$184,250', change: '+5.4% vs last month', icon: DollarSign },
-];
+export default async function AdminDashboardOverview() {
+  await dbConnect();
 
-export default function AdminDashboardOverview() {
+  // Fetch Real Stats
+  const totalPharmacies = await User.countDocuments({ role: 'pharmacy' });
+  const totalMedicines = await Product.countDocuments();
+  
+  // Aggregate page views
+  const pageViewsAgg = await PageView.aggregate([{ $group: { _id: null, total: { $sum: '$count' } } }]);
+  const totalViews = pageViewsAgg.length > 0 ? pageViewsAgg[0].total : 0;
+  
+  const totalOrders = await Order.countDocuments();
+
+  // Fetch POS Intelligence Stats
+  const posStats = await POSIntelligence.find().sort({ successCount: -1 }).limit(5).lean();
+  const totalPosCalls = posStats.reduce((acc, pos) => acc + (pos.successCount || 0), 0);
+
+  const stats = [
+    { name: 'Total Live Pharmacies', value: totalPharmacies.toLocaleString(), change: 'Live Data', icon: Store },
+    { name: 'Total Medicines Indexed', value: totalMedicines.toLocaleString(), change: 'Live Data', icon: Activity },
+    { name: 'Total Storefront Views', value: totalViews.toLocaleString(), change: 'Live Data', icon: Users },
+    { name: 'Orders Generated', value: totalOrders.toLocaleString(), change: 'Live Data', icon: DollarSign },
+  ];
+
   return (
     <div className="space-y-6">
       
@@ -63,26 +85,25 @@ export default function AdminDashboardOverview() {
         <div className="col-span-1 rounded-2xl bg-slate-900/50 border border-slate-800/50 p-6 backdrop-blur-sm">
           <h3 className="text-lg font-medium mb-6 text-slate-200">Most Common POS Systems</h3>
           <div className="space-y-5">
-            {[
-              { name: 'Vend POS', percent: 45, count: 64 },
-              { name: 'Square', percent: 25, count: 35 },
-              { name: 'Custom SQL/CSV', percent: 15, count: 21 },
-              { name: 'LightSpeed', percent: 10, count: 14 },
-              { name: 'Unknown/Failed', percent: 5, count: 8 },
-            ].map((pos) => (
-              <div key={pos.name}>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium text-slate-300">{pos.name}</span>
-                  <span className="text-slate-500">{pos.count} stores</span>
+            {posStats.length > 0 ? posStats.map((pos) => {
+              const percent = totalPosCalls > 0 ? Math.round((pos.successCount / totalPosCalls) * 100) : 0;
+              return (
+                <div key={pos._id?.toString()}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="font-medium text-slate-300">{pos.posName || 'Unknown'}</span>
+                    <span className="text-slate-500">{pos.successCount} successful syncs</span>
+                  </div>
+                  <div className="w-full bg-slate-800/50 rounded-full h-2 border border-slate-700/50 overflow-hidden">
+                    <div 
+                      className={`h-2 rounded-full ${pos.posName === 'Unknown System' ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-800/50 rounded-full h-2 border border-slate-700/50 overflow-hidden">
-                  <div 
-                    className={`h-2 rounded-full ${pos.name === 'Unknown/Failed' ? 'bg-red-500' : 'bg-blue-500'}`}
-                    style={{ width: `${pos.percent}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              );
+            }) : (
+              <p className="text-sm text-slate-500 text-center py-4">No POS Intelligence data gathered yet.</p>
+            )}
           </div>
         </div>
 
