@@ -163,6 +163,25 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
                 </Box>
               </Box>
             </motion.div>
+
+            {/* PHARMACIST CTA */}
+            <Box component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' }}}} sx={{ mt: { xs: 8, md: 10 } }}>
+              <Box sx={{ bgcolor: '#0F6E56', borderRadius: '28px', p: { xs: 4, md: 5 }, position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(15,110,86,0.2)' }}>
+                <Box sx={{ content: '""', position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.04)' }} />
+                <Box sx={{ content: '""', position: 'absolute', bottom: -40, left: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.08)' }} />
+                
+                <Typography sx={{ fontSize: '11px', color: 'rgba(159,225,203,0.8)', letterSpacing: '2.5px', textTransform: 'uppercase', mb: 2, fontWeight: 600 }}>For pharmacists</Typography>
+                <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: { xs: '28px', md: '36px' }, fontWeight: 900, color: '#fff', letterSpacing: '-1px', lineHeight: 1.1, mb: 2 }}>
+                  Grow beyond<br/><em style={{fontStyle: 'italic', color: '#9FE1CB'}}>your four walls.</em>
+                </Typography>
+                <Typography sx={{ fontSize: '15px', color: 'rgba(159,225,203,0.9)', lineHeight: 1.6, mb: 4, fontWeight: 400 }}>
+                  Get real-time medicine requests near you. Build your professional reputation and earn more — without leaving your pharmacy.
+                </Typography>
+                <Box onClick={onPharmacistClick} sx={{ bgcolor: '#fff', color: '#0F6E56', borderRadius: '16px', p: 2, fontSize: '15px', fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-sora), sans-serif', letterSpacing: '-0.2px', position: 'relative', zIndex: 1, cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.03)', boxShadow: '0 8px 20px rgba(0,0,0,0.2)' } }}>
+                  Join as a pharmacist
+                </Box>
+              </Box>
+            </Box>
           </Grid>
 
           {/* RIGHT COLUMN: Info elements */}
@@ -220,23 +239,39 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
                 </Box>
               </Box>
 
-              {/* PHARMACIST CTA */}
-              <Box component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' }}}} sx={{ mt: 2 }}>
-                <Box sx={{ bgcolor: '#0F6E56', borderRadius: '28px', p: { xs: 4, md: 5 }, position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(15,110,86,0.2)' }}>
-                  <Box sx={{ content: '""', position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.04)' }} />
-                  <Box sx={{ content: '""', position: 'absolute', bottom: -40, left: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.08)' }} />
-                  
-                  <Typography sx={{ fontSize: '11px', color: 'rgba(159,225,203,0.8)', letterSpacing: '2.5px', textTransform: 'uppercase', mb: 2, fontWeight: 600 }}>For pharmacists</Typography>
-                  <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: { xs: '28px', md: '36px' }, fontWeight: 900, color: '#fff', letterSpacing: '-1px', lineHeight: 1.1, mb: 2 }}>
-                    Grow beyond<br/><em style={{fontStyle: 'italic', color: '#9FE1CB'}}>your four walls.</em>
-                  </Typography>
-                  <Typography sx={{ fontSize: '15px', color: 'rgba(159,225,203,0.9)', lineHeight: 1.6, mb: 4, fontWeight: 400 }}>
-                    Get real-time medicine requests near you. Build your professional reputation and earn more — without leaving your pharmacy.
-                  </Typography>
-                  <Box onClick={onPharmacistClick} sx={{ bgcolor: '#fff', color: '#0F6E56', borderRadius: '16px', p: 2, fontSize: '15px', fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-sora), sans-serif', letterSpacing: '-0.2px', position: 'relative', zIndex: 1, cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.03)', boxShadow: '0 8px 20px rgba(0,0,0,0.2)' } }}>
-                    Join as a pharmacist
-                  </Box>
-                </Box>
+              {/* DOWNLOAD SYNNK BANNER */}
+              <Box component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={scaleRevealVariants} sx={{ p: '32px 32px', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, bgcolor: '#0F6E56', color: '#fff', boxShadow: '0 12px 48px rgba(15,110,86,0.2)', width: '100%', position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ content: '""', position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
+                
+                <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '26px', fontWeight: 900, textAlign: 'center', zIndex: 1, letterSpacing: '-0.5px' }}>
+                  Pharmacies: Automate your inventory
+                </Typography>
+                <Typography sx={{ fontSize: '14px', textAlign: 'center', color: 'rgba(159,225,203,0.9)', mb: 2, zIndex: 1, maxWidth: '450px', lineHeight: 1.6 }}>
+                  Download the Synkk Desktop Client to securely connect your local POS database or CSV to PharmaStackX in real-time.
+                </Typography>
+                
+                <Button
+                  component="a"
+                  href="/downloads/Synkk Setup 1.0.0.exe"
+                  download
+                  variant="contained"
+                  sx={{ 
+                    bgcolor: '#fff', 
+                    color: '#0F6E56', 
+                    borderRadius: '100px', 
+                    px: 4, 
+                    py: 1.5, 
+                    fontWeight: 700, 
+                    zIndex: 1,
+                    textTransform: 'none',
+                    fontFamily: 'var(--font-sora), sans-serif',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.1)',
+                    '&:hover': { bgcolor: '#f0f0f0', transform: 'scale(1.02)' },
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Download Synkk for Windows
+                </Button>
               </Box>
 
             </Box>
@@ -253,42 +288,6 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
           </Box>
         </Box>
 
-        {/* DOWNLOAD SYNNK BANNER */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Box component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={scaleRevealVariants} sx={{ p: '32px 32px', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, bgcolor: '#0F6E56', color: '#fff', boxShadow: '0 12px 48px rgba(15,110,86,0.2)', maxWidth: '600px', width: '100%', position: 'relative', overflow: 'hidden' }}>
-            <Box sx={{ content: '""', position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
-            
-            <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '26px', fontWeight: 900, textAlign: 'center', zIndex: 1, letterSpacing: '-0.5px' }}>
-              Pharmacies: Automate your inventory
-            </Typography>
-            <Typography sx={{ fontSize: '14px', textAlign: 'center', color: 'rgba(159,225,203,0.9)', mb: 2, zIndex: 1, maxWidth: '450px', lineHeight: 1.6 }}>
-              Download the Synkk Desktop Client to securely connect your local POS database or CSV to PharmaStackX in real-time.
-            </Typography>
-            
-            <Button
-              component="a"
-              href="/downloads/Synkk Setup 1.0.0.exe"
-              download
-              variant="contained"
-              sx={{ 
-                bgcolor: '#fff', 
-                color: '#0F6E56', 
-                borderRadius: '100px', 
-                px: 4, 
-                py: 1.5, 
-                fontWeight: 700, 
-                zIndex: 1,
-                textTransform: 'none',
-                fontFamily: 'var(--font-sora), sans-serif',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.1)',
-                '&:hover': { bgcolor: '#f0f0f0', transform: 'scale(1.02)' },
-                transition: 'all 0.2s'
-              }}
-            >
-              Download Synkk for Windows
-            </Button>
-          </Box>
-        </Box>
 
       </Container>
 
