@@ -253,6 +253,43 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
           </Box>
         </Box>
 
+        {/* DOWNLOAD SYNNK BANNER */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Box component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={scaleRevealVariants} sx={{ p: '32px 32px', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, bgcolor: '#0F6E56', color: '#fff', boxShadow: '0 12px 48px rgba(15,110,86,0.2)', maxWidth: '600px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ content: '""', position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
+            
+            <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '26px', fontWeight: 900, textAlign: 'center', zIndex: 1, letterSpacing: '-0.5px' }}>
+              Pharmacies: Automate your inventory
+            </Typography>
+            <Typography sx={{ fontSize: '14px', textAlign: 'center', color: 'rgba(159,225,203,0.9)', mb: 2, zIndex: 1, maxWidth: '450px', lineHeight: 1.6 }}>
+              Download the Synkk Desktop Client to securely connect your local POS database or CSV to PharmaStackX in real-time.
+            </Typography>
+            
+            <Button
+              component="a"
+              href="/downloads/Synkk Setup 1.0.0.exe"
+              download
+              variant="contained"
+              sx={{ 
+                bgcolor: '#fff', 
+                color: '#0F6E56', 
+                borderRadius: '100px', 
+                px: 4, 
+                py: 1.5, 
+                fontWeight: 700, 
+                zIndex: 1,
+                textTransform: 'none',
+                fontFamily: 'var(--font-sora), sans-serif',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.1)',
+                '&:hover': { bgcolor: '#f0f0f0', transform: 'scale(1.02)' },
+                transition: 'all 0.2s'
+              }}
+            >
+              Download Synkk for Windows
+            </Button>
+          </Box>
+        </Box>
+
       </Container>
 
       <style>
