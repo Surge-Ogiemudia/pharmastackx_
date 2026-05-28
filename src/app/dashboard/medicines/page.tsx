@@ -50,13 +50,13 @@ export default async function MedicinesPage() {
                         <Pill className="w-5 h-5 text-blue-400" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-200">{product.name}</p>
-                        <p className="text-xs text-slate-500">{product.description?.substring(0, 40)}{product.description && product.description.length > 40 ? '...' : ''}</p>
+                        <p className="font-medium text-slate-200">{product.itemName}</p>
+                        <p className="text-xs text-slate-500">{product.info?.substring(0, 40)}{(product.info && product.info.length > 40) ? '...' : ''}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4 text-sm text-slate-400 font-medium text-emerald-400">{product.businessName}</td>
-                  <td className="p-4 text-sm text-slate-300">₦{product.price?.toLocaleString()}</td>
+                  <td className="p-4 text-sm text-slate-300">₦{product.amount?.toLocaleString()}</td>
                   <td className="p-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${product.quantity > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                       <Hash className="w-3.5 h-3.5" />
