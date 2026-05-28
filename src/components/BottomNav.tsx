@@ -12,7 +12,7 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
   const { track } = useTrack();
   const tabs = [
     { id: 'home', label: 'HOME' },
-    { id: 'orderMedicines', label: 'SEARCH' },
+    { id: 'findMedicines', label: 'SEARCH' },
     { id: 'orders', label: 'ACTIVITY' },
     { id: 'account', label: 'ACCOUNT' }
   ];

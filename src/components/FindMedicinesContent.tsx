@@ -1,50 +1,15 @@
 'use client'
 
-import {
-  Typography,
-  Badge,
-  Container,
-  Box,
-  Card,
-  CardContent,
-  CardMedia,
-  TextField,
-  InputAdornment,
-  FormControl,
-  Select,
-  MenuItem,
-  Pagination,
-  CircularProgress,
-  IconButton,
-  Modal,
-  Snackbar,
-  Alert,
-  Chip,
-  Button,
-  Paper,
-} from '@mui/material';
-import Grid from '@mui/material/Grid';
-import {
-  Search,
-  LocationOn,
-  Add,
-  Close,
-  ArrowBack,
-  ShoppingBag,
-} from '@mui/icons-material';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCart } from '../contexts/CartContext';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-
+import QRCode from 'qrcode';
 import { event } from '../lib/gtag';
 import { debounce } from 'lodash';
-
-
+import styles from '../app/find-medicines/FindMedicines.module.css';
 
 // --- CONFIGURATION --- //
-const AVERAGE_TRAVEL_SPEED_KMH = 15; // km/h (Lowered for more realistic city travel time)
+const AVERAGE_TRAVEL_SPEED_KMH = 15;
 
 // --- Haversine Distance Calculation --- //
 const haversineDistance = (coords1: { lat: number; lon: number }, coords2: { lat: number; lon: number }) => {
@@ -61,73 +26,49 @@ const haversineDistance = (coords1: { lat: number; lon: number }, coords2: { lat
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return d; // returns distance in km
-};
-
-
-const modalStyle = {
-  position: 'absolute' as 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: { xs: '88%', sm: '400px', md: '450px' },
-  bgcolor: 'rgba(255,255,255,0.98)',
-  boxShadow: '0 32px 100px rgba(0,0,0,0.18)',
-  p: 0,
-  borderRadius: '32px',
-  maxHeight: { xs: '65vh', sm: '58vh' },
-  overflowY: 'auto',
-  border: '1px solid rgba(255,255,255,0.5)',
-  outline: 'none'
+  return R * c;
 };
 
 export default function FindMedicinesContent({ setView, initialQuery }: { setView?: (view: string) => void; initialQuery?: string }) {
   const searchParams = useSearchParams();
   const slug = searchParams?.get('slug') || '';
-  const router = useRouter();
+
   const [medicines, setMedicines] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const initialSearch = initialQuery || searchParams?.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-
-  useEffect(() => {
-    if (initialQuery) setSearchQuery(initialQuery);
-  }, [initialQuery]);
-  const [sortBy, setSortBy] = useState('recommended');
   const [filterBy, setFilterBy] = useState('all');
+  const [sortBy, setSortBy] = useState('recommended');
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
 
   const itemsPerPage = 12;
-  const { addToCart } = useCart(); 
+  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart(); 
 
-  const [selectedMedicine, setSelectedMedicine] = useState<any | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
   
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const isInitialLoad = useRef(true);
-   
 
-  const drugClasses = ['all', 'Analgesic', 'Antibiotic', 'Antimalarial', 'Antifungal', 'Vitamin', 'NSAID', 'Antidiabetic'];
+  const [pharmacyDetails, setPharmacyDetails] = useState<any>(null);
+  const [isLoadingPharmacy, setIsLoadingPharmacy] = useState(false);
 
-  
+  const drugClasses = ['all', 'Cardiovascular', 'Diabetes', 'Antibiotic', 'Pain Relief', 'Respiratory', 'Skincare', 'Supplements'];
+
   const fetchMedicines = useCallback(debounce(async (page: number, search: string, filter: string, sort: string) => {
-    // Only show full loader if we have NO medicines yet (even from cache)
-    if (medicines.length === 0) {
-      setIsLoading(true);
-    }
-    
+    if (medicines.length === 0) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: itemsPerPage.toString(),
         search,
-        drugClass: filter,
+        drugClass: filter === 'all' ? '' : filter,
         sortBy: sort,
       });
       if (slug) params.append('slug', slug);
@@ -136,16 +77,15 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       if (!response.ok) throw new Error(`Failed to fetch products. Status: ${response.status}`);
       
       const data = await response.json();
-        if (data.success) {
-          let processed = data.data;
-          
-          // Cache the results for "instant" load next time
-          if (search === '' && filter === 'all' && sort === 'recommended' && page === 1) {
+      if (data.success) {
+        let processed = data.data;
+
+        if (search === '' && filter === 'all' && sort === 'recommended' && page === 1) {
             localStorage.setItem('cached_medicines', JSON.stringify(processed));
             localStorage.setItem('cached_pagination', JSON.stringify(data.pagination));
-          }
+        }
 
-          if (userLocation) {
+        if (userLocation) {
           processed = data.data.map((m:any) => {
             if (m.pharmacyCoordinates) {
               const distance = haversineDistance(userLocation, m.pharmacyCoordinates);
@@ -178,29 +118,21 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
     }
   }, 500), [slug, itemsPerPage, userLocation]);
 
-
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const location = {
+          setUserLocation({
             lat: position.coords.latitude,
             lon: position.coords.longitude,
-          };
-          setUserLocation(location);
-          setLocationError(null);
+          });
         },
-        (error) => {
-          setLocationError("Location access denied. Distances may not be calculated.");
-        }
+        () => {}
       );
-    } else {
-      setLocationError("Geolocation is not supported by this browser.");
     }
   }, []);
 
   useEffect(() => {
-    // Load from cache on mount for instant feel
     const cached = localStorage.getItem('cached_medicines');
     const cachedPag = localStorage.getItem('cached_pagination');
     if (cached && cachedPag) {
@@ -215,9 +147,32 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   }, []);
 
   useEffect(() => {
+    if (!slug) {
+      setPharmacyDetails(null);
+      return;
+    }
+    const fetchPharmacy = async () => {
+      setIsLoadingPharmacy(true);
+      try {
+        const res = await fetch(`/api/pharmacies/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setPharmacyDetails(data.pharmacy);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching pharmacy', err);
+      } finally {
+        setIsLoadingPharmacy(false);
+      }
+    };
+    fetchPharmacy();
+  }, [slug]);
+
+  useEffect(() => {
     if (isInitialLoad.current) {
-        // Immediate fetch on first mount (bypass debounce)
-        fetchMedicines.cancel(); // cancel any pending debounced calls
+        fetchMedicines.cancel();
         fetchMedicines(currentPage, searchQuery, filterBy, sortBy);
         isInitialLoad.current = false;
     } else {
@@ -226,450 +181,258 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   }, [currentPage, searchQuery, filterBy, sortBy, fetchMedicines]);
 
   useEffect(() => {
-    if (searchQuery) {
-      event({ action: 'search', category: 'engagement', label: searchQuery });
-    }
+    if (searchQuery) event({ action: 'search', category: 'engagement', label: searchQuery });
   }, [searchQuery]);
 
   useEffect(() => {
-    if (slug) {
-      event({ action: 'visit_pharmacy_subdomain', category: 'acquisition', label: slug });
-    }
+    if (slug) event({ action: 'visit_pharmacy_subdomain', category: 'acquisition', label: slug });
   }, [slug]);
 
-
-  const handleOpenModal = (medicine: any) => {
-    event({ action: 'view_item', category: 'ecommerce', label: medicine.name, value: medicine.price });
-    setSelectedMedicine(medicine);
-  };
-
-  const handleCloseModal = () => setSelectedMedicine(null);
-  const handleSnackbarClose = () => setSnackbarOpen(false);
-  
+  useEffect(() => {
+    const url = slug ? `https://${slug}.psx.ng` : 'https://psx.ng';
+    QRCode.toDataURL(url, { margin: 1, color: { dark: '#000000', light: '#FFFFFF' } })
+      .then(url => setQrCodeDataUrl(url))
+      .catch(console.error);
+  }, [slug]);
 
   const handleAddToCart = (medicine: any) => {
     event({ action: 'add_to_cart', category: 'ecommerce', label: medicine.name, value: medicine.price });
     addToCart(medicine);
-    setSnackbarOpen(true);
-  };
-  
-  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
-    setCurrentPage(page);
+    setToastMsg(`${medicine.name} added to order`);
+    setTimeout(() => setToastMsg(''), 2000);
   };
 
-  
-
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <Box
-      sx={{
-        p: { xs: 2.5, sm: 4 },
-        pb: { xs: 12, sm: 4 },
-        m: 0,
-        borderRadius: 0,
-        height: '100%',
-        overflowY: 'auto',
-        color: 'var(--black)',
-        backgroundColor: '#fafaf8',
-        fontFamily: "'Sora', sans-serif"
-      }}
-    >
-      <Container maxWidth="lg" sx={{ mt: { xs: 0, sm: 1 }, mb: 3 }}>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: 'row', 
-            justifyContent: 'flex-start', 
-            alignItems: 'center', 
-            mb: { xs: 2.5, sm: 4 },
-            gap: 2
-          }}
-        >
-          <Box 
-            onClick={() => setView?.('orderMedicines')}
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.5, 
-              cursor: 'pointer',
-              color: 'var(--gray)',
-              bgcolor: 'white',
-              border: '1.5px solid var(--border)',
-              borderRadius: '100px',
-              px: { xs: 2, sm: 2 },
-              py: 0.75,
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', color: 'var(--black)', borderColor: 'rgba(0,0,0,0.2)' },
-              transition: 'all 0.2s'
-            }}
-          >
-            <ArrowBack sx={{ fontSize: 13 }} />
-            <Typography sx={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Back
-            </Typography>
-          </Box>
-          <Typography className="fraunces" sx={{ fontSize: { xs: '22px', sm: '28px' }, fontWeight: 900, color: 'var(--black)', letterSpacing: '-0.7px' }}>
-            Our Catalog
-          </Typography>
-        </Box>
-        <Box sx={{ mb: 2 }}>
-          <TextField
-            fullWidth
-            placeholder={slug ? "Search this pharmacy..." : "Search medicine names..."}
-            variant="outlined"
-            size="medium"
-            value={searchQuery}
-            onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1);
-            }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><Search sx={{ color: 'var(--green)', fontSize: 18 }} /></InputAdornment>,
-              sx: { 
-                borderRadius: '16px', 
-                bgcolor: 'white',
-                border: '1.5px solid var(--border)',
-                '& fieldset': { border: 'none' },
-                fontSize: { xs: '12px', sm: '14px' },
-                fontWeight: 500,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-              }
-            }}
-          />
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select 
-              value={filterBy} 
-              onChange={(e) => { setFilterBy(e.target.value); setCurrentPage(1); }} 
-              displayEmpty 
-              sx={{ 
-                borderRadius: '100px', 
-                fontSize: '11px', 
-                fontWeight: 700,
-                bgcolor: 'white',
-                '& .MuiOutlinedInput-notchedOutline': { border: '1.5px solid var(--border)' }
+    <div className={styles.root}>
+      {/* HEADER */}
+      <header className={styles.header}>
+        <div className={styles.headerInner} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+            <button 
+              onClick={() => setView?.('orderMedicines')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(0,0,0,0.04)', border: 'none', cursor: 'pointer',
+                color: 'var(--ink)'
               }}
             >
-              <MenuItem value="all" sx={{ fontSize: '12px' }}>All Classes</MenuItem>
-              {drugClasses.slice(1).map((drugClass) => (
-                <MenuItem key={drugClass} value={drugClass} sx={{ fontSize: '12px' }}>{drugClass}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select 
-              value={sortBy} 
-              onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1);}} 
-              displayEmpty 
-              sx={{ 
-                borderRadius: '100px', 
-                fontSize: '11px', 
-                fontWeight: 700,
-                bgcolor: 'white',
-                '& .MuiOutlinedInput-notchedOutline': { border: '1.5px solid var(--border)' }
-              }}
-            >
-              <MenuItem value="recommended" sx={{ fontSize: '12px' }}>Recommended</MenuItem>
-              <MenuItem value="name" sx={{ fontSize: '12px' }}>Name</MenuItem>
-              <MenuItem value="price" sx={{ fontSize: '12px' }}>Price</MenuItem>
-              <MenuItem value="distance" sx={{ fontSize: '12px' }}>Distance</MenuItem>
-            </Select>
-          </FormControl>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div className={styles.pharmacyBrand}>
+              <div className={styles.pharmacyAvatar}>{slug && pharmacyDetails ? pharmacyDetails.businessName.charAt(0).toUpperCase() : 'PX'}</div>
+              <div>
+                <div className={styles.pharmacyName}>{slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog'}</div>
+                <div className={styles.pharmacyMeta}>
+                  <span className={styles.statusDot}></span>
+                  {slug && pharmacyDetails ? `Open now ${userLocation ? '· Nearby' : ''}` : 'All pharmacies active'}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.headerActions}>
+            <button className={styles.btnCart} onClick={() => setIsCartOpen(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <span className={styles.cartCount}>{cartItemCount}</span>
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <Typography sx={{ ml: 'auto', fontSize: '11px', fontWeight: 600, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {totalProducts} products
-          </Typography>
-        </Box>
-        {locationError && (
-          <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', my: 1 }}>
-            {locationError}
-          </Typography>
-        )}
-      </Container>
-
-      <Container maxWidth="lg" sx={{ mb: 2, flex: 1 }}>
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><CircularProgress /></Box>
-        ) : error ? (
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography color="error" variant="h5">An Error Occurred</Typography>
-            <Typography color="error">{error}</Typography>
-          </Box>
-        ): medicines.length === 0 && searchQuery ? (
-            <Box sx={{ textAlign: 'center', mt: 4 }}>
-                <Typography variant="h6">No Medicines Found</Typography>
-                <Typography color="text.secondary">
-                    We couldn\'t find any products matching your search for "{searchQuery}".
-                </Typography>
-            </Box>
-        ) : (
-          <>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
-              {medicines.map((medicine) => (
-                <Card 
-                  key={medicine.id} 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    borderRadius: '24px', 
-                    border: '1.5px solid var(--border)', 
-                    bgcolor: 'white', 
-                    cursor: 'pointer', 
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                    '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 30px rgba(0,0,0,0.06)', borderColor: 'rgba(15,110,86,0.1)' } 
-                  }} 
-                  onClick={() => handleOpenModal(medicine)}
-                >
-                  <Box sx={{ position: 'relative', height: { xs: '100px', md: '140px' }, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f9f9f9', p: { xs: 1, md: 1.5 } }}>
-                    {medicine.POM && (
-                      <Chip
-                          label="POM"
-                          size="small"
-                          sx={{
-                              position: 'absolute',
-                              top: { xs: 6, md: 10 },
-                              right: { xs: 6, md: 10 },
-                              zIndex: 1,
-                              fontWeight: 800,
-                              fontSize: { xs: '8px', md: '9px' },
-                              bgcolor: 'var(--black)',
-                              color: 'white'
-                          }}
-                      />
-                    )}
-                    <CardMedia component="img" image={medicine.image} alt={medicine.name} sx={{ objectFit: 'contain', width: '100%', height: '100%', maxWidth: '85%', transition: 'transform 0.5s', '&:hover': { transform: 'scale(1.05)' } }}/>
-                  </Box>
-
-                  <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, md: 2 }, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <Box sx={{ mb: 1.5 }}>
-                      <Typography className="fraunces" sx={{ fontWeight: 900, fontSize: { xs: '13px', md: '15px' }, lineHeight: 1.25, color: 'var(--black)', letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                        {medicine.name}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography className="sora" sx={{ fontWeight: 800, color: 'var(--green)', fontSize: { xs: '15px', md: '18px' }, mb: 1 }}>
-                        {medicine.formattedPrice}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                        <Box sx={{ flexGrow: 1, minWidth: 0, mr: 0.5 }}>
-                          <Typography variant="caption" sx={{ color: 'var(--gray)', fontWeight: 600, fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', textTransform: 'uppercase' }}>
-                            {medicine.pharmacy}
-                          </Typography>
-                          {typeof medicine.travelTime === 'number' && typeof medicine.distance === 'number' ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: '4px' }}>
-                              <LocationOn sx={{ fontSize: 11, color: 'var(--green)' }} />
-                              <Typography variant="caption" sx={{ fontSize: '9px', fontWeight: 600, color: 'var(--green)' }}>
-                                {medicine.travelTime.toFixed(0)} min · {medicine.distance.toFixed(1)} km
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Box sx={{ height: '18px' }} />
-                          )}
-                        </Box>
-                        <IconButton 
-                          onClick={(e) => { e.stopPropagation(); handleAddToCart({ ...medicine, price: medicine.price }); }} 
-                          sx={{ 
-                            bgcolor: 'var(--green-pale)', 
-                            color: 'var(--green)', 
-                            width: { xs: 28, md: 34 }, 
-                            height: { xs: 28, md: 34 }, 
-                            flexShrink: 0, 
-                            ml: 0.5, 
-                            '&:hover': { bgcolor: 'var(--green)', color: 'white' },
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <Add sx={{ fontSize: { xs: '14px', md: '18px' } }} />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-
-            {totalPages > 1 && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <Pagination count={totalPages} page={currentPage} onChange={handlePageChange} color="primary" size="large" sx={{ '& .MuiPaginationItem-root.Mui-selected': { bgcolor: '#006D5B' } }}/>
-              </Box>
-            )}
-          </>
-        )}
-      </Container>
-      <Modal 
-        open={!!selectedMedicine} 
-        onClose={handleCloseModal}
-        slots={{
-          backdrop: (props) => (
-            <Box 
-              {...props} 
-              sx={{ 
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-                bgcolor: 'rgba(10,15,12,0.4)', backdropFilter: 'blur(12px)', zIndex: -1 
-              }} 
-            />
-          )
-        }}
-        closeAfterTransition
-      >
-        <Box sx={modalStyle}>
-          {selectedMedicine && (
-            <Box sx={{ position: 'relative' }}>
-              <IconButton 
-                onClick={handleCloseModal} 
-                sx={{ 
-                  position: 'absolute', right: 16, top: 16, 
-                  bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)',
-                  zIndex: 10, '&:hover': { bgcolor: 'white' }
-                }}
-              >
-                <Close sx={{ fontSize: 18 }} />
-              </IconButton>
-
-              <Box sx={{ p: 3 }}>
-                {/* IMAGE AREA */}
-                <Box sx={{ 
-                  width: '100%', height: 280, display: 'flex', alignItems: 'center', 
-                  justifyContent: 'center', bgcolor: '#f9f9f7', borderRadius: '24px',
-                  mb: 3, border: '1.5px solid var(--border)'
-                }}>
-                  <CardMedia 
-                    component="img" 
-                    image={selectedMedicine.image} 
-                    alt={selectedMedicine.name} 
-                    sx={{ objectFit: 'contain', width: '100%', height: '100%', maxWidth: '85%', p: 2 }}
-                  />
-                </Box>
-
-                {/* CONTENT AREA */}
-                <Typography className="fraunces" sx={{ fontSize: '22px', fontWeight: 900, color: 'var(--black)', lineHeight: 1.1, mb: 1, letterSpacing: '-0.3px' }}>
-                  {selectedMedicine.name}
-                </Typography>
-
-                <Typography className="sora" sx={{ fontSize: '18px', fontWeight: 800, color: 'var(--green)', mb: 2.5 }}>
-                  {selectedMedicine.formattedPrice}
-                </Typography>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                  <Box>
-                    <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#bbb', mb: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Active Ingredients</Typography>
-                    <Typography sx={{ fontSize: '14px', color: 'var(--green)', fontWeight: 600, fontStyle: 'italic' }}>{selectedMedicine.activeIngredients || 'Not specified'}</Typography>
-                  </Box>
-
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', pt: 2.5 }}>
-                    <Box>
-                      <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#bbb', mb: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Pharmacy</Typography>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 700 }}>{selectedMedicine.pharmacy}</Typography>
-                      {typeof selectedMedicine.travelTime === 'number' && (
-                        <Typography variant="caption" sx={{ color: 'var(--green)', fontWeight: 600, mt: 0.5, display: 'block' }}>
-                          {selectedMedicine.travelTime.toFixed(0)} mins · {selectedMedicine.distance.toFixed(1)} km away
-                        </Typography>
-                      )}
-                    </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#bbb', mb: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Drug Class</Typography>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 700 }}>{selectedMedicine.drugClass}</Typography>
-                    </Box>
-                  </Box>
-
-                  {selectedMedicine.info && (
-                    <Box sx={{ borderTop: '1px solid var(--border)', pt: 2.5 }}>
-                      <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#bbb', mb: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>Additional Information</Typography>
-                      <Typography sx={{ fontSize: '13px', color: '#666', lineHeight: 1.6 }}>{selectedMedicine.info}</Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                <button 
-                  onClick={() => { addToCart({ ...selectedMedicine, price: selectedMedicine.price }); handleCloseModal(); setSnackbarOpen(true); }}
-                  style={{ 
-                    width: '100%', background: 'var(--green)', color: 'white', border: 'none',
-                    borderRadius: '12px', padding: '12.5px 18px', fontSize: '13px', fontWeight: 800,
-                    cursor: 'pointer', marginTop: '24px', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', gap: '8px', transition: 'all 0.2s', fontFamily: "'Sora', sans-serif",
-                    textTransform: 'uppercase', letterSpacing: '0.3px'
-                  }}
-                  className="hover-scale"
-                >
-                  <Add sx={{ fontSize: 18 }} />
-                  Add to Cart
-                </button>
-              </Box>
-            </Box>
+      {/* HERO */}
+      <section className={styles.hero}>
+        <div className={styles.heroPattern}></div>
+        <div className={styles.heroGlow}></div>
+        <div className={styles.heroInner}>
+          <div className={styles.heroText}>
+            <div className={styles.heroEyebrow}>{slug ? 'Verified pharmacy · psx.ng' : 'Search across all verified pharmacies'}</div>
+            <h1 className={styles.heroTitle}>Your medicine,<br/><em>found.</em></h1>
+            <p className={styles.heroSub}>Browse real-time inventory. Every medicine synced live. Order for pickup or delivery.</p>
+          </div>
+          {qrCodeDataUrl && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'white',
+              padding: '12px',
+              borderRadius: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              zIndex: 10,
+              marginLeft: 'auto'
+            }}>
+              <img src={qrCodeDataUrl} alt="Store QR Code" style={{ width: '120px', height: '120px', borderRadius: '12px' }} />
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink)', marginTop: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Scan to visit</div>
+            </div>
           )}
-        </Box>
-      </Modal>
+        </div>
+      </section>
+
+      {/* SEARCH */}
+      <div className={styles.searchSection}>
+        <div className={styles.searchInner}>
+          <div className={styles.searchBar}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A8A49C" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input 
+              type="text" 
+              placeholder={slug ? "Search medicines at this pharmacy..." : "Search Amlodipine, Metformin, Augmentin..."}
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+          <div className={styles.filterPills}>
+            {drugClasses.map(cat => (
+              <button 
+                key={cat}
+                className={`${styles.pill} ${filterBy === cat.toLowerCase() || (filterBy === 'all' && cat === 'all') ? styles.active : ''}`}
+                onClick={() => { setFilterBy(cat.toLowerCase()); setCurrentPage(1); }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <main className={styles.main}>
 
 
-      
 
-      <Snackbar 
-        open={snackbarOpen} 
-        autoHideDuration={3000} 
-        onClose={handleSnackbarClose} 
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ 
-          bottom: { xs: "120px !important", sm: "220px !important" }, 
-          zIndex: "50000 !important" 
-        }}
-      >
-        <Alert 
-          onClose={handleSnackbarClose} 
-          severity="success" 
-          sx={{ 
-            width: '100%', 
-            bgcolor: '#0F6E56', 
-            color: 'white', 
-            fontWeight: 700,
-            borderRadius: '12px',
-            '& .MuiAlert-icon': { color: 'white' },
-            boxShadow: '0 8px 30px rgba(0,0,0,0.15)'
-          }}
-        >
-          Item added to cart!
-        </Alert>
-      </Snackbar>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionTitle}>All medicines</div>
+          <div className={styles.sectionCount}>{totalProducts} items</div>
+        </div>
 
-      {useCart().getTotalItems() > 0 && (
-        <Paper
-          elevation={6}
-          sx={{
-            position: 'fixed',
-            bottom: { xs: 100, sm: 110 },
-            right: { xs: 20, sm: 40 },
-            bgcolor: 'var(--green)',
-            color: 'white',
-            borderRadius: '100px',
-            px: 2.5,
-            py: 1.5,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            cursor: 'pointer',
-            zIndex: 40000,
-            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            '&:hover': {
-              transform: 'scale(1.05) translateY(-4px)',
-              bgcolor: 'var(--green-light)',
-              boxShadow: '0 12px 30px rgba(15,110,86,0.25)'
-            },
-            boxShadow: '0 8px 32px rgba(15,110,86,0.2)'
-          }}
-          onClick={() => setView?.('confirmOrder')}
-        >
-          <Badge badgeContent={useCart().getTotalItems()} color="secondary">
-            <ShoppingBag sx={{ fontSize: 22 }} />
-          </Badge>
-          <Typography sx={{ fontWeight: 800, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Check Out
-          </Typography>
-        </Paper>
-      )}
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', color: 'red', padding: '40px' }}>{error}</div>
+        ) : medicines.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>No medicines found.</div>
+        ) : (
+          <div className={styles.productGrid}>
+            {medicines.map(medicine => {
+              const categoryLower = (medicine.drugClass || '').toLowerCase();
+              let gradient = 'linear-gradient(135deg,#F3E5F5,#E1BEE7)';
+              if (categoryLower.includes('cardio')) gradient = 'linear-gradient(135deg,#E8F5E9,#C8E6C9)';
+              if (categoryLower.includes('diabet')) gradient = 'linear-gradient(135deg,#FFF8E1,#FFECB3)';
+              if (categoryLower.includes('antibio')) gradient = 'linear-gradient(135deg,#FCE4EC,#F8BBD0)';
+              if (categoryLower.includes('resp')) gradient = 'linear-gradient(135deg,#E0F7FA,#B2EBF2)';
 
-    </Box>
+              return (
+                <div key={medicine.id} className={styles.productCard}>
+                  <div className={styles.productImg} style={{ background: gradient }}>
+                    {medicine.image ? (
+                      <img src={medicine.image} alt={medicine.name} />
+                    ) : (
+                      <div className={styles.productImgIcon}>💊</div>
+                    )}
+                    {medicine.drugClass && (
+                      <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
+                    )}
+                  </div>
+                  <div className={styles.productBody}>
+                    <div className={styles.productName}>{medicine.name}</div>
+                    <div className={styles.productStrength}>{medicine.activeIngredients || 'Standard'}</div>
+                    
+                    {medicine.distance != null && (
+                      <div className={styles.lowStock}>
+                        {medicine.travelTime?.toFixed(0)} mins ({medicine.distance?.toFixed(1)} km)
+                      </div>
+                    )}
+
+                    <div className={styles.productFooter} style={{ marginTop: 'auto', paddingTop: '12px' }}>
+                      <div className={styles.productPrice}>
+                        {medicine.formattedPrice} <span>/ each</span>
+                      </div>
+                      <button 
+                        className={styles.addBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(medicine);
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+      </main>
+
+      {/* FOOTER */}
+      <footer className={styles.footer}>
+        <div className={styles.footerBrand}>
+          {slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog'}
+        </div>
+        <div className={styles.footerMeta}>
+          {slug && pharmacyDetails?.professionalVerificationStatus === 'approved' ? 'Verified by PCN · ' : ''}Live inventory · Instant fulfillment
+        </div>
+      </footer>
+
+      {/* CART DRAWER */}
+      <div className={`${styles.overlay} ${isCartOpen ? styles.show : ''}`} onClick={() => setIsCartOpen(false)}></div>
+      <div className={`${styles.cartDrawer} ${isCartOpen ? styles.open : ''}`}>
+        <div className={styles.cartHeader}>
+          <div className={styles.cartTitle}>Your order</div>
+          <button className={styles.cartClose} onClick={() => setIsCartOpen(false)}>✕</button>
+        </div>
+        
+        {cart.length === 0 ? (
+          <div className={styles.cartEmpty}>
+            <div className={styles.cartEmptyIcon}>🛒</div>
+            <div className={styles.cartEmptyText}>No medicines added yet.<br/>Browse and add what you need.</div>
+          </div>
+        ) : (
+          <div className={styles.cartItems}>
+            {cart.map(item => (
+              <div key={item.id} className={styles.cartItem}>
+                <div className={styles.cartItemImg}>💊</div>
+                <div className={styles.cartItemInfo}>
+                  <div className={styles.cartItemName}>{item.name}</div>
+                  <div className={styles.cartItemPrice}>₦{item.price.toLocaleString()} each</div>
+                </div>
+                <div className={styles.cartItemQty}>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, item.quantity - 1)}>−</button>
+                  <div className={styles.qtyNum}>{item.quantity}</div>
+                  <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {cart.length > 0 && (
+          <div className={styles.cartFooter}>
+            <div className={styles.cartTotal}>
+              <div className={styles.cartTotalLabel}>Total</div>
+              <div className={styles.cartTotalAmount}>₦{getCartTotal().toLocaleString()}</div>
+            </div>
+            <button 
+                className={styles.checkoutBtn}
+                onClick={() => {
+                  setIsCartOpen(false);
+                  setView?.('confirmOrder');
+                }}
+            >
+                Proceed to checkout →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* TOAST */}
+      <div className={`${styles.toast} ${toastMsg ? styles.show : ''}`}>
+        {toastMsg}
+      </div>
+    </div>
   );
 }

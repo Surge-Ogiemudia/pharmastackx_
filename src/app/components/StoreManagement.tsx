@@ -115,6 +115,16 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     return () => { isMounted.current = false; };
   }, [user, user?.businessName, user?.slug]);
 
+  useEffect(() => {
+    if (userSlug) {
+      QRCode.toDataURL(`https://${userSlug}.psx.ng`, { margin: 1, color: { dark: '#000000', light: '#FFFFFF' } })
+        .then(url => {
+          if (isMounted.current) setQrCodeDataUrl(url);
+        })
+        .catch(err => console.error('Failed to generate QR:', err));
+    }
+  }, [userSlug]);
+
   const handleSetupSubmit = async () => {
     if (!setupForm.businessName || !setupForm.slug) return alert('Business Name and Store Link are required.');
     setSetupLoading(true);
@@ -768,18 +778,20 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                           position: 'absolute', 
                           bottom: 15, 
                           right: 15, 
-                          width: 40, 
-                          height: 40, 
+                          width: 44, 
+                          height: 44, 
                           bgcolor: 'white', 
                           borderRadius: '6px',
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(3, 1fr)',
-                          gap: '2px',
-                          p: '5px'
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: '2px'
                         }}>
-                          {[...Array(9)].map((_, i) => (
-                            <Box key={i} sx={{ bgcolor: i % 2 === 0 ? '#000' : '#eee', borderRadius: '1px' }} />
-                          ))}
+                          {qrCodeDataUrl ? (
+                            <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: '4px' }} />
+                          ) : (
+                            <Box sx={{ width: 10, height: 10, bgcolor: '#eee', borderRadius: '50%' }} />
+                          )}
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', gap: 1 }}>
