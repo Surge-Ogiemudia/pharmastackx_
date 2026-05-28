@@ -252,20 +252,9 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             <p className={styles.heroSub}>Browse real-time inventory. Every medicine synced live. Order for pickup or delivery.</p>
           </div>
           {qrCodeDataUrl && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'white',
-              padding: '12px',
-              borderRadius: '24px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-              zIndex: 10,
-              marginLeft: 'auto'
-            }}>
-              <img src={qrCodeDataUrl} alt="Store QR Code" style={{ width: '120px', height: '120px', borderRadius: '12px' }} />
-              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink)', marginTop: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Scan to visit</div>
+            <div className={styles.qrCard}>
+              <img src={qrCodeDataUrl} alt="Store QR Code" className={styles.qrImg} />
+              <div className={styles.qrLabel}>Scan to visit</div>
             </div>
           )}
         </div>
