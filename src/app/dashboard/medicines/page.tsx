@@ -1,4 +1,4 @@
-import { Search, Filter, Pill, ChevronRight, Hash } from 'lucide-react';
+import { Search, Filter, Pill, ChevronRight, Hash, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import Product from '@/models/Product';
@@ -11,6 +11,11 @@ export default async function MedicinesPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+        <ArrowLeft size={16} />
+        Back to Dashboard
+      </Link>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-slate-100">Indexed Medicines</h2>

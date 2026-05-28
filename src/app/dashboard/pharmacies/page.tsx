@@ -1,4 +1,4 @@
-import { Search, Filter, Store, Clock, AlertCircle, CheckCircle2, ChevronRight, ServerCrash } from 'lucide-react';
+import { Search, Filter, Store, Clock, AlertCircle, CheckCircle2, ChevronRight, ServerCrash, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
@@ -35,6 +35,12 @@ export default async function PharmaciesList() {
   return (
     <div className="space-y-6">
       
+      {/* Top Nav */}
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
+        <ArrowLeft size={16} />
+        Back to Dashboard
+      </Link>
+
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
