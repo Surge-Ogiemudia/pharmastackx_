@@ -466,11 +466,13 @@
   opacity: 0.3;
 }
 .productImgSvg {
+  position: absolute;
   width: 64px;
   height: 64px;
   color: var(--green);
   opacity: 0.6;
   filter: drop-shadow(0 2px 4px rgba(15, 110, 86, 0.08));
+  z-index: 1;
 }
 .productCategoryTag {
   position: absolute;
