@@ -223,17 +223,19 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       <header className={styles.header}>
         <div className={styles.headerInner} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <button 
-              onClick={() => setView?.('orderMedicines')}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '36px', height: '36px', borderRadius: '50%',
-                background: 'rgba(0,0,0,0.04)', border: 'none', cursor: 'pointer',
-                color: 'var(--ink)'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
+            {slug && (
+              <button 
+                onClick={() => setView?.('orderMedicines')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.04)', border: 'none', cursor: 'pointer',
+                  color: 'var(--ink)'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+            )}
             <div className={styles.pharmacyBrand}>
               <div className={styles.pharmacyAvatar}>{slug && pharmacyDetails ? pharmacyDetails.businessName.charAt(0).toUpperCase() : 'PX'}</div>
               <div>

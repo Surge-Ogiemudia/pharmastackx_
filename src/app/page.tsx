@@ -816,7 +816,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             exit={{ opacity: 0 }}
             sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: 0, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+            <Box sx={{ flexGrow: 1 }}>
               <FindMedicinesContent setView={setView} />
             </Box>
           </Box>
