@@ -1,15 +1,37 @@
-import { Search, Filter, ServerCrash, ExternalLink } from 'lucide-react';
+import { Search, Filter, MoreVertical, Store, Clock, AlertCircle, CheckCircle2, ChevronRight, ServerCrash } from 'lucide-react';
 import Link from 'next/link';
+import { dbConnect } from '@/lib/mongoConnect';
+import User from '@/models/User';
+import UploadLog from '@/models/UploadLog';
 
-const mockPharmacies = [
-  { id: 'PHR-001', name: 'Downtown Health Pharmacy', location: 'New York, NY', pos: 'Vend POS', installDate: '2025-10-12', lastSync: '2 mins ago', status: 'Healthy' },
-  { id: 'PHR-002', name: 'MediCare Plus', location: 'Austin, TX', pos: 'Custom CSV', installDate: '2026-01-05', lastSync: '15 mins ago', status: 'Healthy' },
-  { id: 'PHR-003', name: 'Family Rx Hub', location: 'Chicago, IL', pos: 'Square', installDate: '2026-03-22', lastSync: '4 days ago', status: 'Warning' },
-  { id: 'PHR-004', name: 'Oak Street Pharmacy', location: 'Portland, OR', pos: 'Unknown', installDate: '2026-05-28', lastSync: 'Failed', status: 'Critical' },
-  { id: 'PHR-005', name: 'Sunrise Medications', location: 'Miami, FL', pos: 'LightSpeed', installDate: '2025-11-30', lastSync: '10 mins ago', status: 'Healthy' },
-];
+export default async function PharmaciesList() {
+  await dbConnect();
+  const users = await User.find({ role: 'pharmacy' }).lean();
+  
+  const networkData = await Promise.all(users.map(async (user) => {
+    const lastLog = await UploadLog.findOne({ userId: user._id }).sort({ createdAt: -1 });
+    
+    let status = 'healthy';
+    if (!lastLog) status = 'critical';
+    else if (Date.now() - new Date(lastLog.createdAt).getTime() > 24 * 60 * 60 * 1000) status = 'warning';
 
-export default function PharmaciesList() {
+    return {
+      id: user._id.toString(),
+      name: user.pharmacyName || 'Unnamed Pharmacy',
+      location: user.location || 'Unknown',
+      pos: user.posSystem || 'Standard',
+      installedAt: user.createdAt?.toLocaleDateString() || 'N/A',
+      lastSync: lastLog ? new Date(lastLog.createdAt).toLocaleString() : 'Never',
+      status
+    };
+  }));
+
+  const statusStyles = {
+    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    critical: 'bg-red-500/10 text-red-400 border-red-500/20'
+  };
+
   return (
     <div className="space-y-6">
       
@@ -42,53 +64,63 @@ export default function PharmaciesList() {
       {/* Data Table */}
       <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-900 border-b border-slate-800/50 text-slate-400 uppercase tracking-wider text-xs font-semibold">
-              <tr>
-                <th className="px-6 py-4">Pharmacy Name</th>
-                <th className="px-6 py-4">Location</th>
-                <th className="px-6 py-4">POS System</th>
-                <th className="px-6 py-4">Last Sync</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Action</th>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800/50 text-xs uppercase tracking-wider text-slate-500 font-semibold bg-slate-900/20">
+                <th className="p-4 rounded-tl-xl">Pharmacy Name</th>
+                <th className="p-4">Location</th>
+                <th className="p-4">Installed At</th>
+                <th className="p-4">Last Sync</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 rounded-tr-xl"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {mockPharmacies.map((pharmacy) => (
-                <tr key={pharmacy.id} className="hover:bg-slate-800/30 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-200">{pharmacy.name}</div>
-                    <div className="text-xs text-slate-500 mt-1 font-mono">{pharmacy.id}</div>
+              {networkData.length > 0 ? networkData.map((pharmacy) => (
+                <tr key={pharmacy.id} className="hover:bg-slate-800/20 transition-colors group">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700/50">
+                        <Store className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-200">{pharmacy.name}</p>
+                        <p className="text-xs text-slate-500">{pharmacy.pos}</p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-400">{pharmacy.location}</td>
-                  <td className="px-6 py-4 text-slate-300">
-                    <span className="bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700/50 text-xs">
-                      {pharmacy.pos}
-                    </span>
+                  <td className="p-4 text-sm text-slate-400">{pharmacy.location}</td>
+                  <td className="p-4 text-sm text-slate-400">{pharmacy.installedAt}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                      <Clock className="w-4 h-4 text-slate-500" />
+                      {pharmacy.lastSync}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-400">{pharmacy.lastSync}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                      pharmacy.status === 'Healthy' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : pharmacy.status === 'Warning'
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        : 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
-                    }`}>
-                      {pharmacy.status === 'Critical' && <ServerCrash size={12} />}
-                      {pharmacy.status}
-                    </span>
+                  <td className="p-4">
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[pharmacy.status as keyof typeof statusStyles]}`}>
+                      {pharmacy.status === 'healthy' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      {pharmacy.status === 'warning' && <AlertCircle className="w-3.5 h-3.5" />}
+                      {pharmacy.status === 'critical' && <ServerCrash className="w-3.5 h-3.5" />}
+                      {pharmacy.status.charAt(0).toUpperCase() + pharmacy.status.slice(1)}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="p-4 text-right">
                     <Link 
                       href={`/dashboard/pharmacies/${pharmacy.id}`}
-                      className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors opacity-0 group-hover:opacity-100"
+                      className="inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                     >
-                      Details <ExternalLink size={14} />
+                      <ChevronRight className="w-5 h-5" />
                     </Link>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                    No pharmacies found in the network.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
