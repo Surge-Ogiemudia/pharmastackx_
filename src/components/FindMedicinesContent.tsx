@@ -211,7 +211,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const handleAddToCart = (medicine: any) => {
     event({ action: 'add_to_cart', category: 'ecommerce', label: medicine.name, value: medicine.price });
     addToCart(medicine);
-    setToastMsg(`${medicine.name} added to order`);
+    setToastMsg(medicine.name);
     setTimeout(() => setToastMsg(''), 2000);
   };
 
@@ -435,7 +435,11 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
       {/* TOAST */}
       <div className={`${styles.toast} ${toastMsg ? styles.show : ''}`}>
-        {toastMsg}
+        <div className={styles.toastIcon}>✓</div>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: 700 }}>Added to cart</div>
+          <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: 400 }}>{toastMsg}</div>
+        </div>
       </div>
     </div>
   );
