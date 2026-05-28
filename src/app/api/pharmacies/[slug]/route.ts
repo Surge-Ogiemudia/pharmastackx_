@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     await dbConnect();
-    const { slug } = params;
+    const { slug } = await params;
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Slug is required' }, { status: 400 });
