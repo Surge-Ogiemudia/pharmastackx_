@@ -1,67 +1,26 @@
 import { Suspense } from 'react';
-import {
-  Typography,
-  Container,
-  Box,
-  Paper,
-} from '@mui/material';
-import Navbar from '../../components/Navbar';
 import FindMedicinesPage from './FindMedicinesPage';
-
+import styles from './FindMedicines.module.css';
 
 export default function FindMedicines() {
-
   return (
-    <Box sx={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column' 
-    }}>
-      <Navbar />
-
-      {/* Page Header */}
-      <Box sx={{ bgcolor: '#f8f9fa', py: 2, mb: 0 }}>
-        <Container maxWidth="lg">
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              width: '100%',
-              px: 3, 
-              py: 2, 
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #006D5B 0%, #004D40 50%, #00332B 100%)',
-              border: 'none',
-              mb: 0,
-              textAlign: 'center',
-              boxShadow: '0 4px 20px rgba(0, 109, 91, 0.3)'
-            }}
-          >
-            <Typography variant="h5" sx={{ color: '#ffffff', fontWeight: 600 }}>
-              Find Your Medicines
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
-
+    <div className={styles.root}>
       <Suspense fallback={<div>Loading...</div>}>
-      <FindMedicinesPage />
-
-
+        <FindMedicinesPage />
       </Suspense>
 
       {/* Floating WhatsApp Button */}
-      <Box
-        component="a"
+      <a
         href="https://wa.me/2349050006638?text=Hey%20pharmastackx"
         target="_blank"
         rel="noopener noreferrer"
-        sx={{
+        style={{
           position: 'fixed',
           bottom: 49,
           right: 24,
           width: 60,
           height: 60,
-          bgcolor: '#25D366',
+          backgroundColor: '#25D366',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
@@ -69,13 +28,6 @@ export default function FindMedicines() {
           boxShadow: '0 4px 12px rgba(37, 211, 102, 0.4)',
           zIndex: 1000,
           transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'scale(1.1)',
-            boxShadow: '0 6px 20px rgba(37, 211, 102, 0.6)',
-          },
-          '&:active': {
-            transform: 'scale(0.95)',
-          }
         }}
       >
         <svg
@@ -90,74 +42,7 @@ export default function FindMedicines() {
             fill="white"
           />
         </svg>
-      </Box>
-
-      {/* Sleek Footer */}
-      <Box sx={{ 
-        bgcolor: '#e0e0e0', 
-        py: 2, 
-        mt: 'auto',
-        borderTop: '1px solid #d0d0d0'
-      }}>
-        <Container maxWidth="lg">
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            gap: 2
-          }}>
-            <Box sx={{ display: 'flex', gap: 3 }}>
-              <Typography 
-                variant="body2" 
-                component="a"
-                href="/privacy-policy"
-                sx={{ 
-                  color: '#006D5B', 
-                  fontSize: '0.85rem', 
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline' }
-                }}
-              >
-                Privacy Policy
-              </Typography>
-              <Typography 
-                variant="body2" 
-                component="a"
-                href="https://wa.me/2349050066638?text=Hi%2C%20I%20need%20help%20with%20finding%20medicines%20on%20Pharmastackx"
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ 
-                  color: '#006D5B', 
-                  fontSize: '0.85rem', 
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline' }
-                }}
-              >
-                Need Help?
-              </Typography>
-              <Typography 
-                variant="body2" 
-                component="a"
-                href="https://wa.me/2349050066638?text=Hello%2C%20I%20would%20like%20to%20get%20in%20touch%20regarding%20Pharmastackx"
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ 
-                  color: '#006D5B', 
-                  fontSize: '0.85rem', 
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline' }
-                }}
-              >
-                Contact
-              </Typography>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
-    </Box>
+      </a>
+    </div>
   );
 }
