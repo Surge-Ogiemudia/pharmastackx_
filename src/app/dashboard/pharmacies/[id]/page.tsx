@@ -1,3 +1,5 @@
+'use client';
+
 import { ArrowLeft, ServerCrash, Activity, Database, ShoppingCart, RefreshCw, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
