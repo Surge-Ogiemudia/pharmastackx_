@@ -48,7 +48,7 @@ export default function FindMedicinesPage() {
   const [totalProducts, setTotalProducts] = useState(0);
 
   const itemsPerPage = 12;
-  const { cart, addToCart, removeFromCart, updateQuantity, getCartTotal } = useCart(); 
+  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
