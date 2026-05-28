@@ -40,10 +40,11 @@ export async function middleware(request: NextRequest) {
 
 
   if (isSubdomain && pathname === '/') {
-    console.log(`[Middleware] Subdomain root hit. Redirecting to /find-medicines?slug=${slug}`);
-    url.pathname = '/find-medicines';
+    console.log(`[Middleware] Subdomain root hit. Rewriting to /?slug=${slug}&view=findMedicines`);
+    url.pathname = '/';
     url.searchParams.set('slug', slug);
-    return NextResponse.redirect(url);
+    url.searchParams.set('view', 'findMedicines');
+    return NextResponse.rewrite(url);
   }
   
   
