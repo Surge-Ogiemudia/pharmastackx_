@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     let fieldsToSelect = '_id businessName slug businessAddress city state';
     // If this is a request to check for a claimable pharmacy, we must include the email
     if (businessNameQuery) {
-      fieldsToSelect += ' email phone';
+      fieldsToSelect += ' email phoneNumber mobile';
     }
 
     let pharmaciesQuery = User.find(query)

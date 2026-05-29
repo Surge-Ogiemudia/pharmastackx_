@@ -359,9 +359,9 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
               📍 {pharmacyAddress}
             </div>
           ) : null}
-          {pharmacy?.phone ? (
+          {(pharmacy?.phone || pharmacy?.phoneNumber || pharmacy?.mobile) ? (
             <div style={{ fontSize: '12px', color: 'var(--black)', fontWeight: 600, marginBottom: '4px' }}>
-              📞 {pharmacy.phone}
+              📞 {pharmacy?.phone || pharmacy?.phoneNumber || pharmacy?.mobile}
             </div>
           ) : null}
           {pharmacy?.email ? (

@@ -21,6 +21,8 @@ interface PharmacyInfo {
   state?: string;
   email?: string;
   phone?: string;
+  phoneNumber?: string;
+  mobile?: string;
 }
 
 interface Props {
@@ -243,9 +245,9 @@ function PickupView({ pharmacy, pharmacyName, onDone }: { pharmacy: PharmacyInfo
           </Box>
         ) : null}
 
-        {pharmacy?.phone ? (
+        {(pharmacy?.phone || pharmacy?.phoneNumber || pharmacy?.mobile) ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2" sx={{ color: '#444', fontWeight: 600 }}>📞 {pharmacy.phone}</Typography>
+            <Typography variant="body2" sx={{ color: '#444', fontWeight: 600 }}>📞 {pharmacy?.phone || pharmacy?.phoneNumber || pharmacy?.mobile}</Typography>
           </Box>
         ) : null}
 
