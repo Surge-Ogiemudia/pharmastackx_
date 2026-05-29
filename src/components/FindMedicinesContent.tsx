@@ -363,12 +363,25 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
         )}
 
         <div className={styles.sectionHeader}>
-          <div className={styles.sectionTitle}>All medicines</div>
+          <div className={styles.sectionTitle}>
+            {searchQuery ? <>Results for <em>"{searchQuery}"</em></> : 'All medicines'}
+          </div>
           <div className={styles.sectionCount}>{totalProducts} items</div>
         </div>
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+          <div className={styles.productGrid}>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className={styles.skeletonCard}>
+                <div className={styles.skeletonImg} />
+                <div className={styles.skeletonBody}>
+                  <div className={styles.skeletonLine} style={{ width: '70%' }} />
+                  <div className={styles.skeletonLine} style={{ width: '50%' }} />
+                  <div className={styles.skeletonLine} style={{ width: '40%', marginTop: 'auto' }} />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div style={{ textAlign: 'center', color: 'red', padding: '40px' }}>{error}</div>
         ) : medicines.length === 0 ? (
@@ -456,30 +469,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             >
               ← Prev
             </button>
-            <div className={styles.pageNumbers}>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                .reduce((acc: (number | string)[], p, i, arr) => {
-                  if (i > 0 && typeof arr[i - 1] === 'number' && (p as number) - (arr[i - 1] as number) > 1) {
-                    acc.push('...');
-                  }
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, i) =>
-                  p === '...' ? (
-                    <span key={`ellipsis-${i}`} className={styles.pageEllipsis}>…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      className={`${styles.pageNum} ${currentPage === p ? styles.pageActive : ''}`}
-                      onClick={() => { setCurrentPage(p as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-            </div>
+            <div className={styles.pageContext}>Page {currentPage} of {totalPages}</div>
             <button
               className={styles.pageBtn}
               disabled={currentPage === totalPages}
@@ -538,11 +528,14 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
         {cart.length > 0 && (
           <div className={styles.cartFooter}>
+            <button className={styles.continueShopping} onClick={() => setIsCartOpen(false)}>
+              ← Continue shopping
+            </button>
             <div className={styles.cartTotal}>
               <div className={styles.cartTotalLabel}>Total</div>
               <div className={styles.cartTotalAmount}>₦{getCartTotal().toLocaleString()}</div>
             </div>
-            <button 
+            <button
                 className={styles.checkoutBtn}
                 onClick={() => {
                   setIsCartOpen(false);
