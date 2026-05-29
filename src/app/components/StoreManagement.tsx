@@ -716,10 +716,10 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '74%',
+                                  top: '74.7%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '37%',
+                                  width: '36%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'transparent',
                                   borderRadius: 0,
