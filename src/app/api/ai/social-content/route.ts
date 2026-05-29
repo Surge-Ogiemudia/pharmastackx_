@@ -1,8 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 export async function POST(req: NextRequest) {
   const { category, detail, pharmacyName, storeUrl, tagline, photoTags, tone } = await req.json();
 
@@ -10,6 +8,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
   }
 
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY is not set');
+    return NextResponse.json({ message: 'AI service not configured' }, { status: 503 });
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const prompt = `You are a social media content creator for Nigerian pharmacies.
@@ -38,11 +42,15 @@ Return ONLY valid JSON in this exact format:
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON in response');
+    if (!jsonMatch) {
+      console.error('No JSON in Gemini response:', text.slice(0, 200));
+      throw new Error('No JSON in response');
+    }
     const content = JSON.parse(jsonMatch[0]);
     return NextResponse.json(content);
   } catch (e) {
-    console.error('Social content generation error:', e);
-    return NextResponse.json({ message: 'Generation failed' }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('Social content generation error:', msg);
+    return NextResponse.json({ message: `Generation failed: ${msg}` }, { status: 500 });
   }
 }
