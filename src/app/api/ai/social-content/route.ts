@@ -1,13 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Walk from the first '{' to its matching '}', ignoring nested braces inside strings.
+export const maxDuration = 60;
+
 function extractFirstJSON(text: string): string | null {
   const start = text.indexOf('{');
   if (start === -1) return null;
-  let depth = 0;
-  let inString = false;
-  let escape = false;
+  let depth = 0, inString = false, escape = false;
   for (let i = start; i < text.length; i++) {
     const ch = text[i];
     if (escape) { escape = false; continue; }
@@ -21,53 +20,80 @@ function extractFirstJSON(text: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  const { category, detail, pharmacyName, storeUrl, tagline, photoTags } = await req.json();
+  const { category, detail, pharmacyName, storeUrl, tagline, brandPrimary, brandSecondary } = await req.json();
 
   if (!category || !pharmacyName) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
   }
-
   if (!process.env.GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY is not set');
     return NextResponse.json({ message: 'AI service not configured' }, { status: 503 });
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+  const categoryLabel = category.replace(/_/g, ' ');
 
-  const prompt = `You are a social media content creator for Nigerian pharmacies.
-Generate a social media post for a pharmacy called "${pharmacyName}"${tagline ? ` with tagline "${tagline}"` : ''}.
-Their store URL is ${storeUrl || `${pharmacyName.toLowerCase().replace(/\s/g, '')}.psx.ng`}.
+  // ── Generate caption text + post image in parallel ───────────────────────
+  const textPromise = (async () => {
+    const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+    const prompt = `You are a social media content creator for Nigerian pharmacies.
+Write a social media caption for a pharmacy called "${pharmacyName}"${tagline ? ` with tagline "${tagline}"` : ''}.
+Post category: ${categoryLabel}
+${detail ? `Topic: ${detail}` : ''}
 
-Post category: ${category}
-${detail ? `Additional detail: ${detail}` : ''}
-${photoTags?.length ? `Available photo types in their library: ${photoTags.join(', ')}` : ''}
-
-Generate a post that feels authentic, warm, and professional for a Nigerian pharmacy audience.
-Use Nigerian English naturally where appropriate. Keep it relatable and trustworthy.
-
-Return ONLY a single valid JSON object — no markdown, no explanation, nothing else:
+Return ONLY a single valid JSON object, no markdown, no explanation:
 {
-  "headline": "short punchy headline, max 6 words, ALL CAPS",
   "caption": "2-3 sentence caption, warm and engaging, ends with a subtle call to action",
-  "hashtags": ["array", "of", "5-8", "relevant", "hashtags", "no", "hash", "symbol"],
-  "suggestedPhotoTag": "one of: staff | store | product | event | other",
-  "colorMood": "one of: energetic | calm | warm | bold | fresh"
+  "hashtags": ["5-8", "relevant", "hashtags", "no", "hash", "symbol"]
 }`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const json = extractFirstJSON(raw);
+    return json ? JSON.parse(json) : { caption: '', hashtags: [] };
+  })();
+
+  const imagePromise = (async () => {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-preview-image-generation' });
+    const imagePrompt = `Design a stunning, professional social media post image (1:1 square, Instagram-ready) for a Nigerian pharmacy brand.
+
+Pharmacy name: ${pharmacyName}
+${tagline ? `Tagline: ${tagline}` : ''}
+Store URL: ${storeUrl}
+Post theme: ${categoryLabel}
+${detail ? `Topic: ${detail}` : ''}
+Primary brand colour: ${brandPrimary}
+Secondary brand colour: ${brandSecondary}
+
+Visual design requirements:
+- The pharmacy name "${pharmacyName}" must appear prominently, spelled exactly as written
+- Show "${storeUrl}" at the bottom of the image, small but legible
+- Use ${brandPrimary} and ${brandSecondary} as the brand accent colours
+- Premium, modern graphic design — clean layout, strong typography, visual hierarchy
+- Feels like it was made by a professional designer for a high-end Nigerian pharmacy brand
+- No watermarks, no lorem ipsum, no generic clip art
+- One bold focal element (colour block, large text, or lifestyle visual) that draws the eye immediately`;
+
+    const result = await (model as any).generateContent({
+      contents: [{ role: 'user', parts: [{ text: imagePrompt }] }],
+      generationConfig: { responseModalities: ['image'] },
+    });
+
+    const parts = result.response.candidates?.[0]?.content?.parts ?? [];
+    const imgPart = parts.find((p: any) => p.inlineData);
+    if (!imgPart?.inlineData) throw new Error('No image returned by model');
+    return imgPart.inlineData as { data: string; mimeType: string };
+  })();
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const jsonStr = extractFirstJSON(text);
-    if (!jsonStr) {
-      console.error('No JSON found in model response:', text.slice(0, 300));
-      throw new Error('Model did not return JSON');
-    }
-    const content = JSON.parse(jsonStr);
-    return NextResponse.json(content);
+    const [textContent, imageData] = await Promise.all([textPromise, imagePromise]);
+    return NextResponse.json({
+      caption: textContent.caption || '',
+      hashtags: textContent.hashtags || [],
+      imageData: imageData.data,
+      mimeType: imageData.mimeType || 'image/jpeg',
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('Social content generation error:', msg);
+    console.error('Social post generation error:', msg);
     return NextResponse.json({ message: `Generation failed: ${msg}` }, { status: 500 });
   }
 }
