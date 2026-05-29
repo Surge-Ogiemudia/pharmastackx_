@@ -317,7 +317,7 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
 
   const [localStatus, setLocalStatus] = useState(order.status);
   const [completing, setCompleting] = useState(false);
-  const [pharmacy, setPharmacy] = useState<{ businessName?: string; businessAddress?: string; city?: string; state?: string; email?: string; phone?: string } | null>(null);
+  const [pharmacy, setPharmacy] = useState<{ businessName?: string; businessAddress?: string; city?: string; state?: string; email?: string; phone?: string; phoneNumber?: string; mobile?: string } | null>(null);
 
   useEffect(() => {
     if (isPickup && bizName) {
