@@ -30,16 +30,13 @@ const P = '#C84B8F';
 const BORDER = '1px solid rgba(0,0,0,0.06)';
 
 interface GeneratedContent {
-  headline: string;
   caption: string;
   hashtags: string[];
-  suggestedPhotoTag: PhotoTag;
-  colorMood: string;
 }
 
 interface SocialPhoto { url: string; tag: PhotoTag; uploadedAt?: string; }
 
-// ── resize + base64 encode ──────────────────────────────────────────────────
+// ── resize + base64 encode (used for photo library uploads) ────────────────
 async function encodeImage(file: File): Promise<{ data: string; contentType: string; filename: string }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -59,185 +56,6 @@ async function encodeImage(file: File): Promise<{ data: string; contentType: str
     };
     reader.readAsDataURL(file);
   });
-}
-
-// ── canvas post builder ─────────────────────────────────────────────────────
-async function buildPostCanvas(
-  photo: SocialPhoto | null,
-  content: GeneratedContent,
-  pharmacyName: string,
-  storeUrl: string,
-  brandPrimary: string,
-  brandSecondary: string,
-): Promise<HTMLCanvasElement> {
-  await document.fonts.ready;
-  const S = 1080;
-  const canvas = document.createElement('canvas');
-  canvas.width = S; canvas.height = S;
-  const ctx = canvas.getContext('2d')!;
-  const PAD = 60;
-
-  // wrap text helper (sets font before measuring)
-  function wrap(text: string, font: string, maxW: number, maxLines: number): string[] {
-    ctx.font = font;
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let cur = '';
-    for (const w of words) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (ctx.measureText(t).width > maxW) { if (cur) lines.push(cur); cur = w; }
-      else cur = t;
-    }
-    if (cur) lines.push(cur);
-    return lines.slice(0, maxLines);
-  }
-
-  // rounded-rect path helper
-  function rrect(x: number, y: number, w: number, h: number, r: number) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
-  if (photo) {
-    // ── LAYOUT A: photo on top, white card floating up from bottom ────────
-    const PHOTO_H = 550;
-    const CARD_Y = PHOTO_H - 50;
-
-    // Draw photo (cover-fit to top portion)
-    await new Promise<void>((res, rej) => {
-      const img = new Image();
-      img.onload = () => {
-        const tR = S / PHOTO_H;
-        const iR = img.naturalWidth / img.naturalHeight;
-        let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-        if (iR > tR) { sw = sh * tR; sx = (img.naturalWidth - sw) / 2; }
-        else { sh = sw / tR; sy = (img.naturalHeight - sh) / 2; }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, S, PHOTO_H);
-        res();
-      };
-      img.onerror = rej;
-      img.src = photo.url;
-    });
-
-    // White card with rounded top corners
-    ctx.fillStyle = '#ffffff';
-    rrect(0, CARD_Y, S, S - CARD_Y + 2, 40);
-    ctx.fill();
-
-    // Thin brand colour strip at very top of card
-    ctx.fillStyle = brandPrimary;
-    ctx.fillRect(PAD, CARD_Y + 34, 52, 4);
-
-    // Layout text
-    let y = CARD_Y + 52;
-
-    ctx.font = `600 20px 'Poppins', sans-serif`;
-    ctx.fillStyle = brandPrimary;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(pharmacyName.toUpperCase(), PAD, y);
-    y += 40;
-
-    const hlFont = `800 56px 'Poppins', sans-serif`;
-    for (const l of wrap(content.headline, hlFont, S - PAD * 2, 2)) {
-      ctx.font = hlFont; ctx.fillStyle = '#111'; ctx.fillText(l, PAD, y); y += 66;
-    }
-    y += 6;
-
-    const capFont = `400 25px 'Sora', sans-serif`;
-    for (const l of wrap(content.caption, capFont, S - PAD * 2, 3)) {
-      ctx.font = capFont; ctx.fillStyle = '#555'; ctx.fillText(l, PAD, y); y += 34;
-    }
-    y += 10;
-
-    ctx.font = `600 18px 'Sora', sans-serif`;
-    ctx.fillStyle = brandPrimary;
-    ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), PAD, y);
-
-    // URL pinned to bottom
-    ctx.font = `500 20px 'Sora', sans-serif`;
-    ctx.fillStyle = '#bbb';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`⊕  ${storeUrl}`, PAD, S - 42);
-
-  } else {
-    // ── LAYOUT B: brand hero block (top), white text area (bottom) ────────
-
-    // Off-white background
-    ctx.fillStyle = '#f8f8f6';
-    ctx.fillRect(0, 0, S, S);
-
-    // Brand colour hero block with diagonal bottom edge
-    ctx.fillStyle = brandPrimary;
-    ctx.beginPath();
-    ctx.moveTo(0, 0); ctx.lineTo(S, 0); ctx.lineTo(S, 350); ctx.lineTo(0, 415);
-    ctx.closePath();
-    ctx.fill();
-
-    // Decorative circle inside hero (semi-transparent secondary)
-    ctx.fillStyle = brandSecondary + '30';
-    ctx.beginPath();
-    ctx.arc(S - 90, -70, 280, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Smaller accent circle
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    ctx.beginPath();
-    ctx.arc(100, 340, 180, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Pharmacy name (white, inside hero block)
-    ctx.font = `700 28px 'Poppins', sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(pharmacyName.toUpperCase(), PAD, 76);
-
-    // Store URL small, under name
-    ctx.font = `400 20px 'Sora', sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillText(storeUrl, PAD, 120);
-
-    // Dot row (decorative)
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath(); ctx.arc(PAD + i * 20, 230, 4, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // Text content below hero block
-    let y = 460;
-
-    const hlFont = `800 62px 'Poppins', sans-serif`;
-    for (const l of wrap(content.headline, hlFont, S - PAD * 2, 2)) {
-      ctx.font = hlFont; ctx.fillStyle = '#111'; ctx.fillText(l, PAD, y); y += 74;
-    }
-    y += 8;
-
-    const capFont = `400 27px 'Sora', sans-serif`;
-    for (const l of wrap(content.caption, capFont, S - PAD * 2, 3)) {
-      ctx.font = capFont; ctx.fillStyle = '#555'; ctx.fillText(l, PAD, y); y += 36;
-    }
-    y += 16;
-
-    ctx.font = `600 20px 'Sora', sans-serif`;
-    ctx.fillStyle = brandPrimary;
-    ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), PAD, y);
-
-    // Bottom brand accent bar
-    ctx.fillStyle = brandSecondary;
-    ctx.fillRect(0, S - 10, S, 10);
-  }
-
-  return canvas;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -263,7 +81,6 @@ export default function SocialContent() {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<GeneratedContent | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [buildingCanvas, setBuildingCanvas] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
 
@@ -320,33 +137,23 @@ export default function SocialContent() {
     setPreviewUrl(null);
     setGenerateError(null);
 
-    const pharmacyName = user?.businessName || user?.username || 'My Pharmacy';
-    const storeUrl = `${user?.slug || 'pharmacy'}.psx.ng`;
-
     try {
       const res = await axios.post('/api/ai/social-content', {
         category: selectedCategory,
         detail: postDetail || undefined,
-        pharmacyName,
-        storeUrl,
+        pharmacyName: user?.businessName || user?.username || 'My Pharmacy',
+        storeUrl: `${user?.slug || 'pharmacy'}.psx.ng`,
         tagline,
-        photoTags: [...new Set(photos.map(p => p.tag))],
+        brandPrimary,
+        brandSecondary,
       });
-      const content: GeneratedContent = res.data;
-      setGenerated(content);
-      setGenerating(false);
-
-      // Build canvas
-      setBuildingCanvas(true);
-      try {
-        const suggestedPhoto = photos.find(p => p.tag === content.suggestedPhotoTag) || photos[0] || null;
-        const canvas = await buildPostCanvas(suggestedPhoto, content, pharmacyName, storeUrl, brandPrimary, brandSecondary);
-        setPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
-      } finally { setBuildingCanvas(false); }
+      const { caption, hashtags, imageData, mimeType } = res.data;
+      setGenerated({ caption, hashtags });
+      setPreviewUrl(`data:${mimeType};base64,${imageData}`);
     } catch (e: unknown) {
       const axiosMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      const errMsg = (e instanceof Error) ? e.message : String(e);
-      setGenerateError(axiosMsg || errMsg || 'Could not generate post. Please try again.');
+      setGenerateError(axiosMsg || (e instanceof Error ? e.message : 'Could not generate post. Please try again.'));
+    } finally {
       setGenerating(false);
     }
   };
@@ -597,7 +404,7 @@ export default function SocialContent() {
 
       {/* ── POST PREVIEW ──────────────────────────────────────────────── */}
       <AnimatePresence>
-        {(generated || buildingCanvas) && (
+        {generated && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -605,34 +412,31 @@ export default function SocialContent() {
             transition={{ duration: 0.25 }}
           >
             <Box sx={{ ...cardSx, p: 0, overflow: 'hidden' }}>
-              {/* Preview image */}
+              {/* AI-generated image */}
               <Box sx={{ aspectRatio: '1/1', bgcolor: '#f0f0ee' }}>
-                {buildingCanvas ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
-                    <CircularProgress sx={{ color: G }} size={28} />
-                  </Box>
-                ) : previewUrl ? (
-                  <img src={previewUrl} style={{ width: '100%', display: 'block' }} />
-                ) : null}
+                {previewUrl
+                  ? <img src={previewUrl} style={{ width: '100%', display: 'block' }} />
+                  : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
+                      <CircularProgress sx={{ color: G }} size={28} />
+                    </Box>
+                }
               </Box>
 
-              {/* Caption */}
-              {generated && (
-                <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                  <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6 }}>
-                    {generated.caption}
-                  </Typography>
-                  <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
-                    {generated.hashtags.slice(0, 5).map(h => `#${h}`).join(' ')}
-                  </Typography>
-                </Box>
-              )}
+              {/* Caption for sharing */}
+              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6 }}>
+                  {generated.caption}
+                </Typography>
+                <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
+                  {generated.hashtags.slice(0, 5).map(h => `#${h}`).join(' ')}
+                </Typography>
+              </Box>
 
               {/* Post button */}
               <Box sx={{ px: 2, pb: 2, pt: 1.5 }}>
                 <Button
                   fullWidth
-                  disabled={buildingCanvas || !previewUrl}
+                  disabled={!previewUrl}
                   onClick={handlePost}
                   startIcon={<Share sx={{ fontSize: '16px' }} />}
                   sx={{
