@@ -838,7 +838,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {/* Overlay: store URL pill — just below QR bottom (~87.5%) */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '88.2%',
+                                top: '88.8%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 bgcolor: '#f6f5f4',
