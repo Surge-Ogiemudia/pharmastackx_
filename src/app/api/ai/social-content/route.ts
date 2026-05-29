@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
-  const { category, detail, pharmacyName, storeUrl, tagline, photoTags } = await req.json();
+  const { category, detail, pharmacyName, storeUrl, tagline, photoTags, tone } = await req.json();
 
   if (!category || !pharmacyName) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
@@ -19,9 +19,11 @@ Their store URL is ${storeUrl || `${pharmacyName.toLowerCase().replace(/\s/g, ''
 Post category: ${category}
 ${detail ? `Additional detail: ${detail}` : ''}
 ${photoTags?.length ? `Available photo types in their library: ${photoTags.join(', ')}` : ''}
+${tone ? `Tone / angle for this variation: ${tone}` : ''}
 
 Generate a post that feels authentic, warm, and professional for a Nigerian pharmacy audience.
 Use Nigerian English naturally where appropriate. Keep it relatable and trustworthy.
+Make this post feel distinctly different from other variations — different angle, different words.
 
 Return ONLY valid JSON in this exact format:
 {
