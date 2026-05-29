@@ -285,7 +285,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         className="activity-dashboard sora"
                     >
                         {/* ── Top back button → home ── */}
-                        <div onClick={() => setView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '16px', fontSize: '13px', fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: '1.5px', transition: 'opacity 0.2s' }}>
+                        <div onClick={() => setView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '16px', marginTop: '48px', fontSize: '13px', fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: '1.5px', transition: 'opacity 0.2s' }}>
                             <div style={{ background: '#0F6E56', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 2px 8px rgba(15,110,86,0.3)', flexShrink: 0 }}>
                                 <span style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: 1 }}>←</span>
                             </div>

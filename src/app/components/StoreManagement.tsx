@@ -50,7 +50,7 @@ interface StockItem {
 export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const { user, isLoading: sessionLoading, refreshSession } = useSession();
   const [selectedTab, setSelectedTab] = useState(0); // 0: Storefront, 1: Social, 2: Orders
-  const [storefrontSection, setStorefrontSection] = useState<'upload' | 'stock' | null>(null);
+  const [storefrontView, setStorefrontView] = useState<'share' | 'upload' | 'stock'>('share');
   const [userBusinessName, setUserBusinessName] = useState('');
   const [userSlug, setUserSlug] = useState('');
   
@@ -477,43 +477,13 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
       color: COLORS.text
     }}>
       
-      {/* HEADER SECTION */}
-      <Box sx={{ 
-        px: { xs: 2.5, sm: 4 },
-        py: 0,
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'flex-start',
-        position: 'relative',
-        mb: 0
-      }}>
-        {/* LEFT: BACK & PROFILE */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <IconButton 
-            onClick={() => onBack ? onBack() : window.history.back()}
-            sx={{ 
-              width: 44,
-              height: 44,
-              bgcolor: 'white', 
-              border: `1px solid #e8e8e8`,
-              borderRadius: '50%',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.03)' }
-            }}
-          >
-            <ArrowBackIcon sx={{ color: 'var(--gray)', fontSize: 18 }} />
-          </IconButton>
-          <Typography sx={{ color: 'var(--gray)', fontSize: '15px', fontWeight: 500 }}>
-            Back
-          </Typography>
-        </Box>
-      </Box>
-
       {/* TABS SECTION (Underlined) */}
-      <Box sx={{ 
-        display: 'flex', 
+      <Box sx={{
+        display: 'flex',
         borderBottom: `1px solid ${COLORS.border}`,
         mb: 2,
-        px: { xs: 2.5, sm: 4 }
+        px: { xs: 2.5, sm: 4 },
+        pt: 1.5
       }}>
         {[
           { id: 0, label: 'Storefront' },
@@ -550,152 +520,124 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
             {/* TAB 0: STOREFRONT */}
             {selectedTab === 0 && (
               <motion.div key="tab0" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <Box sx={{ 
-                  background: '#0F6E56', 
-                  borderRadius: '24px', 
-                  padding: { xs: '24px 20px', sm: '32px' }, 
+                {/* GREEN HERO CARD */}
+                <Box sx={{
+                  background: '#0F6E56',
+                  borderRadius: '24px',
+                  padding: { xs: '24px 20px', sm: '32px' },
                   color: '#fff',
                   boxShadow: '0 10px 40px rgba(15, 110, 86, 0.15)',
                   position: 'relative',
                   overflow: 'hidden',
                   mb: 2
                 }}>
-                  {/* Decorative circle */}
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: -40, 
-                    right: -40, 
-                    width: 120, 
-                    height: 120, 
-                    bgcolor: 'rgba(255,255,255,0.05)', 
-                    borderRadius: '50%' 
-                  }} />
-
+                  <Box sx={{ position: 'absolute', top: -40, right: -40, width: 120, height: 120, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
                   <Typography sx={{ fontSize: '10px', fontWeight: 800, opacity: 0.5, letterSpacing: '1.2px', textTransform: 'uppercase', mb: 1.5 }}>
                     YOUR {user?.role === 'pharmacy' ? 'PHARMACY' : 'PHARMACIST'} STORE
                   </Typography>
-                  
                   <Box sx={{ mb: 1.5 }}>
-                    <Typography className="fraunces" sx={{ 
-                      fontSize: { xs: '24px', sm: '32px' }, 
-                      fontWeight: 900, 
-                      lineHeight: 0.85,
-                      letterSpacing: '-1.2px',
-                      maxWidth: '100%',
-                      wordWrap: 'break-word'
-                    }}>
+                    <Typography className="fraunces" sx={{ fontSize: { xs: '24px', sm: '32px' }, fontWeight: 900, lineHeight: 0.85, letterSpacing: '-1.2px', maxWidth: '100%', wordWrap: 'break-word' }}>
                       {userBusinessName?.split(' ')[0]} <em style={{ fontStyle: 'italic', fontWeight: 900, opacity: 0.9 }}>{userBusinessName?.split(' ').slice(1).join(' ')}</em>
                     </Typography>
                   </Box>
-
-                  {/* URL BOX */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    background: 'rgba(0,0,0,0.15)', 
-                    borderRadius: '12px', 
-                    padding: '12px 16px', 
-                    mb: 2.5,
-                    border: '1px solid rgba(255,255,255,0.05)',
-                  }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.15)', borderRadius: '12px', padding: '12px 16px', mb: 2.5, border: '1px solid rgba(255,255,255,0.05)' }}>
                     <Typography sx={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--sora)' }}>
                       {userSlug}<span style={{ opacity: 0.4 }}>.psx.ng</span>
                     </Typography>
-                    <Typography 
-                      onClick={handleCopyUrl}
-                      sx={{ 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        opacity: 0.5, 
-                        cursor: 'pointer',
-                        '&:hover': { opacity: 0.9 }
-                      }}
-                    >
+                    <Typography onClick={handleCopyUrl} sx={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.9 } }}>
                       {copied ? 'Copied' : 'Copy link'}
                     </Typography>
                   </Box>
-
-                  {/* ACTION BUTTONS */}
+                  {/* SUB-TAB BUTTONS */}
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button 
-                      fullWidth
-                      onClick={handleCopyUrl}
-                      sx={{ 
-                        bgcolor: 'white', 
-                        color: '#0F6E56', 
-                        borderRadius: '10px', 
-                        py: 1.3, 
-                        px: 0,
-                        fontSize: '11px', 
-                        fontWeight: 900,
-                        textTransform: 'none',
-                        fontFamily: 'var(--sora)',
-                        whiteSpace: 'nowrap',
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: '#fff', opacity: 0.9, boxShadow: 'none' }
-                      }}
-                    >
-                      Share store
-                    </Button>
-                    <Button
-                      fullWidth
-                      onClick={() => setStorefrontSection(storefrontSection === 'upload' ? null : 'upload')}
-                      sx={{
-                        bgcolor: storefrontSection === 'upload' ? 'white' : 'rgba(255,255,255,0.06)',
-                        color: storefrontSection === 'upload' ? '#0F6E56' : 'white',
-                        borderRadius: '10px',
-                        py: 1.3,
-                        px: 0,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        fontFamily: 'var(--sora)',
-                        whiteSpace: 'nowrap',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        '&:hover': { bgcolor: storefrontSection === 'upload' ? '#f5f5f5' : 'rgba(255,255,255,0.15)' }
-                      }}
-                    >
-                      Upload
-                    </Button>
-                    <Button
-                      fullWidth
-                      onClick={() => setStorefrontSection(storefrontSection === 'stock' ? null : 'stock')}
-                      sx={{
-                        bgcolor: storefrontSection === 'stock' ? 'white' : 'rgba(255,255,255,0.06)',
-                        color: storefrontSection === 'stock' ? '#0F6E56' : 'white',
-                        borderRadius: '100px',
-                        py: 1.3,
-                        px: 0,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        fontFamily: 'var(--sora)',
-                        whiteSpace: 'nowrap',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        '&:hover': { bgcolor: storefrontSection === 'stock' ? '#f5f5f5' : 'rgba(255,255,255,0.15)' }
-                      }}
-                    >
-                      Stock
-                    </Button>
+                    {(['share', 'upload', 'stock'] as const).map((v) => (
+                      <Button
+                        key={v}
+                        fullWidth
+                        onClick={() => setStorefrontView(v)}
+                        sx={{
+                          bgcolor: storefrontView === v ? 'white' : 'rgba(255,255,255,0.06)',
+                          color: storefrontView === v ? '#0F6E56' : 'white',
+                          borderRadius: '10px',
+                          py: 1.3,
+                          px: 0,
+                          fontSize: '11px',
+                          fontWeight: storefrontView === v ? 900 : 700,
+                          textTransform: 'none',
+                          fontFamily: 'var(--sora)',
+                          whiteSpace: 'nowrap',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          boxShadow: 'none',
+                          transition: 'all 0.2s',
+                          '&:hover': { bgcolor: storefrontView === v ? '#f5f5f5' : 'rgba(255,255,255,0.15)', boxShadow: 'none' }
+                        }}
+                      >
+                        {v === 'share' ? 'Share store' : v === 'upload' ? 'Upload' : 'Stock'}
+                      </Button>
+                    ))}
                   </Box>
                 </Box>
 
-                {/* INLINE UPLOAD SECTION */}
-                <AnimatePresence>
-                  {storefrontSection === 'upload' && (
-                    <motion.div key="sf-upload" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ marginBottom: '16px' }}>
-                      <Box sx={{ mb: 2, px: 0.5 }}>
+                {/* SUB-TAB VIEWS */}
+                <AnimatePresence mode="wait">
+
+                  {/* SHARE STORE VIEW */}
+                  {storefrontView === 'share' && (
+                    <motion.div key="sf-share" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.8, pb: 2 }}>
+                        <Box>
+                          <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '0.8px', mb: 0.8, textTransform: 'uppercase' }}>STORE LOCATION</Typography>
+                          <Box sx={{ background: 'white', borderRadius: '20px', padding: '12px', border: '1px solid #eee', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                            <Box sx={{ height: '90px', width: '100%', bgcolor: '#EBF7F2', borderRadius: '12px', position: 'relative', mb: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: `linear-gradient(#dcf0e8 1px, transparent 1px), linear-gradient(90deg, #dcf0e8 1px, transparent 1px)`, backgroundSize: '20px 20px' }}>
+                              <Box sx={{ width: 28, height: 28, bgcolor: 'rgba(15,110,86,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Box sx={{ width: 10, height: 10, bgcolor: '#0F6E56', borderRadius: '50%', border: '2.5px solid white' }} />
+                              </Box>
+                            </Box>
+                            <Typography sx={{ fontSize: '10px', color: 'rgba(0,0,0,0.3)', mb: 1.2, fontWeight: 500 }}>
+                              {user?.businessCoordinates?.latitude ? (
+                                <>Lat: {user.businessCoordinates.latitude.toFixed(4)}, Lon: {user.businessCoordinates.longitude?.toFixed(4)} · {user.stateOfPractice || user.city || 'Unknown Area'}</>
+                              ) : (
+                                <>Location not set · {user?.city || 'Unknown Area'}</>
+                              )}
+                            </Typography>
+                            <Button type="button" fullWidth onClick={(e) => handleGetLocation(e)} sx={{ bgcolor: '#E1F5EE', color: '#0F6E56', borderRadius: '100px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#d4ece3', boxShadow: 'none' } }}>
+                              Update location
+                            </Button>
+                          </Box>
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '0.8px', mb: 0.8, textTransform: 'uppercase' }}>STORE FLYER</Typography>
+                          <Box sx={{ background: 'white', borderRadius: '20px', padding: '12px', border: '1px solid #eee', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                            <Box sx={{ background: '#0F6E56', borderRadius: '16px', padding: '16px', color: 'white', position: 'relative', mb: 1.2, overflow: 'hidden' }}>
+                              <Typography sx={{ fontSize: '11px', fontWeight: 900, mb: 1 }}>PharmaStack<span style={{ color: '#FF4D97' }}>X</span></Typography>
+                              <Typography className="fraunces" sx={{ fontSize: '16px', fontWeight: 900, lineHeight: 1.2, mb: 0.8, maxWidth: '180px' }}>
+                                Find medicines at <em style={{ fontStyle: 'italic', opacity: 0.9 }}>{userBusinessName}'s</em> store.
+                              </Typography>
+                              <Typography sx={{ fontSize: '10px', opacity: 0.5, fontWeight: 500 }}>{userSlug}.psx.ng</Typography>
+                              <Box sx={{ position: 'absolute', bottom: 15, right: 15, width: 44, height: 44, bgcolor: 'white', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', p: '2px' }}>
+                                {qrCodeDataUrl ? <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: '4px' }} /> : <Box sx={{ width: 10, height: 10, bgcolor: '#eee', borderRadius: '50%' }} />}
+                              </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button fullWidth sx={{ bgcolor: '#E1F5EE', color: '#0F6E56', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#d4ece3' } }}>Download flyer</Button>
+                              <Button fullWidth sx={{ bgcolor: '#FDF2F5', color: '#FF4D97', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#fbe4eb' } }}>Share flyer</Button>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </motion.div>
+                  )}
+
+                  {/* UPLOAD VIEW */}
+                  {storefrontView === 'upload' && (
+                    <motion.div key="sf-upload" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                      <Box sx={{ mb: 2.5, px: 0.5 }}>
                         <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.4)', fontWeight: 500, lineHeight: 1.5, maxWidth: '300px' }}>
-                          Add medicines to your store one at a time or upload in bulk using a CSV file. Patients will see these in your store at
-                          <span style={{ color: COLORS.green, fontWeight: 700, marginLeft: '4px' }}>{userSlug}.psx.ng</span>
+                          Add medicines to your store one at a time or upload in bulk using a CSV file. Patients will see these at <span style={{ color: COLORS.green, fontWeight: 700 }}>{userSlug}.psx.ng</span>
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <Box
-                          onClick={() => { setShowUploadForm(!showUploadForm); setShowCsvUpload(false); }}
-                          sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}
-                        >
+                        <Box onClick={() => { setShowUploadForm(!showUploadForm); setShowCsvUpload(false); }} sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ width: 56, height: 56, bgcolor: '#EBF7F2', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Box sx={{ width: 22, height: 22, border: '2.5px solid #0F6E56', borderRadius: '4px', opacity: 0.8 }} />
@@ -707,10 +649,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                           </Box>
                           <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>›</Typography>
                         </Box>
-                        <Box
-                          onClick={() => { setShowCsvUpload(!showCsvUpload); setShowUploadForm(false); }}
-                          sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}
-                        >
+                        <Box onClick={() => { setShowCsvUpload(!showCsvUpload); setShowUploadForm(false); }} sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ width: 56, height: 56, bgcolor: '#FDF2F5', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Box sx={{ width: 22, height: 22, border: '2.5px solid #FF4D97', borderRadius: '4px', opacity: 0.8 }} />
@@ -762,7 +701,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                             <Box>
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>MEDICINE IMAGE</Typography>
                               <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageChange} hidden />
-                              <Box onClick={() => fileInputRef.current?.click()} sx={{ border: '1.5px dashed #ddd', borderRadius: '24px', py: formValues.imageUrl ? 2 : 4, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#F9FBFB', cursor: 'pointer', overflow: 'hidden', position: 'relative', transition: 'all 0.2s', '&:hover': { borderColor: '#0F6E56', bgcolor: '#f0f7f4' } }}>
+                              <Box onClick={() => fileInputRef.current?.click()} sx={{ border: '1.5px dashed #ddd', borderRadius: '24px', py: formValues.imageUrl ? 2 : 4, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#F9FBFB', cursor: 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { borderColor: '#0F6E56', bgcolor: '#f0f7f4' } }}>
                                 {formValues.imageUrl ? (
                                   <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                                     <img src={formValues.imageUrl} style={{ width: '100px', height: '100px', objectFit: 'contain', borderRadius: '12px' }} alt="Preview" />
@@ -794,8 +733,8 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                             Name, Active Ingredient, Category, Price required.<br />
                             <span style={{ opacity: 0.8 }}>Image column optional — add URL or leave blank.</span>
                           </Typography>
-                          <input type="file" id="bulk-stock-file-sf" style={{ display: 'none' }} onChange={handleBulkFileUpload} />
-                          <label htmlFor="bulk-stock-file-sf">
+                          <input type="file" id="bulk-stock-file" style={{ display: 'none' }} onChange={handleBulkFileUpload} />
+                          <label htmlFor="bulk-stock-file">
                             <Button component="span" variant="contained" sx={{ bgcolor: COLORS.pink, color: 'white', borderRadius: '14px', px: 4, py: 1.6, fontSize: '14px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#e04585', boxShadow: 'none' } }}>Choose CSV file</Button>
                           </label>
                           {isUploading && <CircularProgress size={20} sx={{ display: 'block', margin: '20px auto', color: COLORS.pink }} />}
@@ -806,12 +745,10 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                       )}
                     </motion.div>
                   )}
-                </AnimatePresence>
 
-                {/* INLINE STOCK SECTION */}
-                <AnimatePresence>
-                  {storefrontSection === 'stock' && (
-                    <motion.div key="sf-stock" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ marginBottom: '16px' }}>
+                  {/* STOCK VIEW */}
+                  {storefrontView === 'stock' && (
+                    <motion.div key="sf-stock" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                       <Box sx={{ height: 3, mb: 1, borderRadius: '10px', overflow: 'hidden' }}>
                         {loadingStock && <LinearProgress color="primary" sx={{ bgcolor: '#EBF7F2', '& .MuiLinearProgress-bar': { bgcolor: '#0F6E56' } }} />}
                       </Box>
@@ -866,7 +803,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                             </Button>
                           </Box>
                         )}
-                        <Box sx={{ position: 'relative', mt: 2, mb: 2, mx: 'auto', width: '100%', bgcolor: '#0F6E56', p: 1.2, px: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '24px', color: 'white', boxShadow: '0 8px 30px rgba(0,110,86,0.12)' }}>
+                        <Box sx={{ mt: 2, mb: 2, bgcolor: '#0F6E56', p: 1.2, px: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '24px', color: 'white', boxShadow: '0 8px 30px rgba(0,110,86,0.12)' }}>
                           <Box>
                             <Typography sx={{ fontSize: '14px', fontWeight: 800 }}>{isStorePublished ? 'Store is LIVE' : 'Ready to publish'}</Typography>
                             <Typography sx={{ fontSize: '10.5px', opacity: 0.8 }}>{stockStats.published} items ready · {stockStats.attention} need fixing</Typography>
@@ -878,692 +815,31 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                       </Box>
                     </motion.div>
                   )}
+
                 </AnimatePresence>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.8, pb: 2 }}>
-                  {/* STORE LOCATION SECTION */}
-                  <Box>
-                    <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '0.8px', mb: 0.8, textTransform: 'uppercase' }}>
-                      STORE LOCATION
-                    </Typography>
-                    <Box sx={{ 
-                      background: 'white', 
-                      borderRadius: '20px', 
-                      padding: '12px', 
-                      border: '1px solid #eee',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
-                    }}>
-                      <Box sx={{ 
-                        height: '90px', 
-                        width: '100%', 
-                        bgcolor: '#EBF7F2', 
-                        borderRadius: '12px',
-                        position: 'relative',
-                        mb: 1.2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundImage: `linear-gradient(#dcf0e8 1px, transparent 1px), linear-gradient(90deg, #dcf0e8 1px, transparent 1px)`,
-                        backgroundSize: '20px 20px'
-                      }}>
-                        <Box sx={{ 
-                          width: 28, 
-                          height: 28, 
-                          bgcolor: 'rgba(15,110,86,0.15)', 
-                          borderRadius: '50%', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center' 
-                        }}>
-                          <Box sx={{ width: 10, height: 10, bgcolor: '#0F6E56', borderRadius: '50%', border: '2.5px solid white' }} />
-                        </Box>
-                      </Box>
-                      <Typography sx={{ fontSize: '10px', color: 'rgba(0,0,0,0.3)', mb: 1.2, fontWeight: 500 }}>
-                        {user?.businessCoordinates?.latitude ? (
-                          <>Lat: {user.businessCoordinates.latitude.toFixed(4)}, Lon: {user.businessCoordinates.longitude?.toFixed(4)} · {user.stateOfPractice || user.city || 'Unknown Area'}</>
-                        ) : (
-                          <>Location not set · {user?.city || 'Unknown Area'}</>
-                        )}
-                      </Typography>
-                      <Button 
-                        type="button"
-                        fullWidth
-                        onClick={(e) => handleGetLocation(e)}
-                        sx={{ 
-                          bgcolor: '#E1F5EE', 
-                          color: '#0F6E56', 
-                          borderRadius: '100px', 
-                          py: 1.2, 
-                          fontSize: '13px', 
-                          fontWeight: 700,
-                          textTransform: 'none',
-                          boxShadow: 'none',
-                          '&:hover': { bgcolor: '#d4ece3', boxShadow: 'none' }
-                        }}
-                      >
-                        Update location
-                      </Button>
-                    </Box>
-                  </Box>
-
-                  {/* STORE FLYER SECTION */}
-                  <Box>
-                    <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '0.8px', mb: 0.8, textTransform: 'uppercase' }}>
-                      STORE FLYER
-                    </Typography>
-                    <Box sx={{ 
-                      background: 'white', 
-                      borderRadius: '20px', 
-                      padding: '12px', 
-                      border: '1px solid #eee',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
-                    }}>
-                      <Box sx={{ 
-                        background: '#0F6E56', 
-                        borderRadius: '16px', 
-                        padding: '16px', 
-                        color: 'white',
-                        position: 'relative',
-                        mb: 1.2,
-                        overflow: 'hidden'
-                      }}>
-                        <Typography sx={{ fontSize: '11px', fontWeight: 900, mb: 1 }}>
-                          PharmaStack<span style={{ color: '#FF4D97' }}>X</span>
-                        </Typography>
-                        <Typography className="fraunces" sx={{ fontSize: '16px', fontWeight: 900, lineHeight: 1.2, mb: 0.8, maxWidth: '180px' }}>
-                          Find medicines at <em style={{ fontStyle: 'italic', opacity: 0.9 }}>{userBusinessName}'s</em> store.
-                        </Typography>
-                        <Typography sx={{ fontSize: '10px', opacity: 0.5, fontWeight: 500 }}>
-                          {userSlug}.psx.ng
-                        </Typography>
-                        <Box sx={{ 
-                          position: 'absolute', 
-                          bottom: 15, 
-                          right: 15, 
-                          width: 44, 
-                          height: 44, 
-                          bgcolor: 'white', 
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          p: '2px'
-                        }}>
-                          {qrCodeDataUrl ? (
-                            <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: '4px' }} />
-                          ) : (
-                            <Box sx={{ width: 10, height: 10, bgcolor: '#eee', borderRadius: '50%' }} />
-                          )}
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button 
-                          fullWidth
-                          sx={{ 
-                            bgcolor: '#E1F5EE', 
-                            color: '#0F6E56', 
-                            borderRadius: '10px', 
-                            py: 1.2, 
-                            fontSize: '13px', 
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            boxShadow: 'none',
-                            '&:hover': { bgcolor: '#d4ece3' }
-                          }}
-                        >
-                          Download flyer
-                        </Button>
-                        <Button 
-                          fullWidth
-                          sx={{ 
-                            bgcolor: '#FDF2F5', 
-                            color: '#FF4D97', 
-                            borderRadius: '10px', 
-                            py: 1.2, 
-                            fontSize: '13px', 
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            boxShadow: 'none',
-                            '&:hover': { bgcolor: '#fbe4eb' }
-                          }}
-                        >
-                          Share flyer
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Box>
-                </Box>
               </motion.div>
             )}
 
-            {/* TAB 1: UPLOAD */}
+            {/* TAB 1: SOCIAL */}
             {selectedTab === 1 && (
               <motion.div key="tab1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <Box sx={{ mb: 3.5, px: 0.5 }}>
                   <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.4)', fontWeight: 500, lineHeight: 1.5, maxWidth: '300px' }}>
-                    Add medicines to your store one at a time or upload in bulk using a CSV file. Patients will see these in your store at 
-                    <span style={{ color: COLORS.green, fontWeight: 700, marginLeft: '4px' }}>{userSlug}.psx.ng</span>
+                    Social content coming soon.
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  {/* SINGLE ITEM CARD */}
-                  <Box 
-                    onClick={() => { setShowUploadForm(!showUploadForm); setShowCsvUpload(false); }}
-                    sx={{ 
-                      background: 'white', 
-                      borderRadius: '24px', 
-                      padding: '20px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      border: '1px solid #eee',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{ 
-                        width: 56, 
-                        height: 56, 
-                        bgcolor: '#EBF7F2', 
-                        borderRadius: '16px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center' 
-                      }}>
-                        <Box sx={{ width: 22, height: 22, border: '2.5px solid #0F6E56', borderRadius: '4px', opacity: 0.8 }} />
-                      </Box>
-                      <Box>
-                        <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.5 }}>
-                          Add single item
-                        </Typography>
-                        <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>
-                          Add one medicine at a time with image, price and stock details.
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>
-                      ›
-                    </Typography>
-                  </Box>
-
-                  {/* BULK UPLOAD CARD */}
-                  <Box 
-                    onClick={() => { setShowCsvUpload(!showCsvUpload); setShowUploadForm(false); }}
-                    sx={{ 
-                      background: 'white', 
-                      borderRadius: '24px', 
-                      padding: '20px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      border: '1px solid #eee',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{ 
-                        width: 56, 
-                        height: 56, 
-                        bgcolor: '#FDF2F5', 
-                        borderRadius: '16px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center' 
-                      }}>
-                        <Box sx={{ width: 22, height: 22, border: '2.5px solid #FF4D97', borderRadius: '4px', opacity: 0.8 }} />
-                      </Box>
-                      <Box>
-                        <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.5 }}>
-                          Bulk upload via CSV
-                        </Typography>
-                        <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>
-                          Upload hundreds of medicines at once using a spreadsheet file.
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>
-                      ›
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {showUploadForm && (
-                  <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ background: 'white', padding: '30px', borderRadius: '30px', marginTop: '15px', border: '1px solid #eee' }}>
-                    <Typography className="fraunces" sx={{ fontSize: '18px', fontWeight: 800, color: '#0F6E56', mb: 3 }}>
-                      Add a medicine
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                      {/* MEDICINE NAME */}
-                      <Box>
-                        <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                          MEDICINE NAME
-                        </Typography>
-                        <TextField 
-                          fullWidth 
-                          placeholder="e.g. Augmentin 625mg" 
-                          name="itemName" 
-                          value={formValues.itemName} 
-                          onChange={handleFormChange}
-                          variant="outlined"
-                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }}
-                        />
-                      </Box>
-
-                      {/* ACTIVE INGREDIENT */}
-                      <Box>
-                        <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                          ACTIVE INGREDIENT
-                        </Typography>
-                        <TextField 
-                          fullWidth 
-                          placeholder="e.g. Amoxicillin/Clavulanate" 
-                          name="activeIngredient" 
-                          value={formValues.activeIngredient} 
-                          onChange={handleFormChange}
-                          variant="outlined"
-                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }}
-                        />
-                      </Box>
-
-                      {/* CATEGORY & PRICE */}
-                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                        <Box>
-                          <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                            CATEGORY
-                          </Typography>
-                          <Select 
-                            fullWidth 
-                            name="category" 
-                            value={formValues.category} 
-                            onChange={(e: any) => handleFormChange(e)}
-                            variant="outlined"
-                            sx={{ borderRadius: '12px', bgcolor: '#F9FBFB' }}
-                          >
-                            <MenuItem value="Analgesics">Analgesics</MenuItem>
-                            <MenuItem value="Antibiotics">Antibiotics</MenuItem>
-                            <MenuItem value="Antimalarials">Antimalarials</MenuItem>
-                            <MenuItem value="Vitamins">Vitamins</MenuItem>
-                            <MenuItem value="Others">Others</MenuItem>
-                          </Select>
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                            PRICE (₦)
-                          </Typography>
-                          <TextField 
-                            fullWidth 
-                            type="number" 
-                            name="amount" 
-                            value={formValues.amount} 
-                            onChange={handleFormChange}
-                            variant="outlined"
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }}
-                          />
-                        </Box>
-                      </Box>
-
-                      {/* DESCRIPTION / INFO */}
-                      <Box>
-                        <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                          DESCRIPTION / INFO
-                        </Typography>
-                        <TextField 
-                          fullWidth 
-                          multiline 
-                          rows={2} 
-                          placeholder="Dosage, side effects, or administration instructions..." 
-                          name="info" 
-                          value={formValues.info} 
-                          onChange={handleFormChange}
-                          variant="outlined"
-                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }}
-                        />
-                      </Box>
-
-                      {/* POM TOGGLE */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#F9FBFB', p: 1.5, borderRadius: '12px', border: '1px solid #eee' }}>
-                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.6)' }}>
-                          Prescription Required (POM)
-                        </Typography>
-                        <Checkbox 
-                          checked={formValues.POM} 
-                          onChange={(e) => setFormValues(prev => ({ ...prev, POM: e.target.checked }))}
-                          sx={{ color: '#0F6E56', '&.Mui-checked': { color: '#0F6E56' } }}
-                        />
-                      </Box>
-
-                      {/* MEDICINE IMAGE with Functional Upload */}
-                      <Box>
-                        <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                          MEDICINE IMAGE
-                        </Typography>
-                        <input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          accept="image/*" 
-                          onChange={handleImageChange} 
-                          hidden 
-                        />
-                        <Box 
-                          onClick={() => fileInputRef.current?.click()}
-                          sx={{ 
-                            border: '1.5px dashed #ddd', 
-                            borderRadius: '24px', 
-                            py: formValues.imageUrl ? 2 : 4, 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center', 
-                            bgcolor: '#F9FBFB',
-                            cursor: 'pointer',
-                            overflow: 'hidden',
-                            position: 'relative',
-                            transition: 'all 0.2s',
-                            '&:hover': { borderColor: '#0F6E56', bgcolor: '#f0f7f4' }
-                          }}
-                        >
-                          {formValues.imageUrl ? (
-                            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                              <img 
-                                src={formValues.imageUrl} 
-                                style={{ width: '100px', height: '100px', objectFit: 'contain', borderRadius: '12px' }} 
-                                alt="Preview" 
-                              />
-                              <Typography sx={{ fontSize: '11px', color: '#0F6E56', fontWeight: 700 }}>
-                                Change Image
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <>
-                              <Box sx={{ width: 44, height: 44, bgcolor: '#EBF7F2', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1.5 }}>
-                                <UploadFile sx={{ color: '#0F6E56', fontSize: 20 }} />
-                              </Box>
-                              <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', fontWeight: 500 }}>
-                                Tap to upload image · <span style={{ color: '#0F6E56', fontWeight: 700 }}>Browse files</span>
-                              </Typography>
-                            </>
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* SUBMIT BUTTON */}
-                      <Button 
-                        fullWidth 
-                        variant="contained" 
-                        onClick={handleFormSubmit} 
-                        disabled={isSubmitting}
-                        sx={{ 
-                          bgcolor: '#0F6E56', 
-                          color: 'white', 
-                          borderRadius: '14px', 
-                          py: 1.8, 
-                          fontSize: '14px', 
-                          fontWeight: 700, 
-                          textTransform: 'none',
-                          boxShadow: 'none',
-                          '&:hover': { bgcolor: '#0a5240', boxShadow: 'none' },
-                          mt: 1
-                        }}
-                      >
-                        {isSubmitting ? 'PROCESSING...' : 'ADD TO STORE'}
-                      </Button>
-                    </Box>
-                  </motion.div>
-                )}
-
-                {showCsvUpload && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ background: '#FDF2F5', padding: '35px', borderRadius: '30px', marginTop: '15px', border: `1.5px dashed ${COLORS.pink}`, textAlign: 'center' }}>
-                    <Box sx={{ width: 44, height: 44, bgcolor: 'white', border: `1px solid ${COLORS.pinkPale}`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                      <Box sx={{ width: 18, height: 18, border: `2.5px solid ${COLORS.pink}`, borderRadius: '4px' }} />
-                    </Box>
-
-                    <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#000', mb: 1 }}>
-                      Upload CSV file
-                    </Typography>
-                    <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '280px', margin: '0 auto 25px', lineHeight: 1.5 }}>
-                      Name, Active Ingredient, Category, Price required. 
-                      <br/>
-                      <span style={{ opacity: 0.8 }}>Image column optional — add URL or leave blank.</span>
-                    </Typography>
-
-                    <input type="file" id="bulk-stock-file" style={{ display: 'none' }} onChange={handleBulkFileUpload} />
-                    <label htmlFor="bulk-stock-file">
-                      <Button 
-                        component="span" 
-                        variant="contained" 
-                        sx={{ 
-                          bgcolor: COLORS.pink, 
-                          color: 'white', 
-                          borderRadius: '14px', 
-                          px: 4, 
-                          py: 1.6, 
-                          fontSize: '14px', 
-                          fontWeight: 700, 
-                          textTransform: 'none',
-                          boxShadow: 'none',
-                          '&:hover': { bgcolor: '#e04585', boxShadow: 'none' }
-                        }}
-                      >
-                        Choose CSV file
-                      </Button>
-                    </label>
-
-                    {isUploading && <CircularProgress size={20} sx={{ display: 'block', margin: '20px auto', color: COLORS.pink }} />}
-
-                    <Typography sx={{ mt: 3, fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500 }}>
-                      Need a template? 
-                      <span 
-                        onClick={handleDownloadSampleCsv}
-                        style={{ color: COLORS.pink, fontWeight: 700, marginLeft: '5px', cursor: 'pointer', textDecoration: 'none' }}
-                      >
-                        Download sample CSV
-                      </span>
-                    </Typography>
-                  </motion.div>
-                )}
               </motion.div>
             )}
 
-            {/* TAB 2: STOCK */}
+            {/* TAB 2: ORDERS */}
             {selectedTab === 2 && (
-              <motion.div key="tab2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                {/* LOADING BAR */}
-                <Box sx={{ height: 3, mb: 1, borderRadius: '10px', overflow: 'hidden' }}>
-                  {loadingStock && <LinearProgress color="primary" sx={{ bgcolor: '#EBF7F2', '& .MuiLinearProgress-bar': { bgcolor: '#0F6E56' } }} />}
+              <motion.div key="tab2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <Box sx={{ px: 0.5 }}>
+                  <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.4)', fontWeight: 500, lineHeight: 1.5 }}>
+                    Orders content coming soon.
+                  </Typography>
                 </Box>
-
-                {/* STATS CARDS */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 2 }}>
-                  {[
-                    { label: 'TOTAL', value: stockStats.total, color: '#000' },
-                    { label: 'PUBLISHED', value: stockStats.published, color: '#0F6E56' },
-                    { label: 'ATTENTION', value: stockStats.attention, color: '#B45309' }
-                  ].map((stat, idx) => (
-                    <Box key={idx} sx={{ 
-                      bgcolor: 'white', 
-                      borderRadius: '16px', 
-                      p: 1.8, 
-                      textAlign: 'center', 
-                      border: '1px solid #eee',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.01)'
-                    }}>
-                      <Typography sx={{ fontSize: '22px', fontWeight: 800, color: stat.color, mb: 0 }}>
-                        {stat.value}
-                      </Typography>
-                      <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.5px' }}>
-                        {stat.label}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-
-                {/* SEARCH & FILTERS */}
-                <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-                  <TextField 
-                    fullWidth 
-                    placeholder="Search medicines..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    variant="outlined"
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': { 
-                        borderRadius: '100px', 
-                        bgcolor: 'white', 
-                        height: '42px',
-                        px: 1.8,
-                        '& .MuiOutlinedInput-input': { color: 'rgba(0,0,0,0.4)', fontWeight: 500, fontSize: '13px' }
-                      } 
-                    }}
-                  />
-                  <Button 
-                    variant="outlined"
-                    sx={{ 
-                      minWidth: '100px', 
-                      height: '42px',
-                      borderRadius: '100px', 
-                      bgcolor: 'white', 
-                      borderColor: '#eee', 
-                      color: 'rgba(0,0,0,0.5)', 
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      fontSize: '13px',
-                      display: 'flex',
-                      gap: 0.8,
-                      '&:hover': { bgcolor: '#fcfcfc', borderColor: '#ddd' }
-                    }}
-                  >
-                    Filters
-                    <ExpandMore sx={{ fontSize: 16, opacity: 0.4 }} />
-                  </Button>
-                </Box>
-
-
-                {/* STOCK LIST CONTAINER */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pb: 4 }}>
-                  {displayableStock.map((item) => {
-                    const needsFix = !item.imageUrl || item.activeIngredient === 'N/A';
-                    return (
-                      <Box key={item._id} sx={{ bgcolor: 'white', borderRadius: '24px', p: 2, border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flex: 1, minWidth: 0 }}>
-                          {/* IMAGE PLACEHOLDER with ATTENTION DOT */}
-                          <Box sx={{ position: 'relative', width: 64, height: 64, bgcolor: '#F9FBFB', border: '1px solid #eee', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
-                            ) : (
-                              <Box sx={{ width: 24, height: 24, border: '2px solid rgba(0,0,0,0.05)', borderRadius: '4px' }} />
-                            )}
-                            {needsFix && (
-                              <Box sx={{ position: 'absolute', top: 5, right: 5, width: 8, height: 8, bgcolor: '#B45309', borderRadius: '50%', border: '2px solid white' }} />
-                            )}
-                          </Box>
-
-                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                            <Typography noWrap sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.2 }}>{item.itemName}</Typography>
-                            <Typography noWrap sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, mb: 1 }}>{item.activeIngredient}</Typography>
-                            <Box sx={{ display: 'flex', gap: 0.8, mt: 0.5 }}>
-                              <Chip 
-                                label={needsFix ? 'Needs attention' : 'Published'} 
-                                size="small" 
-                                sx={{ 
-                                  height: '24px', 
-                                  fontSize: '10px', 
-                                  fontWeight: 800, 
-                                  bgcolor: needsFix ? '#FEF3C7' : '#EBF7F2', 
-                                  color: needsFix ? '#B45309' : '#0F6E56',
-                                  borderRadius: '8px'
-                                }} 
-                              />
-                              <Chip label={item.category} size="small" sx={{ height: '24px', fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', bgcolor: '#f5f5f5', borderRadius: '8px' }} />
-                            </Box>
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ width: 85, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
-                          <Typography sx={{ fontSize: '17px', fontWeight: 800, color: '#000', mb: 0.2, whiteSpace: 'nowrap' }}>
-                            {item.amount > 0 ? `₦${Number(item.amount).toLocaleString()}` : '—'}
-                          </Typography>
-                          <Typography 
-                            onClick={() => { setSelectedProduct(item); setTileEditData(item); }}
-                            sx={{ fontSize: '13px', fontWeight: 700, color: '#FF4D97', cursor: 'pointer' }}
-                          >
-                            {needsFix ? 'Fix' : 'Edit'}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                  
-                  {stockStats.total > stockData.length && !searchQuery && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                      <Button 
-                        disabled={loadingMore}
-                        onClick={() => fetchInitialData(true)}
-                        variant="outlined"
-                        sx={{ 
-                          borderRadius: '100px', 
-                          textTransform: 'none', 
-                          fontWeight: 700, 
-                          color: '#0F6E56', 
-                          borderColor: '#EBF7F2',
-                          bgcolor: '#EBF7F2',
-                          px: 4,
-                          '&:hover': { bgcolor: '#def1ea', borderColor: '#def1ea' }
-                        }}
-                      >
-                        {loadingMore ? 'Loading...' : `Show more (+${Math.min(12, stockStats.total - stockData.length)})`}
-                      </Button>
-                    </Box>
-                  )}
-
-                  {/* PUBLISH BANNER (REPOSITIONED & SLIMMED) */}
-                  <Box sx={{ 
-                    position: 'relative', 
-                    mt: 2,
-                    mb: 2,
-                    mx: 'auto',
-                    width: '100%',
-                    bgcolor: '#0F6E56', 
-                    p: 1.2, 
-                    px: 2.5, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    borderRadius: '24px',
-                    color: 'white',
-                    boxShadow: '0 8px 30px rgba(0,110,86,0.12)'
-                  }}>
-                    <Box>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 800 }}>
-                        {isStorePublished ? 'Store is LIVE' : 'Ready to publish'}
-                      </Typography>
-                      <Typography sx={{ fontSize: '10.5px', opacity: 0.8 }}>
-                        {stockStats.published} items ready · {stockStats.attention} need fixing
-                      </Typography>
-                    </Box>
-                    <Button 
-                      variant="contained" 
-                      onClick={async () => {
-                        try {
-                          const newStatus = !isStorePublished;
-                          await axios.post('/api/stock/store-publish', { isPublished: newStatus });
-                          setIsStorePublished(newStatus);
-                          alert(`Store ${newStatus ? 'published' : 'unpublished'}!`);
-                        } catch (e) {
-                            alert('Failed to update status');
-                        }
-                      }}
-                      sx={{ bgcolor: 'white', color: '#0F6E56', borderRadius: '10px', px: 2, py: 0.6, fontWeight: 900, textTransform: 'none', fontSize: '13px', '&:hover': { bgcolor: '#f5f5f5' } }}
-                    >
-                      {isStorePublished ? 'Unpublish' : 'Publish store'}
-                    </Button>
-                  </Box>
-                </Box>
-
               </motion.div>
             )}
           </AnimatePresence>
