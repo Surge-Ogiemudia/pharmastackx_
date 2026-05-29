@@ -76,21 +76,23 @@ export async function PUT(req: Request) {
             licenseNumber,
             latitude,
             longitude,
-            slug
+            slug,
+            brandKit
         } = body;
 
-        const updateData: { [key: string]: any } = { 
-            username, 
-            profilePicture, 
-            businessName, 
-            businessAddress, 
-            city, 
+        const updateData: { [key: string]: any } = {
+            username,
+            profilePicture,
+            businessName,
+            businessAddress,
+            city,
             state,
             phoneNumber,
             mobile,
             stateOfPractice,
             licenseNumber,
-            slug
+            slug,
+            ...(brandKit && { brandKit }),
         };
 
         if (latitude !== undefined && longitude !== undefined) {
