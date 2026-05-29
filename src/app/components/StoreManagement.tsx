@@ -18,6 +18,7 @@ import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import Link from 'next/link';
+import SocialContent from './SocialContent';
 
 // --- STYLING VARS (Free & Open Aesthetic) ---
 const COLORS = {
@@ -1162,12 +1163,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
             {/* TAB 1: SOCIAL */}
             {selectedTab === 1 && (
               <motion.div key="tab1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <Box sx={{ mb: 3.5, px: 0.5 }}>
-                  <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.4)', fontWeight: 500, lineHeight: 1.5, maxWidth: '300px' }}>
-                    Social content coming soon.
-                  </Typography>
-                </Box>
-
+                <SocialContent />
               </motion.div>
             )}
 
