@@ -696,11 +696,11 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
             pointerEvents: modalState !== 'none' ? 'none' : 'auto',
             transition: 'all 0.3s ease'
           }}>
-            <div className="back-btn reveal visible" onClick={() => setView('home')}>
-              <div className="back-btn-icon">
-                <ArrowBackIcon style={{ fontSize: 16 }} />
+            <div onClick={() => setView('home')} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '20px 24px 0', marginBottom: '4px', fontSize: '13px', fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: '1.5px', transition: 'opacity 0.2s' }}>
+              <div style={{ background: '#0F6E56', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 2px 8px rgba(15,110,86,0.3)', flexShrink: 0 }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: 1 }}>←</span>
               </div>
-              <div className="back-btn-text">Back to home</div>
+              <span>BACK</span>
             </div>
 
             <div className="header">
