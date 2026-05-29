@@ -890,9 +890,9 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+            <Box sx={{ flexGrow: 1 }}>
                <AccountContent setView={setView} onBack={() => setViewWithPrev(prevView)} />
             </Box>
           </Box>
@@ -923,20 +923,9 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            sx={{ 
-                width: '100%', 
-                height: '100%', 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                pt: { xs: 8, sm: 10 }, 
-                pb: bottomPadding, 
-                bgcolor: '#fafaf8' 
-            }}
+            sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+            <Box sx={{ flexGrow: 1 }}>
               <OrdersContent 
                 setView={setView} 
                 setSelectedRequestId={setSelectedRequestId} 
@@ -955,9 +944,9 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
+            sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: { xs: 8, sm: 10 }, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+            <Box sx={{ flexGrow: 1 }}>
               <OrdersContent
                 setView={setView}
                 setSelectedRequestId={setSelectedRequestId}
