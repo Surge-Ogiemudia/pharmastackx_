@@ -393,6 +393,39 @@
   padding: 32px 24px;
 }
 
+/* ── SKELETON ── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeletonCard {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.skeletonImg {
+  height: 160px;
+  background: linear-gradient(90deg, #f0ede6 25%, #e8e4dc 50%, #f0ede6 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeletonBody {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.skeletonLine {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0ede6 25%, #e8e4dc 50%, #f0ede6 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
 /* ── PAGINATION ── */
 .pagination {
   display: flex;
@@ -421,6 +454,13 @@
 .pageBtn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.pageContext {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 80px;
+  text-align: center;
 }
 .pageNumbers {
   display: flex;
@@ -485,6 +525,10 @@
   font-weight: 900;
   color: var(--ink);
   letter-spacing: -0.5px;
+}
+.sectionTitle em {
+  font-style: italic;
+  color: var(--green);
 }
 .sectionCount {
   font-size: 12px;
@@ -889,9 +933,22 @@
   text-align: center;
 }
 .cartFooter {
-  padding: 20px 24px 100px 24px;
+  padding: 16px 24px 100px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.07);
 }
+.continueShopping {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Geist', sans-serif;
+  cursor: pointer;
+  padding: 0 0 12px 0;
+  display: block;
+  opacity: 0.8;
+}
+.continueShopping:hover { opacity: 1; }
 .cartTotal {
   display: flex;
   justify-content: space-between;
