@@ -103,6 +103,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [flyerLoading, setFlyerLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [synkkStatus, setSynkkStatus] = useState<{ connected: boolean; itemCount: number; lastSync: string | null } | null>(null);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
         setUserSlug(user.slug || '');
         fetchInitialData();
         setIsStoreSetupRequired(false);
+        axios.get('/api/stock/synkk-status').then(r => { if (isMounted.current) setSynkkStatus(r.data); }).catch(() => {});
       }
     }
     return () => { isMounted.current = false; };
@@ -629,6 +631,39 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                       {copied ? 'Copied' : 'Copy link'}
                     </Typography>
                   </Box>
+                  {/* SYNKK STATUS STRIP */}
+                  {synkkStatus && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'rgba(0,0,0,0.18)', borderRadius: '12px', px: 2, py: 1.2, mb: 2, border: '1px solid rgba(255,255,255,0.07)' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: synkkStatus.connected ? '#4ade80' : 'rgba(255,255,255,0.25)', boxShadow: synkkStatus.connected ? '0 0 6px #4ade80' : 'none', flexShrink: 0 }} />
+                        <Typography sx={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: 'var(--sora)' }}>
+                          {synkkStatus.connected ? 'Synkk Connected' : 'Synkk Not Connected'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {synkkStatus.connected && (
+                          <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--sora)', whiteSpace: 'nowrap' }}>
+                            {synkkStatus.itemCount} items
+                          </Typography>
+                        )}
+                        {synkkStatus.connected && synkkStatus.lastSync && (
+                          <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--sora)', whiteSpace: 'nowrap' }}>
+                            Synced {(() => {
+                              const diff = Date.now() - new Date(synkkStatus.lastSync).getTime();
+                              const mins = Math.floor(diff / 60000);
+                              const hrs = Math.floor(mins / 60);
+                              const days = Math.floor(hrs / 24);
+                              if (days > 0) return `${days}d ago`;
+                              if (hrs > 0) return `${hrs}h ago`;
+                              if (mins > 0) return `${mins}m ago`;
+                              return 'just now';
+                            })()}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+
                   {/* SUB-TAB BUTTONS */}
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     {(['share', 'upload', 'stock'] as const).map((v) => (
