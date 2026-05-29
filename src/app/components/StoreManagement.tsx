@@ -712,10 +712,14 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 justifyContent: 'center',
                               }}>
                                 <span style={{
-                                  fontFamily: '"Sora", sans-serif',
+                                  fontFamily: '"Playfair Display", "Georgia", serif',
                                   fontWeight: 800,
+                                  fontStyle: 'italic',
                                   fontSize: 'clamp(8px, 3.2vw, 13px)',
-                                  color: '#1a1a1a',
+                                  background: 'linear-gradient(120deg, #0F6E56 0%, #1a9e7a 40%, #c0396b 80%, #FF4D97 100%)',
+                                  WebkitBackgroundClip: 'text',
+                                  WebkitTextFillColor: 'transparent',
+                                  backgroundClip: 'text',
                                   letterSpacing: '0.07em',
                                   textTransform: 'uppercase',
                                   lineHeight: 1.25,
