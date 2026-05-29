@@ -8,7 +8,7 @@
 
 .account-page-wrapper {
     min-height: 100vh;
-    padding-bottom: 120px; /* Clear floating navbar */
+    padding-bottom: 80px; /* Clear floating navbar */
 }
 
 .account-container {
@@ -342,7 +342,7 @@
 
 /* Subscription UI Overhaul */
 .subscription-container {
-    padding: 8px 0 120px 0;
+    padding: 8px 0 0 0;
 }
 
 .pro-card {

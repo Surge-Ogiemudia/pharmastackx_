@@ -100,7 +100,7 @@ const SubPageWrapper = ({ children, onBack, title }: { children: React.ReactNode
                 flexDirection: 'column',
                 maxWidth: '1200px',
                 margin: '0 auto',
-                pb: 10
+                pb: 0
             }}
         >
             <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
@@ -274,7 +274,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const quickDescSx = { fontSize: '11px', color: '#aaa', fontFamily: 'Sora, sans-serif', lineHeight: 1.3 };
 
     return (
-        <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1, pt: 0, pb: '40px' }}>
+        <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1, pt: 0, pb: 0 }}>
             <AnimatePresence mode="wait">
                 {profileMode === 'list' && !showSubscription ? (
                     <motion.div
