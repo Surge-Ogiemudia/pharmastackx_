@@ -696,17 +696,18 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
-                                  fontWeight: 900,
-                                  fontSize: 'clamp(13px, 4.8vw, 22px)',
-                                  color: '#0F6E56',
-                                  letterSpacing: '0.12em',
+                                  fontWeight: 800,
+                                  fontSize: 'clamp(8px, 3.2vw, 13px)',
+                                  color: '#1a1a1a',
+                                  letterSpacing: '0.07em',
                                   textTransform: 'uppercase',
-                                  lineHeight: 1.1,
+                                  lineHeight: 1.25,
                                   display: 'block',
-                                  whiteSpace: 'nowrap',
+                                  whiteSpace: 'normal',
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word',
                                   overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  textShadow: '0 1px 2px rgba(15,110,86,0.15)',
+                                  maxWidth: '100%',
                                 }}>
                                   {userBusinessName}
                                 </span>
