@@ -32,6 +32,7 @@ interface PaystackButtonProps {
   deliveryCity: string;
   deliveryState: string;
   isFormValid: boolean;
+  redirectPath?: string; // where to go after successful payment, defaults to /?view=confirmOrder
 }
 
 const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
@@ -73,7 +74,8 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
 
   const onSuccess = (reference: any) => {
     console.log('Payment successful. Reference:', reference.reference);
-    router.push(`/?view=confirmOrder&redirect_status=success`);
+    const dest = props.redirectPath || '/?view=confirmOrder';
+    router.push(`${dest}${dest.includes('?') ? '&' : '?'}redirect_status=success`);
   };
 
   const onClose = () => {

@@ -665,6 +665,7 @@ useEffect(() => {
                     deliveryCity={deliveryCity}
                     deliveryState={deliveryState}
                     isFormValid={isFormValid}
+                    redirectPath="/cart"
                   />
                 )}
               </Paper>
