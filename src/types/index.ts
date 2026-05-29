@@ -27,6 +27,17 @@ export interface User {
     latitude: number;
     longitude: number;
   };
+  brandKit?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    tagline?: string;
+    logoUrl?: string;
+  };
+  socialPhotos?: Array<{
+    url: string;
+    tag?: string;
+    uploadedAt?: string;
+  }>;
 }
 
 export interface Business extends User {
