@@ -303,9 +303,17 @@
   max-width: 1100px;
   margin: 0 auto;
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: center;
 }
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.searchRow::-webkit-scrollbar { display: none; }
 .searchBar {
   flex: 1;
   display: flex;
@@ -333,25 +341,18 @@
 .searchBar input::placeholder {
   color: var(--muted);
 }
-.sortSelect {
-  height: 36px;
-  padding: 0 10px;
-  border: 1.5px solid rgba(0,0,0,0.1);
-  border-radius: 20px;
-  font-size: 13px;
-  font-family: 'Geist', sans-serif;
-  color: var(--ink);
-  background: var(--white);
-  cursor: pointer;
-  outline: none;
+.sortPills {
+  display: flex;
+  gap: 6px;
   flex-shrink: 0;
-  appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23A8A49C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
 }
-.sortSelect:focus { border-color: var(--green); }
+.pillDivider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0,0,0,0.12);
+  flex-shrink: 0;
+  align-self: center;
+}
 
 .filterPills {
   display: flex;

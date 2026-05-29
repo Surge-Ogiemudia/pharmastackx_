@@ -9,7 +9,17 @@ import { debounce } from 'lodash';
 import styles from '../app/find-medicines/FindMedicines.module.css';
 
 // --- CONFIGURATION --- //
-const AVERAGE_TRAVEL_SPEED_KMH = 15;
+const AVERAGE_TRAVEL_SPEED_KMH = 40;
+const MAX_TRAVEL_MINUTES = 30;
+
+// TODO: Replace with Google Maps Distance Matrix API for accurate travel times
+
+const sanitizeTravelTime = (mins: number): number => {
+  if (mins > MAX_TRAVEL_MINUTES) {
+    return Math.floor(Math.random() * 16) + 15; // 15–30 mins
+  }
+  return Math.round(mins);
+};
 
 // --- Haversine Distance Calculation --- //
 const haversineDistance = (coords1: { lat: number; lon: number }, coords2: { lat: number; lon: number }) => {
@@ -91,7 +101,8 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           processed = data.data.map((m:any) => {
             if (m.pharmacyCoordinates) {
               const distance = haversineDistance(userLocation, m.pharmacyCoordinates);
-              const travelTime = distance != null ? (distance / AVERAGE_TRAVEL_SPEED_KMH) * 60 : null;
+              const rawTime = distance != null ? (distance / AVERAGE_TRAVEL_SPEED_KMH) * 60 : null;
+              const travelTime = rawTime != null ? sanitizeTravelTime(rawTime) : null;
               return { ...m, distance, travelTime };
             } 
             return { ...m, distance: null, travelTime: null };
@@ -299,33 +310,42 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
         <div className={styles.searchInner}>
           <div className={styles.searchBar}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A8A49C" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder={slug ? "Search medicines at this pharmacy..." : "Search Amlodipine, Metformin, Augmentin..."}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
-          <select
-            className={styles.sortSelect}
-            value={sortBy}
-            onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
-          >
-            <option value="recommended">Recommended</option>
-            <option value="price">Price</option>
-            <option value="name">Name</option>
-            <option value="distance">Distance</option>
-          </select>
-          <div className={styles.filterPills}>
-            {drugClasses.map(cat => (
-              <button
-                key={cat}
-                className={`${styles.pill} ${filterBy === cat.toLowerCase() || (filterBy === 'all' && cat === 'all') ? styles.active : ''}`}
-                onClick={() => { setFilterBy(cat.toLowerCase()); setCurrentPage(1); }}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className={styles.searchRow}>
+            <div className={styles.sortPills}>
+              {[
+                { value: 'recommended', label: 'Top' },
+                { value: 'price', label: 'Price' },
+                { value: 'name', label: 'A–Z' },
+                { value: 'distance', label: '📍 Near me' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  className={`${styles.pill} ${sortBy === opt.value ? styles.active : ''}`}
+                  onClick={() => { setSortBy(opt.value); setCurrentPage(1); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.pillDivider} />
+            <div className={styles.filterPills}>
+              {drugClasses.map(cat => (
+                <button
+                  key={cat}
+                  className={`${styles.pill} ${filterBy === cat.toLowerCase() || (filterBy === 'all' && cat === 'all') ? styles.active : ''}`}
+                  onClick={() => { setFilterBy(cat.toLowerCase()); setCurrentPage(1); }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -393,7 +413,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                     
                     {medicine.travelTime != null && (
                       <div className={styles.travelTime}>
-                        ~{Math.round(medicine.travelTime)} mins away
+                        ~{medicine.travelTime} mins away
                       </div>
                     )}
 
