@@ -43,7 +43,11 @@ export async function GET(req: NextRequest) {
         query.businesses = businessName;
       }
     } else if (role === 'pharmacy' || role === 'pharmacist') {
-      query.businesses = user?.businessName || businessName;
+      // See orders for their pharmacy AND any orders they personally placed as a patient
+      query.$or = [
+        { businesses: user?.businessName },
+        { user: session.userId },
+      ];
     } else {
       // Customers (and anyone whose user doc wasn't found) see their own orders
       query.user = session.userId;
