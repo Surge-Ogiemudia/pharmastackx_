@@ -176,17 +176,41 @@ const ActivityDashboardView = ({
   );
 };
 
+const PAGE_SIZE = 3;
+
 const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest, filterType = 'all' }: { orders: Order[], requests: any[], onSelectOrder: (order: Order) => void, onSelectRequest: (request: any) => void, filterType?: 'all' | 'orders' | 'requests' }) => {
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'pharmacy'>('date');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const isOrders = filterType === 'orders';
+
   const allActivity = [
     ...orders.map(o => ({ ...o, type: 'order' })),
     ...requests.map(r => ({ ...r, type: 'request' }))
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  ];
 
   const filteredActivity = allActivity.filter(item => {
     if (filterType === 'orders') return item.type === 'order';
     if (filterType === 'requests') return item.type === 'request';
     return true;
   });
+
+  const sortedActivity = [...filteredActivity].sort((a, b) => {
+    if (isOrders && sortBy === 'name') {
+      const nameA = a.items[0]?.name || '';
+      const nameB = b.items[0]?.name || '';
+      return nameA.localeCompare(nameB);
+    }
+    if (isOrders && sortBy === 'pharmacy') {
+      const pharmA = typeof a.businesses?.[0] === 'string' ? a.businesses[0] : (a.businesses?.[0]?.name || '');
+      const pharmB = typeof b.businesses?.[0] === 'string' ? b.businesses[0] : (b.businesses?.[0]?.name || '');
+      return pharmA.localeCompare(pharmB);
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const visible = sortedActivity.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedActivity.length;
 
   return (
     <motion.div
@@ -197,50 +221,85 @@ const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest, fi
     >
       <div className="activity-header">
         <Typography className="activity-title">
-          {filterType === 'orders' ? 'Order Management' : filterType === 'requests' ? 'Medicine Tracker' : 'My activity'}
+          {isOrders ? 'My orders' : filterType === 'requests' ? 'Medicine Tracker' : 'My orders'}
         </Typography>
       </div>
 
-      <div className="sec-tag">{filterType === 'orders' ? 'Recent Orders' : 'Recent activity'}</div>
-      {filteredActivity.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {filteredActivity.map((item: any) => (
-            <div 
-              key={item._id} 
-              className="glass-card"
-              onClick={() => item.type === 'order' ? onSelectOrder(item) : onSelectRequest(item)}
-            >
-              <div className="order-history-item">
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--black)' }}>
-                    {item.type === 'order' ? (item.items[0]?.name || 'Medicine Order') : (item.items[0]?.name || 'Medicine Request')}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>
-                    {item.type === 'order' ? (item.businesses[0]?.name || 'Pharmacy') : 'Pharmacy search'} · {new Date(item.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                </div>
-                <div className={`badge-pill ${item.status === 'Completed' ? 'badge-green' : item.status === 'awaiting-confirmation' ? '' : 'badge-pink'}`}
-                  style={item.status === 'awaiting-confirmation' ? { background: '#FEF3C7', color: '#92400E' } : undefined}>
-                  {item.status === 'awaiting-confirmation' ? 'Payment Pending' : item.status || 'Active'}
-                </div>
-              </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div className="sec-tag" style={{ marginBottom: 0 }}>{isOrders ? 'Recent orders' : 'Recent activity'}</div>
+        {isOrders && (
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {(['date', 'name', 'pharmacy'] as const).map(opt => (
+              <button
+                key={opt}
+                onClick={() => { setSortBy(opt); setVisibleCount(PAGE_SIZE); }}
+                style={{
+                  fontSize: '10px', fontWeight: 600, padding: '4px 10px',
+                  borderRadius: '100px', border: '1.5px solid',
+                  cursor: 'pointer', fontFamily: 'Sora, sans-serif',
+                  borderColor: sortBy === opt ? 'var(--green)' : '#ddd',
+                  background: sortBy === opt ? 'var(--green-pale)' : '#fff',
+                  color: sortBy === opt ? 'var(--green)' : '#999',
+                }}
+              >
+                {opt === 'date' ? 'Date' : opt === 'name' ? 'Medicine' : 'Pharmacy'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                <div className="fraunces" style={{ fontSize: '16px', fontWeight: 900, color: 'var(--green)', letterSpacing: '-0.5px' }}>
-                  {item.type === 'order' ? `₦${item.totalAmount?.toLocaleString()}` : (item.quoteCount > 0 ? `${item.quoteCount} Quotes` : 'Pending')}
+      {sortedActivity.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {visible.map((item: any) => {
+              const pharmName = typeof item.businesses?.[0] === 'string' ? item.businesses[0] : (item.businesses?.[0]?.name || 'Pharmacy');
+              return (
+                <div
+                  key={item._id}
+                  className="glass-card"
+                  onClick={() => item.type === 'order' ? onSelectOrder(item) : onSelectRequest(item)}
+                >
+                  <div className="order-history-item">
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--black)' }}>
+                        {item.items[0]?.name || (item.type === 'order' ? 'Medicine Order' : 'Medicine Request')}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>
+                        {item.type === 'order' ? pharmName : 'Pharmacy search'} · {new Date(item.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <div className={`badge-pill ${item.status === 'Completed' ? 'badge-green' : item.status === 'awaiting-confirmation' ? '' : 'badge-pink'}`}
+                      style={item.status === 'awaiting-confirmation' ? { background: '#FEF3C7', color: '#92400E' } : undefined}>
+                      {item.status === 'awaiting-confirmation' ? 'Payment Pending' : item.status || 'Active'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <div className="fraunces" style={{ fontSize: '16px', fontWeight: 900, color: 'var(--green)', letterSpacing: '-0.5px' }}>
+                      {item.type === 'order' ? `₦${item.totalAmount?.toLocaleString()}` : (item.quoteCount > 0 ? `${item.quoteCount} Quotes` : 'Pending')}
+                    </div>
+                    <div className={`reorder-link ${item.status === 'Completed' ? '' : 'pink'}`}
+                      style={item.status === 'awaiting-confirmation' ? { color: '#D97706', fontWeight: 700 } : undefined}>
+                      {item.status === 'Completed' ? 'Reorder' : item.status === 'awaiting-confirmation' ? 'Continue to Payment →' : (item.type === 'request' ? 'View Quotes' : 'Track Order')}
+                    </div>
+                  </div>
                 </div>
-                <div className={`reorder-link ${item.status === 'Completed' ? '' : 'pink'}`}
-                  style={item.status === 'awaiting-confirmation' ? { color: '#D97706', fontWeight: 700 } : undefined}>
-                  {item.status === 'Completed' ? 'Reorder' : item.status === 'awaiting-confirmation' ? 'Continue to Payment →' : (item.type === 'request' ? 'View Quotes' : 'Track Order')}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount(v => v + PAGE_SIZE)}
+              style={{ width: '100%', marginTop: '14px', padding: '12px', background: 'none', border: '1.5px solid #eee', borderRadius: '12px', fontSize: '13px', fontWeight: 600, color: 'var(--green)', cursor: 'pointer', fontFamily: 'Sora, sans-serif' }}
+            >
+              Show more ({sortedActivity.length - visibleCount} remaining)
+            </button>
+          )}
+        </>
       ) : (
         <div className="orders-empty-state">
           <div className="orders-empty-icon">📁</div>
-          <div className="orders-empty-text">No recent activity found.</div>
+          <div className="orders-empty-text">No orders found.</div>
         </div>
       )}
 
