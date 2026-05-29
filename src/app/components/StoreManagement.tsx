@@ -718,7 +718,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                   top: '74%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '38%',
+                                  width: '37%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'transparent',
                                   borderRadius: 0,
