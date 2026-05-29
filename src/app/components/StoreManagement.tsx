@@ -336,10 +336,27 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     try {
       const canvas = await captureFlyerCanvas();
       if (!canvas) return;
-      const link = document.createElement('a');
-      link.download = `${userSlug}-flyer.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile && navigator.canShare) {
+        // On mobile: use Web Share API so iOS saves to Photos, Android to Gallery
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `${userBusinessName} Flyer` });
+          } else {
+            // Fallback: open image in new tab for long-press save
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+          }
+        }, 'image/png');
+      } else {
+        // Desktop: standard download
+        const link = document.createElement('a');
+        link.download = `${userSlug}-flyer.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
     } catch (e) { console.error('Download failed', e); }
     finally { setFlyerLoading(false); }
   };
