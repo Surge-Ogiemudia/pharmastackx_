@@ -9,6 +9,7 @@ import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
 import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/Account.css';
+import './Orders.css';
 
 // Dynamically import sub-components
 const SubscriptionContent = dynamic(() => import('./SubscriptionContent'), { ssr: false });
@@ -86,40 +87,39 @@ const EditDialog = ({ open, onClose, onSave, fieldName, value }: any) => {
     );
 };
 
-const SubPageWrapper = ({ children, onBack, title }: { children: React.ReactNode, onBack: () => void, title?: string }) => (
-    <Box 
-        component={motion.div}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        sx={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            maxWidth: '1200px',
-            margin: '0 auto',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            boxShadow: { sm: '0 10px 40px rgba(0,0,0,0.1)' },
-            minHeight: '100vh',
-            pb: 10
-        }}
-    >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <div className="back-btn-pill" onClick={onBack}>
-                <ArrowBack style={{ fontSize: '16px' }} />
-                <span>Back</span>
-            </div>
-            {title && (
-                <Typography className="fraunces" sx={{ fontWeight: 800, fontSize: '18px', color: 'var(--black)' }}>
-                    {title}
-                </Typography>
-            )}
+const SubPageWrapper = ({ children, onBack, title }: { children: React.ReactNode, onBack: () => void, title?: string }) => {
+    useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, []);
+    return (
+        <Box
+            component={motion.div}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                pb: 10
+            }}
+        >
+            <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                <div className="back-btn-pill" onClick={onBack}>
+                    <ArrowBack style={{ fontSize: '16px' }} />
+                    <span>Back</span>
+                </div>
+                {title && (
+                    <Typography className="fraunces" sx={{ fontWeight: 800, fontSize: '18px', color: 'var(--black)' }}>
+                        {title}
+                    </Typography>
+                )}
+            </Box>
+            <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
+                {children}
+            </Box>
         </Box>
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, sm: 3 } }}>
-            {children}
-        </Box>
-    </Box>
-);
+    );
+};
 
 const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const { user: sessionUser, isLoading: isSessionLoading, refreshSession, logout } = useSession();
@@ -253,6 +253,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     if (!detailedUser) return null;
 
     const accountUser = detailedUser;
+    const goTo = (mode: typeof profileMode) => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); setProfileMode(mode); };
 
     const quickCardSx = {
         background: '#fff',
@@ -276,169 +277,168 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
         <Box sx={{ position: 'relative', width: '100%' }}>
             <AnimatePresence mode="wait">
                 {profileMode === 'list' && !showSubscription ? (
-                    <Box
+                    <motion.div
                         key="list"
-                        component={motion.div}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        sx={{ maxWidth: '480px', margin: '0 auto', pb: '120px' }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="activity-dashboard sora"
                     >
-                        {/* ── Hero ── */}
-                        <Box sx={{ px: 3, pt: 3, pb: 2, textAlign: 'center' }}>
-                            <Avatar
-                                src={accountUser.profilePicture}
-                                sx={{ width: 80, height: 80, mx: 'auto', mb: 1.5, border: '3px solid #fff', boxShadow: '0 8px 24px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 28, fontWeight: 700 }}
-                            >
-                                {!accountUser.profilePicture && accountUser.username?.[0]?.toUpperCase()}
-                            </Avatar>
-                            <Typography sx={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#111' }}>
-                                {accountUser.username}
-                            </Typography>
-                            <Typography sx={{ fontSize: '12px', color: '#aaa', fontWeight: 600, mb: 1.5, textTransform: 'capitalize' }}>
-                                {accountUser.businessName || accountUser.role}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                <Box sx={{ px: 1.5, py: 0.5, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '11px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif' }}>
-                                    ✓ Verified
-                                </Box>
-                                <Box
-                                    onClick={() => setShowSubscription(true)}
-                                    sx={{ px: 1.5, py: 0.5, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '11px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer' }}
+                        {/* ── Header ── */}
+                        <div className="activity-header" style={{ marginBottom: '24px', border: 'none' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                <Avatar
+                                    src={accountUser.profilePicture}
+                                    sx={{ width: 56, height: 56, border: '2px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 22, fontWeight: 700, flexShrink: 0 }}
                                 >
-                                    {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
+                                    {!accountUser.profilePicture && accountUser.username?.[0]?.toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography className="fraunces" style={{ fontSize: '24px', fontWeight: 900, color: '#111', letterSpacing: '-1px', lineHeight: 1.1 }}>
+                                        {accountUser.username}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '12px', color: '#aaa', fontWeight: 500, textTransform: 'capitalize', mt: 0.25 }}>
+                                        {accountUser.businessName || accountUser.role}
+                                    </Typography>
                                 </Box>
-                            </Box>
-                        </Box>
-
-                        {/* ── Quick-action cards ── */}
-                        <Box sx={{ px: 2, mb: 1 }}>
-                            <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
-                                Quick actions
-                            </Typography>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-
-                                {/* Profile */}
-                                <Box onClick={() => setProfileMode('profile')} sx={quickCardSx}>
-                                    <Box sx={quickIconSx('#0F6E56', 'rgba(15,110,86,0.08)')}>👤</Box>
-                                    <Typography sx={quickTitleSx}>My Profile</Typography>
-                                    <Typography sx={quickDescSx}>Name, email, phone</Typography>
-                                </Box>
-
-                                {/* Orders — route to activity hub */}
-                                <Box onClick={() => setView('orders')} sx={quickCardSx}>
-                                    <Box sx={quickIconSx('#1565C0', 'rgba(21,101,192,0.07)')}>📦</Box>
-                                    <Typography sx={quickTitleSx}>My Orders</Typography>
-                                    <Typography sx={quickDescSx}>Track deliveries</Typography>
-                                </Box>
-
-                                {/* Store Management — pharmacy + admin only */}
-                                {['pharmacy', 'admin'].includes(accountUser.role) && (
-                                    <Box onClick={() => setProfileMode('store')} sx={quickCardSx}>
-                                        <Box sx={quickIconSx('#B45309', 'rgba(180,83,9,0.07)')}>🏪</Box>
-                                        <Typography sx={quickTitleSx}>Store</Typography>
-                                        <Typography sx={quickDescSx}>Manage inventory</Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
+                                    <Box sx={{ px: 1.5, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '10px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif', whiteSpace: 'nowrap' }}>
+                                        ✓ Verified
                                     </Box>
-                                )}
-
-                                {/* Medicine Restock — pharmacy, pharmacist, admin */}
-                                {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
-                                    <Box onClick={() => setProfileMode('restock')} sx={quickCardSx}>
-                                        <Box sx={quickIconSx('#0F6E56', 'rgba(15,110,86,0.08)')}>💊</Box>
-                                        <Typography sx={quickTitleSx}>Restock</Typography>
-                                        <Typography sx={quickDescSx}>Request medicines</Typography>
-                                    </Box>
-                                )}
-
-                                {/* Subscription upgrade for non-pro */}
-                                {accountUser.subscriptionStatus !== 'subscribed' && (
-                                    <Box onClick={() => setShowSubscription(true)} sx={{ ...quickCardSx, background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '1.5px solid rgba(124,58,237,0.2)' }}>
-                                        <Box sx={quickIconSx('#7c3aed', 'rgba(124,58,237,0.1)')}>⚡</Box>
-                                        <Typography sx={{ ...quickTitleSx, color: '#7c3aed' }}>Go Pro</Typography>
-                                        <Typography sx={quickDescSx}>Unlock features</Typography>
-                                    </Box>
-                                )}
-                            </Box>
-                        </Box>
-
-                        {/* ── Admin tools (collapsed section) ── */}
-                        {accountUser.role === 'admin' && (
-                            <Box sx={{ px: 2, mt: 3, mb: 1 }}>
-                                <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
-                                    Administration
-                                </Typography>
-                                <Box sx={{ background: '#fff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                                    {[
-                                        { label: 'Platform Controls', icon: <Assignment sx={{ fontSize: 18 }} />, mode: 'platform' },
-                                        { label: 'WhatsApp Management', icon: <WhatsAppIcon sx={{ fontSize: 18, color: '#25D366' }} />, mode: 'whatsapp' },
-                                        { label: 'Data Hub', icon: <Business sx={{ fontSize: 18 }} />, mode: 'datacentre' },
-                                        { label: 'Top Contacts', icon: <WhatsAppIcon sx={{ fontSize: 18 }} />, mode: 'top-contacts' },
-                                        { label: 'Delivery Agents', icon: <WhatsAppIcon sx={{ fontSize: 18 }} />, mode: 'delivery-agents' },
-                                        { label: 'AI Centre', icon: <SmartToy sx={{ fontSize: 18 }} />, mode: 'aicentre' },
-                                        { label: 'Consultations', icon: <MedicationIcon sx={{ fontSize: 18 }} />, mode: 'consultations', badge: consultations.length },
-                                        { label: 'Pulse Analytics', icon: <BarChart sx={{ fontSize: 18 }} />, mode: 'pulse-analytics' },
-                                    ].map((item, i) => (
-                                        <Box
-                                            key={item.mode}
-                                            onClick={() => item.mode === 'pulse-analytics' ? window.open('https://www.pharmastackx.com/admin/pulse-analytics', '_blank') : setProfileMode(item.mode as any)}
-                                            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, color: '#0F6E56' }}
-                                        >
-                                            {item.icon}
-                                            <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#222', fontFamily: 'Sora, sans-serif' }}>{item.label}</Typography>
-                                            {item.badge ? <Box sx={{ bgcolor: '#B45309', color: '#fff', fontSize: '10px', fontWeight: 700, px: 1, py: 0.25, borderRadius: '100px' }}>{item.badge}</Box> : null}
-                                            <Typography sx={{ color: '#ddd', fontSize: '16px' }}>›</Typography>
-                                        </Box>
-                                    ))}
-                                    {/* God Mode — special red row */}
-                                    <Box
-                                        onClick={() => setProfileMode('godmode')}
-                                        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: '1px solid rgba(0,0,0,0.04)', bgcolor: 'rgba(211,47,47,0.03)', '&:hover': { bgcolor: 'rgba(211,47,47,0.06)' } }}
-                                    >
-                                        <Security sx={{ fontSize: 18, color: '#D32F2F' }} />
-                                        <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 700, color: '#D32F2F', fontFamily: 'Sora, sans-serif' }}>God Mode</Typography>
-                                        <Typography sx={{ color: '#D32F2F', fontSize: '16px', opacity: 0.4 }}>›</Typography>
+                                    <Box onClick={() => setShowSubscription(true)} sx={{ px: 1.5, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '10px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                        {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
                                     </Box>
                                 </Box>
                             </Box>
-                        )}
 
-                        {/* ── Footer rows ── */}
-                        <Box sx={{ px: 2, mt: 3 }}>
-                            <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
-                                Support
-                            </Typography>
-                            <Box sx={{ background: '#fff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                            {/* ── Inline fields ── */}
+                            <Box sx={{ background: '#fff', borderRadius: '18px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                                 {[
-                                    { label: 'Contact Us', icon: <ContactMail sx={{ fontSize: 18 }} />, mode: 'contact' },
-                                    { label: 'About PharmaStackX', icon: <Info sx={{ fontSize: 18 }} />, mode: 'about' },
-                                    { label: 'Privacy Policy', icon: <Assignment sx={{ fontSize: 18 }} />, mode: 'privacy' },
+                                    { label: 'Name', value: accountUser.username, field: 'username' },
+                                    { label: 'Email', value: accountUser.email, field: 'email' },
+                                    { label: 'Phone', value: accountUser.mobile || accountUser.phoneNumber || '', field: 'mobile' },
                                 ].map((item, i) => (
-                                    <Box
-                                        key={item.mode}
-                                        onClick={() => setProfileMode(item.mode as any)}
-                                        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, color: '#0F6E56' }}
-                                    >
-                                        {item.icon}
-                                        <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#222', fontFamily: 'Sora, sans-serif' }}>{item.label}</Typography>
-                                        <Typography sx={{ color: '#ddd', fontSize: '16px' }}>›</Typography>
+                                    <Box key={item.field} onClick={() => { setEditingField(item.field); setFieldValue(item.value); }}
+                                        sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.25, borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(0,0,0,0.015)' } }}>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography sx={{ fontSize: '9px', color: '#bbb', fontWeight: 700, fontFamily: 'Sora, sans-serif', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{item.label}</Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: item.value ? '#111' : '#ccc', fontFamily: 'Sora, sans-serif', mt: 0.1 }}>{item.value || 'Not set'}</Typography>
+                                        </Box>
+                                        <Edit sx={{ fontSize: 13, color: '#ddd' }} />
                                     </Box>
                                 ))}
                             </Box>
-                        </Box>
+                        </div>
+
+                        {/* ── Pharmacy widgets ── */}
+                        {['pharmacy', 'admin'].includes(accountUser.role) && (
+                            <div className="activity-widget" onClick={() => goTo('store')}>
+                                <div className="widget-icon-box">🏪</div>
+                                <div className="widget-content">
+                                    <div className="widget-title">Store Management</div>
+                                    <div className="widget-desc">Manage your pharmacy inventory and listings.</div>
+                                </div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                        )}
+
+                        {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
+                            <div className="activity-widget" onClick={() => goTo('restock')}>
+                                <div className="widget-icon-box">💊</div>
+                                <div className="widget-content">
+                                    <div className="widget-title">Medicine Restock</div>
+                                    <div className="widget-desc">Request or manage medicine restocking orders.</div>
+                                </div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                        )}
+
+                        {/* ── Upgrade widget ── */}
+                        {accountUser.subscriptionStatus !== 'subscribed' && (
+                            <div className="activity-widget" onClick={() => setShowSubscription(true)} style={{ background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '1.5px solid rgba(124,58,237,0.2)' }}>
+                                <div className="widget-icon-box" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>⚡</div>
+                                <div className="widget-content">
+                                    <div className="widget-title" style={{ color: '#7c3aed' }}>Go Pro</div>
+                                    <div className="widget-desc">Unlock premium features and priority support.</div>
+                                </div>
+                                <div className="widget-arrow" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>→</div>
+                            </div>
+                        )}
+
+                        {/* ── Admin widgets ── */}
+                        {accountUser.role === 'admin' && (<>
+                            <div className="activity-widget" onClick={() => goTo('platform')}>
+                                <div className="widget-icon-box">⚙️</div>
+                                <div className="widget-content"><div className="widget-title">Platform Controls</div><div className="widget-desc">Manage global app settings and feature flags.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => goTo('whatsapp')}>
+                                <div className="widget-icon-box" style={{ background: 'rgba(37,211,102,0.1)', color: '#25D366' }}>💬</div>
+                                <div className="widget-content"><div className="widget-title">WhatsApp Management</div><div className="widget-desc">Configure WhatsApp channels and messaging.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => goTo('datacentre')}>
+                                <div className="widget-icon-box">🗄️</div>
+                                <div className="widget-content"><div className="widget-title">Data Hub</div><div className="widget-desc">Access and manage platform data.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => goTo('delivery-agents')}>
+                                <div className="widget-icon-box">🛵</div>
+                                <div className="widget-content"><div className="widget-title">Delivery Agents</div><div className="widget-desc">Manage riders and delivery network.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => goTo('aicentre')}>
+                                <div className="widget-icon-box">🤖</div>
+                                <div className="widget-content"><div className="widget-title">AI Centre</div><div className="widget-desc">Configure AI models and automation.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => goTo('consultations')}>
+                                <div className="widget-icon-box">🩺</div>
+                                <div className="widget-content">
+                                    <div className="widget-title">Consultations</div>
+                                    <div className="widget-desc">Review escalated patient consultations.</div>
+                                </div>
+                                {consultations.length > 0 && <div className="widget-badge">{consultations.length} New</div>}
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget" onClick={() => window.open('https://www.pharmastackx.com/admin/pulse-analytics', '_blank')}>
+                                <div className="widget-icon-box">📊</div>
+                                <div className="widget-content"><div className="widget-title">Pulse Analytics</div><div className="widget-desc">View platform-wide trends and reports.</div></div>
+                                <div className="widget-arrow">→</div>
+                            </div>
+                            <div className="activity-widget god-mode-card" onClick={() => goTo('godmode')} style={{ background: '#1a1a1a', border: '1px solid #333' }}>
+                                <div className="widget-icon-box" style={{ background: '#333', color: '#fff' }}>⚡</div>
+                                <div className="widget-content">
+                                    <div className="widget-title" style={{ color: '#fff' }}>God Mode</div>
+                                    <div className="widget-desc" style={{ color: '#aaa' }}>High-level system controls and overrides.</div>
+                                </div>
+                                <div className="widget-arrow" style={{ color: '#fff' }}>→</div>
+                            </div>
+                        </>)}
+
+                        {/* ── Support widgets ── */}
+                        <div className="activity-widget" onClick={() => goTo('contact')}>
+                            <div className="widget-icon-box">💬</div>
+                            <div className="widget-content"><div className="widget-title">Contact Us</div><div className="widget-desc">Get help via WhatsApp or email.</div></div>
+                            <div className="widget-arrow">→</div>
+                        </div>
+                        <div className="activity-widget" onClick={() => goTo('about')}>
+                            <div className="widget-icon-box">ℹ️</div>
+                            <div className="widget-content"><div className="widget-title">About PharmaStackX</div><div className="widget-desc">Our mission, team, and story.</div></div>
+                            <div className="widget-arrow">→</div>
+                        </div>
+                        <div className="activity-widget" onClick={() => goTo('privacy')}>
+                            <div className="widget-icon-box">🔒</div>
+                            <div className="widget-content"><div className="widget-title">Privacy Policy</div><div className="widget-desc">How we handle your data.</div></div>
+                            <div className="widget-arrow">→</div>
+                        </div>
 
                         {/* ── Sign out ── */}
-                        <Box sx={{ px: 2, mt: 3 }}>
-                            <Box
-                                onClick={handleLogout}
-                                sx={{ textAlign: 'center', py: 1.5, borderRadius: '16px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#C84B8F', fontFamily: 'Sora, sans-serif', '&:hover': { bgcolor: 'rgba(200,75,143,0.05)' } }}
-                            >
-                                Sign out
-                            </Box>
-                            <Typography sx={{ textAlign: 'center', fontSize: '10px', color: '#ddd', mt: 0.5, fontFamily: 'Sora, sans-serif' }}>
-                                PharmaStackX v2
-                            </Typography>
-                        </Box>
-                    </Box>
+                        <div style={{ textAlign: 'center', padding: '8px 0 4px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#C84B8F', fontFamily: 'Sora, sans-serif' }} onClick={handleLogout}>
+                            Sign out
+                        </div>
+                        <div style={{ textAlign: 'center', fontSize: '10px', color: '#ddd', paddingBottom: '8px', fontFamily: 'Sora, sans-serif' }}>PharmaStackX v2</div>
+                    </motion.div>
                 ) : (
                     <>
                         {showSubscription && (
@@ -448,7 +448,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         )}
 
                         {profileMode === 'profile' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Identity & Contact">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Identity & Contact">
                                 <EditableListItem fieldName="username" label="Name" value={accountUser.username} icon={<Person />} />
                                 <EditableListItem fieldName="email" label="Email" value={accountUser.email} icon={<ContactMail />} />
                                 <EditableListItem fieldName="mobile" label="Phone" value={accountUser.mobile || accountUser.phoneNumber} icon={<Phone />} />
@@ -456,7 +456,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         )}
 
                         {profileMode === 'contact' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Contact & Support">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Contact & Support">
                                 <div className="glass-card" style={{ padding: '16px', textAlign: 'center' }}>
                                     <WhatsAppIcon sx={{ fontSize: 48, color: '#25D366', mb: 2 }} />
                                     <Typography>Chat with us on WhatsApp</Typography>
@@ -466,44 +466,44 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         )}
 
                         {profileMode === 'about' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="About PharmaStackX">
+                            <SubPageWrapper onBack={() => goTo('list')} title="About PharmaStackX">
                                 <AboutContent />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'privacy' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Privacy Policy">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Privacy Policy">
                                 <PrivacyContent />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'store' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Store Management">
-                                <StoreManagement onBack={() => setProfileMode('list')} />
+                            <SubPageWrapper onBack={() => goTo('list')} title="Store Management">
+                                <StoreManagement onBack={() => goTo('list')} />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'restock' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Medicine Restock">
-                                <MedicineRestock onBack={() => setProfileMode('list')} userId={accountUser._id} />
+                            <SubPageWrapper onBack={() => goTo('list')} title="Medicine Restock">
+                                <MedicineRestock onBack={() => goTo('list')} userId={accountUser._id} />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'whatsapp' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="WhatsApp Management">
+                            <SubPageWrapper onBack={() => goTo('list')} title="WhatsApp Management">
                                 <WhatsAppManagement />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'datacentre' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Data Hub">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Data Hub">
                                 <DataCentreContent />
                             </SubPageWrapper>
                         )}
 
 
                         {profileMode === 'platform' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Platform Administration">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Platform Administration">
                                 <Box sx={{ mb: 4 }}>
                                     <Typography variant="subtitle2" sx={{ color: 'var(--gray)', fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '1px' }}>Module Visibility</Typography>
                                     <List className="glass-card" sx={{ p: 0 }}>
@@ -527,30 +527,30 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         )}
 
                         {profileMode === 'godmode' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="God Mode Control">
+                            <SubPageWrapper onBack={() => goTo('list')} title="God Mode Control">
                                 <GodMode />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'aicentre' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="AI Centre">
+                            <SubPageWrapper onBack={() => goTo('list')} title="AI Centre">
                                 <AICommandCentreContent />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'top-contacts' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Top Contacts">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Top Contacts">
                                 <TopContactsContent />
                             </SubPageWrapper>
                         )}
                         {profileMode === 'delivery-agents' && (
-                            <SubPageWrapper onBack={() => setProfileMode('list')} title="Delivery Agents">
+                            <SubPageWrapper onBack={() => goTo('list')} title="Delivery Agents">
                                 <DeliveryAgentsContent />
                             </SubPageWrapper>
                         )}
 
                         {profileMode === 'consultations' && (
-                            <SubPageWrapper onBack={() => { setProfileMode('list'); setCurrentConsultation(null); }} title="Consultations">
+                            <SubPageWrapper onBack={() => { goTo('list'); setCurrentConsultation(null); }} title="Consultations">
                                 {!currentConsultation ? (
                                     <List>
                                         {consultations.map(c => (
