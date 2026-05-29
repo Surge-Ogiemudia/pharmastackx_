@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import dbConnect from '@/lib/dbConnect';
+import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import Media from '@/models/Media';
 
