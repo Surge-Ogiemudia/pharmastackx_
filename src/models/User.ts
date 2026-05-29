@@ -44,6 +44,17 @@ export interface IUser extends Document {
   xp?: number;
   learningStreak?: number;
   lastLearningDate?: Date;
+  brandKit?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    tagline?: string;
+    logoUrl?: string;
+  };
+  socialPhotos?: Array<{
+    url: string;
+    tag?: string;
+    uploadedAt?: Date;
+  }>;
 }
 
 // The schema defines the blueprint for the database
@@ -97,6 +108,17 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   xp: { type: Number, default: 0 },
   learningStreak: { type: Number, default: 0 },
   lastLearningDate: { type: Date },
+  brandKit: {
+    primaryColor: { type: String, default: '#0F6E56' },
+    secondaryColor: { type: String, default: '#C84B8F' },
+    tagline: { type: String },
+    logoUrl: { type: String },
+  },
+  socialPhotos: [{
+    url: { type: String, required: true },
+    tag: { type: String, enum: ['staff', 'store', 'product', 'event', 'other'], default: 'other' },
+    uploadedAt: { type: Date, default: Date.now },
+  }],
 });
 
 // This line creates the model
