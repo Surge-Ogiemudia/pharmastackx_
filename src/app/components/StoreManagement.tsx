@@ -401,22 +401,16 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
       img.src = '/storeflyer.png';
     });
 
-    // 2. Pharmacy name pill — matches CSS: top 0.2%, width 76%, py 3.5% of H, radius 12px at ref
+    // 2. Pharmacy name — plain text, no pill background, Poppins bold
     const nameFontSize = Math.round(W * 0.033);
     const namePadV = H * 0.035;
-    const namePillW = W * 0.76;
-    const namePillH = namePadV * 2 + nameFontSize * 1.2;
-    const namePillX = (W - namePillW) / 2;
-    const namePillY = H * 0.002;
+    const nameTextY = H * 0.002 + namePadV + nameFontSize * 0.6;
 
-    ctx.fillStyle = '#f6f5f4';
-    fillRoundRect(namePillX, namePillY, namePillW, namePillH, 12 * SCALE);
-
-    ctx.font = `italic 900 ${nameFontSize}px Fraunces, serif`;
+    ctx.font = `700 ${nameFontSize}px Poppins, sans-serif`;
     ctx.fillStyle = '#0F6E56';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(userBusinessName.toUpperCase(), W / 2, namePillY + namePillH / 2);
+    ctx.fillText(userBusinessName.toUpperCase(), W / 2, nameTextY);
 
     // 3. QR code — CSS: center at top 74.7%, width 36%, aspect 1:1
     const qrW = W * 0.36;
@@ -850,27 +844,25 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                               />
 
-                              {/* Overlay: pharmacy name — tight box over cross + "SURGE CENTRAL" */}
+                              {/* Overlay: pharmacy name — plain text, no pill */}
                               <Box sx={{
                                 position: 'absolute',
                                 top: '0.2%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 width: '76%',
-                                bgcolor: '#f6f5f4',
-                                borderRadius: '12px',
+                                bgcolor: 'transparent',
                                 py: '3.5%',
                                 px: '8%',
                                 textAlign: 'center',
-                                boxShadow: 'none',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                               }}>
                                 <span data-flyer-name style={{
-                                  fontFamily: '"Fraunces", serif',
-                                  fontWeight: 900,
-                                  fontStyle: 'italic',
+                                  fontFamily: '"Poppins", sans-serif',
+                                  fontWeight: 700,
+                                  fontStyle: 'normal',
                                   fontSize: 'clamp(8px, 3.2vw, 13px)',
                                   background: 'linear-gradient(120deg, #0F6E56 0%, #1a9e7a 40%, #c0396b 80%, #FF4D97 100%)',
                                   WebkitBackgroundClip: 'text',
