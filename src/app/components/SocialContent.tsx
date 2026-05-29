@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { Box, Typography, Button, TextField, CircularProgress, Chip } from '@mui/material';
-import { Add, Delete, AutoAwesome, Download, Share, Edit } from '@mui/icons-material';
+import { Add, Delete, AutoAwesome, Download, Share, Edit, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
@@ -192,6 +192,7 @@ export default function SocialContent() {
   const [tagline, setTagline] = useState<string>(user?.brandKit?.tagline || '');
   const [logoUrl, setLogoUrl] = useState<string>(user?.brandKit?.logoUrl || '');
   const [savingBrand, setSavingBrand] = useState(false);
+  const [brandKitOpen, setBrandKitOpen] = useState(false);
 
   // Photo library state
   const [photos, setPhotos] = useState<SocialPhoto[]>((user?.socialPhotos as SocialPhoto[]) || []);
@@ -333,7 +334,25 @@ export default function SocialContent() {
 
       {/* ── BRAND KIT ─────────────────────────────────────────────────── */}
       <Box sx={cardSx}>
-        <Typography sx={sectionLabelSx}>Brand Kit</Typography>
+        <Box
+          onClick={() => setBrandKitOpen(o => !o)}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+        >
+          <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Brand Kit</Typography>
+          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} />}
+        </Box>
+
+        <AnimatePresence initial={false}>
+          {brandKitOpen && (
+            <motion.div
+              key="brand-kit-body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <Box sx={{ pt: 2 }}>
 
         {/* Colors */}
         <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
@@ -404,6 +423,11 @@ export default function SocialContent() {
         >
           {savingBrand ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save brand kit'}
         </Button>
+
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Box>
 
       {/* ── PHOTO LIBRARY ─────────────────────────────────────────────── */}
