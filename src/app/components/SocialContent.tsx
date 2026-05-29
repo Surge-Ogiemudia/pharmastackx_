@@ -268,7 +268,7 @@ export default function SocialContent() {
       ]);
       contents = results
         .filter(r => r.status === 'fulfilled')
-        .map(r => (r as PromiseFulfilledResult<typeof axios.post extends (...a: any[]) => Promise<infer R> ? R : never>).value.data as GeneratedContent);
+        .map(r => (r as PromiseFulfilledResult<{ data: GeneratedContent }>).value.data);
     } catch (e) { console.error(e); }
 
     setGenerating(false);
