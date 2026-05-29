@@ -1295,7 +1295,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav currentView={view === 'requestsList' || view === 'medicineRestock' || view === 'reviewRequest' ? 'orderMedicines' : view} onTabClick={(v) => {
+       <BottomNav currentView={view === 'requestsList' || view === 'medicineRestock' || view === 'reviewRequest' || view === 'findMedicines' ? 'orderMedicines' : view} onTabClick={(v) => {
          if (v === 'orderMedicines') setActiveRequestId(null);
          if (v === 'requests-list') setActiveRequestId(null);
          setOrdersInitialViewMode('dashboard');

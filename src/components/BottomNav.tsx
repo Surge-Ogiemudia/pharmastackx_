@@ -12,7 +12,7 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
   const { track } = useTrack();
   const tabs = [
     { id: 'home', label: 'HOME' },
-    { id: 'findMedicines', label: 'SEARCH' },
+    { id: 'orderMedicines', label: 'SEARCH' },
     { id: 'orders', label: 'ACTIVITY' },
     { id: 'account', label: 'ACCOUNT' }
   ];
@@ -41,7 +41,7 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
     >
       <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-around', p: { xs: '12px 8px 10px 8px', md: '18px 24px 14px 24px' } }}>
         {tabs.map((tab) => {
-          const isStrictActive = currentView === tab.id || (tab.id === 'orders' && currentView === 'orderRequests');
+          const isStrictActive = currentView === tab.id || (tab.id === 'orders' && currentView === 'orderRequests') || (tab.id === 'orderMedicines' && currentView === 'findMedicines');
           
           return (
             <Box
