@@ -347,39 +347,11 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
       {/* HEADER */}
       <div className="co-header co-reveal">
-        <button className="co-back-btn" onClick={() => setView('reviewRequest')}>
-          <div className="co-back-circle">←</div>
-          <div className="co-back-text">Responses</div>
+        <button className="co-back-btn" onClick={() => setView('findMedicines')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
         <div className="co-header-title">Confirm order</div>
-        <div style={{width: 32}}></div> {/* Spacer */}
-      </div>
-
-      {/* PHARMACIST SECTION */}
-      <div className="co-section co-reveal d1">
-        <div className="co-sec-label">Your pharmacist</div>
-        <div className="co-pharmacist-card">
-          <div className="co-pharmacist-avatar">
-            <div className="co-pharmacist-avatar-text">
-              {pharmacist?.name.substring(0, 2).toUpperCase() || 'PH'}
-            </div>
-          </div>
-          <div className="co-pharmacist-info">
-            <div className="co-pharmacist-name">Pharm. {pharmacist?.name || 'Loading...'}</div>
-            <div className="co-pharmacist-pharmacy">
-              {pharmacist?.address ? `${pharmacist.address.split(',')[0]} · ` : ''}
-              {pharmacist?.distance ? `${pharmacist.distance}` : 'Calculating distance...'}
-            </div>
-            <div className="co-pharmacist-meta">
-              <div className="co-meta-badge">
-                <div className="co-meta-badge-dot"></div>
-                <div className="co-meta-badge-text">Verified</div>
-              </div>
-              <div className="co-meta-rating">⭐ {pharmacist?.rating || '4.8'} · {pharmacist?.orderCount || '124'} orders</div>
-            </div>
-          </div>
-          <div className="co-change-link" onClick={() => setView('reviewRequest')}>Change</div>
-        </div>
+        <div style={{width: 32}}></div>
       </div>
 
       {/* MEDICINES SECTION */}

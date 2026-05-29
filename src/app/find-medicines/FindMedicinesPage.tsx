@@ -182,14 +182,6 @@ export default function FindMedicinesPage() {
               <div className={styles.heroStatNum}>{totalProducts}<span>+</span></div>
               <div className={styles.heroStatLabel}>Medicines in stock</div>
             </div>
-            <div className={styles.heroStat}>
-              <div className={styles.heroStatNum}>~<span>20</span></div>
-              <div className={styles.heroStatLabel}>Min response time</div>
-            </div>
-            <div className={styles.heroStat}>
-              <div className={styles.heroStatNum}>4.<span>9</span></div>
-              <div className={styles.heroStatLabel}>Pharmacist rating</div>
-            </div>
           </div>
         </div>
       </section>
