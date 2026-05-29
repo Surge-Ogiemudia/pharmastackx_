@@ -377,8 +377,8 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                   <div className={styles.productBody}>
                     <div className={styles.productName}>{medicine.name}</div>
                     <div className={styles.productStrength}>{medicine.activeIngredients || 'Standard'}</div>
-                    {!slug && medicine.businessName && (
-                      <div className={styles.productPharmacy}>{medicine.businessName}</div>
+                    {!slug && medicine.pharmacy && (
+                      <div className={styles.productPharmacy}>{medicine.pharmacy}</div>
                     )}
                     
                     {medicine.distance != null && (
