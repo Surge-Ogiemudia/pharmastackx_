@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from "@/context/SessionProvider";
-import { Box, Typography, Avatar, Button, List, ListItem, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, Chip } from "@mui/material";
+import { Box, Typography, Avatar, Button, List, ListItem, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Select, MenuItem, FormControl, InputLabel, Switch, Chip, Container } from "@mui/material";
 import { Person, VpnKey, Info, ContactMail, Business, LocationOn, ArrowBack, Phone, LocalHospital, Assignment, Edit, CheckCircleOutline, ErrorOutline, CloudUpload, AttachFile, Close, WhatsApp as WhatsAppIcon, Email as EmailIcon, Medication as MedicationIcon, SmartToy, NotificationsActive, Security, BarChart } from "@mui/icons-material";
 import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
@@ -274,7 +274,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
     const quickDescSx = { fontSize: '11px', color: '#aaa', fontFamily: 'Sora, sans-serif', lineHeight: 1.3 };
 
     return (
-        <Box sx={{ position: 'relative', width: '100%' }}>
+        <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1, pt: 0, pb: '40px' }}>
             <AnimatePresence mode="wait">
                 {profileMode === 'list' && !showSubscription ? (
                     <motion.div
@@ -286,10 +286,10 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                     >
                         {/* ── Header ── */}
                         <div className="activity-header" style={{ marginBottom: '24px', border: 'none' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                                 <Avatar
                                     src={accountUser.profilePicture}
-                                    sx={{ width: 56, height: 56, border: '2px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 22, fontWeight: 700, flexShrink: 0 }}
+                                    sx={{ width: 56, height: 56, border: '2px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 22, fontWeight: 700, flexShrink: 0, mt: 0.5 }}
                                 >
                                     {!accountUser.profilePicture && accountUser.username?.[0]?.toUpperCase()}
                                 </Avatar>
@@ -297,36 +297,35 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                     <Typography className="fraunces" style={{ fontSize: '24px', fontWeight: 900, color: '#111', letterSpacing: '-1px', lineHeight: 1.1 }}>
                                         {accountUser.username}
                                     </Typography>
-                                    <Typography sx={{ fontSize: '12px', color: '#aaa', fontWeight: 500, textTransform: 'capitalize', mt: 0.25 }}>
-                                        {accountUser.businessName || accountUser.role}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
-                                    <Box sx={{ px: 1.5, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '10px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif', whiteSpace: 'nowrap' }}>
-                                        ✓ Verified
-                                    </Box>
-                                    <Box onClick={() => setShowSubscription(true)} sx={{ px: 1.5, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '10px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                        {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
-                                    </Box>
-                                </Box>
-                            </Box>
-
-                            {/* ── Inline fields ── */}
-                            <Box sx={{ background: '#fff', borderRadius: '18px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                                {[
-                                    { label: 'Name', value: accountUser.username, field: 'username' },
-                                    { label: 'Email', value: accountUser.email, field: 'email' },
-                                    { label: 'Phone', value: accountUser.mobile || accountUser.phoneNumber || '', field: 'mobile' },
-                                ].map((item, i) => (
-                                    <Box key={item.field} onClick={() => { setEditingField(item.field); setFieldValue(item.value); }}
-                                        sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.25, borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(0,0,0,0.015)' } }}>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Typography sx={{ fontSize: '9px', color: '#bbb', fontWeight: 700, fontFamily: 'Sora, sans-serif', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{item.label}</Typography>
-                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: item.value ? '#111' : '#ccc', fontFamily: 'Sora, sans-serif', mt: 0.1 }}>{item.value || 'Not set'}</Typography>
+                                    {accountUser.businessName && (
+                                        <Typography sx={{ fontSize: '11px', color: '#aaa', fontWeight: 500, textTransform: 'capitalize', mt: 0.25 }}>
+                                            {accountUser.businessName}
+                                        </Typography>
+                                    )}
+                                    {/* email + phone inline, tappable */}
+                                    <Box sx={{ mt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                                        <Box onClick={() => { setEditingField('email'); setFieldValue(accountUser.email); }} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: 'pointer', width: 'fit-content' }}>
+                                            <Typography sx={{ fontSize: '11px', color: '#888', fontFamily: 'Sora, sans-serif' }}>{accountUser.email || 'Add email'}</Typography>
+                                            <Edit sx={{ fontSize: 11, color: '#ddd' }} />
                                         </Box>
-                                        <Edit sx={{ fontSize: 13, color: '#ddd' }} />
+                                        <Box onClick={() => { setEditingField('mobile'); setFieldValue(accountUser.mobile || accountUser.phoneNumber || ''); }} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: 'pointer', width: 'fit-content' }}>
+                                            <Typography sx={{ fontSize: '11px', color: accountUser.mobile || accountUser.phoneNumber ? '#888' : '#ccc', fontFamily: 'Sora, sans-serif' }}>{accountUser.mobile || accountUser.phoneNumber || 'Add phone'}</Typography>
+                                            <Edit sx={{ fontSize: 11, color: '#ddd' }} />
+                                        </Box>
                                     </Box>
-                                ))}
+                                    {/* badges */}
+                                    <Box sx={{ display: 'flex', gap: 0.75, mt: 1, flexWrap: 'wrap' }}>
+                                        <Box sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '10px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif' }}>
+                                            ✓ Verified
+                                        </Box>
+                                        <Box onClick={() => setShowSubscription(true)} sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '10px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer' }}>
+                                            {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
+                                        </Box>
+                                        <Box sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(0,0,0,0.04)', fontSize: '10px', fontWeight: 600, color: '#888', fontFamily: 'Sora, sans-serif', textTransform: 'capitalize' }}>
+                                            {accountUser.role}
+                                        </Box>
+                                    </Box>
+                                </Box>
                             </Box>
                         </div>
 
@@ -581,7 +580,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
             </AnimatePresence>
 
             {editingField && <EditDialog open={!!editingField} onClose={() => setEditingField(null)} onSave={handleSave} fieldName={editingField} value={fieldValue} />}
-        </Box>
+        </Container>
     );
 };
 
