@@ -676,16 +676,16 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                               />
 
-                              {/* Overlay: pharmacy name — covers cross + "SURGE CENTRAL" */}
+                              {/* Overlay: pharmacy name — tight box over cross + "SURGE CENTRAL" */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '2%',
+                                top: '1%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 width: '76%',
                                 bgcolor: '#f6f5f4',
                                 borderRadius: '10px',
-                                py: '3.5%',
+                                py: '1.6%',
                                 px: '4%',
                                 textAlign: 'center',
                                 boxShadow: '0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)',
@@ -711,19 +711,19 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 </span>
                               </Box>
 
-                              {/* Overlay: QR code — bottom lands exactly at 83% */}
+                              {/* Overlay: QR code — shifted down, wider, bottom lands at ~87% */}
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '70%',
+                                  top: '73%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '37%',
+                                  width: '40%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'white',
                                   borderRadius: '6px',
                                   p: '3px',
-                                  boxShadow: '0 0 0 5px white',
+                                  boxShadow: '0 0 0 6px white',
                                 }}>
                                   <img
                                     src={qrCodeDataUrl}
@@ -733,10 +733,10 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 </Box>
                               )}
 
-                              {/* Overlay: store URL pill — sits 3px below QR bottom (~83.5%) */}
+                              {/* Overlay: store URL pill — just below QR bottom (~87.5%) */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '84%',
+                                top: '87.5%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 bgcolor: '#f6f5f4',
