@@ -14,6 +14,15 @@ type Step =
   | 'pickup_ready'
   | 'failed';
 
+interface PharmacyInfo {
+  businessName: string;
+  businessAddress?: string;
+  city?: string;
+  state?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface Props {
   requestId: string | null;
   deliveryOption: 'standard' | 'express' | 'pickup';
@@ -21,18 +30,20 @@ interface Props {
   patientName: string;
   total: number;
   items: { name: string; qty: number; price: number }[];
+  pharmacyName?: string;
   onDone: () => void;
 }
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLL_MS = 90_000;
 
-export default function PostPaymentFlow({ requestId, deliveryOption, deliveryState, patientName, total, items, onDone }: Props) {
+export default function PostPaymentFlow({ requestId, deliveryOption, deliveryState, patientName, total, items, pharmacyName, onDone }: Props) {
   const [step, setStep] = useState<Step>('payment_confirmed');
   const [agentCount, setAgentCount] = useState(0);
   const [agentName, setAgentName] = useState('');
   const [agentPhone, setAgentPhone] = useState('');
   const [failReason, setFailReason] = useState('');
+  const [pharmacyInfo, setPharmacyInfo] = useState<PharmacyInfo | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartRef = useRef(0);
   const didRunRef = useRef(false);
@@ -73,6 +84,15 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
     const t2 = setTimeout(async () => {
       if (deliveryOption === 'pickup') {
         setStep('pickup_ready');
+        if (pharmacyName) {
+          fetch(`/api/pharmacies?businessName=${encodeURIComponent(pharmacyName)}`)
+            .then(r => r.json())
+            .then(data => {
+              const p = data.pharmacies?.[0];
+              if (p) setPharmacyInfo(p);
+            })
+            .catch(() => {});
+        }
       } else {
         setStep('notifying_rider');
       }
@@ -131,7 +151,7 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
         {step === 'notifying_rider' && <StepView icon={<TwoWheeler sx={{ fontSize: 64, color: '#0F6E56' }} />} title="Contacting a rider..." subtitle={`Finding a rider in ${deliveryState || 'your area'}. You will receive a call shortly.`} spinning={true} />}
         {step === 'rider_waiting' && <WaitingView agentCount={agentCount} onLeave={onDone} />}
         {step === 'rider_confirmed' && <ConfirmedView agentName={agentName} agentPhone={agentPhone} onDone={onDone} />}
-        {step === 'pickup_ready' && <PickupView onDone={onDone} />}
+        {step === 'pickup_ready' && <PickupView pharmacy={pharmacyInfo} pharmacyName={pharmacyName} onDone={onDone} />}
         {step === 'failed' && <FailedView reason={failReason} onDone={onDone} />}
       </Box>
     </Box>
@@ -191,14 +211,51 @@ function ConfirmedView({ agentName, agentPhone, onDone }: { agentName: string; a
   );
 }
 
-function PickupView({ onDone }: { onDone: () => void }) {
+function PickupView({ pharmacy, pharmacyName, onDone }: { pharmacy: PharmacyInfo | null; pharmacyName?: string; onDone: () => void }) {
+  const displayName = pharmacy?.businessName || pharmacyName || 'Your pharmacy';
+  const address = [pharmacy?.businessAddress, pharmacy?.city, pharmacy?.state].filter(Boolean).join(', ');
+
   return (
     <Box>
-      <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
+      <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
         <Store sx={{ fontSize: 44, color: '#0F6E56' }} />
       </Box>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>You're all set!</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Your pharmacist has been notified. Head to the pharmacy to pick up your order.</Typography>
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>You're all set!</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Payment confirmed. Your pharmacy has been notified and your order is ready.
+      </Typography>
+
+      <Box sx={{ border: '1.5px solid #0F6E56', borderRadius: '16px', p: 2.5, mb: 4, textAlign: 'left', bgcolor: '#f7fbfa' }}>
+        <Typography variant="caption" sx={{ color: '#0F6E56', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Pickup from
+        </Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, mt: 0.5, mb: 1, letterSpacing: '-0.3px' }}>{displayName}</Typography>
+
+        {address ? (
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+            <Typography variant="body2" sx={{ color: '#444', lineHeight: 1.5 }}>📍 {address}</Typography>
+          </Box>
+        ) : null}
+
+        {pharmacy?.email ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Typography variant="body2" sx={{ color: '#444' }}>✉️ {pharmacy.email}</Typography>
+          </Box>
+        ) : null}
+
+        {pharmacy?.phone ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" sx={{ color: '#444', fontWeight: 600 }}>📞 {pharmacy.phone}</Typography>
+          </Box>
+        ) : null}
+
+        {!pharmacy && (
+          <Typography variant="caption" color="text.secondary">
+            Full pharmacy contact details will appear in your order.
+          </Typography>
+        )}
+      </Box>
+
       <button onClick={onDone} style={{ width: '100%', padding: '14px', background: '#0F6E56', color: 'white', border: 'none', borderRadius: '14px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
         View my orders
       </button>
