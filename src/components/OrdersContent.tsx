@@ -244,48 +244,63 @@ const OrderHistoryView = ({ orders, requests, onSelectOrder, onSelectRequest, fi
         </div>
       )}
 
-      <div className="sec-tag">Recent searches</div>
-      <div className="recent-searches-container">
-        <div className="search-pill">Augmentin 625mg</div>
-        <div className="search-pill">Metformin 500mg</div>
-        <div className="search-pill dim">Epilim syrup</div>
-        <div className="search-pill badge-pink">Ketorolac inj.</div>
-      </div>
     </motion.div>
   );
 };
 
 const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void }) => {
   const orderTime = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const status = order.status;
+  const isPickup = order.deliveryOption === 'pickup';
 
-  const steps = [
-    { 
-      label: 'Order placed', 
-      desc: 'Payment confirmed', 
-      time: orderTime, 
-      status: 'completed' 
-    },
-    { 
-      label: 'Pharmacist confirmed', 
-      desc: status === 'Pending' ? 'Waiting for confirmation' : 'Preparing your order', 
-      time: status === 'Pending' ? '-' : orderTime, 
-      status: status === 'Pending' ? 'active' : 'completed' 
-    },
-    { 
-      label: 'Ready for pickup', 
-      desc: (status === 'Accepted' || status === 'Dispatched' || status === 'In Transit') ? 'Head to ' + (order.businesses[0]?.name || 'Pharmacy') : 'Pending', 
-      time: (status === 'Accepted' || status === 'Dispatched' || status === 'In Transit') ? 'Now' : '-', 
-      status: (status === 'Accepted' || status === 'Dispatched' || status === 'In Transit') ? 'active' : (status === 'Completed' ? 'completed' : 'pending')
-    },
-    { 
-      label: 'Completed', 
-      desc: status === 'Completed' ? 'Thank you for your order' : 'Pending', 
-      time: status === 'Completed' ? orderTime : '-', 
-      status: status === 'Completed' ? 'completed' : 'pending' 
+  // businesses may be stored as strings or objects
+  const rawBiz = order.businesses?.[0] as any;
+  const bizName: string = typeof rawBiz === 'string' ? rawBiz : (rawBiz?.name || '');
+
+  const [localStatus, setLocalStatus] = useState(order.status);
+  const [completing, setCompleting] = useState(false);
+  const [pharmacy, setPharmacy] = useState<{ businessName?: string; businessAddress?: string; city?: string; state?: string; email?: string; phone?: string } | null>(null);
+
+  useEffect(() => {
+    if (isPickup && bizName) {
+      fetch(`/api/pharmacies?businessName=${encodeURIComponent(bizName)}`)
+        .then(r => r.json())
+        .then(data => { const p = data.pharmacies?.[0]; if (p) setPharmacy(p); })
+        .catch(() => {});
     }
+  }, [isPickup, bizName]);
+
+  const handleCompleteOrder = async () => {
+    setCompleting(true);
+    try {
+      await fetch(`/api/orders/${order._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Completed' }),
+      });
+      setLocalStatus('Completed');
+    } catch {
+      // silently fail — status update is best-effort
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const status = localStatus;
+
+  const steps = isPickup ? [
+    { label: 'Order placed',         desc: 'Payment confirmed',        time: orderTime, status: 'completed' },
+    { label: 'Pharmacist confirmed', desc: 'Preparing your order',     time: orderTime, status: 'completed' },
+    { label: 'Ready for pickup',     desc: 'Head to the pharmacy',     time: 'Now',     status: status === 'Completed' ? 'completed' : 'completed' },
+    { label: 'Completed',            desc: status === 'Completed' ? 'Order collected — thank you!' : 'Confirm after collection', time: status === 'Completed' ? 'Done' : '-', status: status === 'Completed' ? 'completed' : 'active' },
+  ] : [
+    { label: 'Order placed',         desc: 'Payment confirmed',        time: orderTime, status: 'completed' },
+    { label: 'Pharmacist confirmed', desc: status === 'Pending' ? 'Waiting for confirmation' : 'Preparing your order', time: status === 'Pending' ? '-' : orderTime, status: status === 'Pending' ? 'active' : 'completed' },
+    { label: 'Dispatched',           desc: status === 'Dispatched' || status === 'In Transit' ? 'Rider is on the way' : 'Pending', time: (status === 'Dispatched' || status === 'In Transit') ? 'Now' : '-', status: (status === 'Dispatched' || status === 'In Transit') ? 'active' : (status === 'Completed' ? 'completed' : 'pending') },
+    { label: 'Delivered',            desc: status === 'Completed' ? 'Thank you for your order' : 'Pending', time: status === 'Completed' ? 'Done' : '-', status: status === 'Completed' ? 'completed' : 'pending' },
   ];
-  
+
+  const pharmacyAddress = [pharmacy?.businessAddress, pharmacy?.city, pharmacy?.state].filter(Boolean).join(', ');
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -295,34 +310,28 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
     >
       <div className="back-btn" onClick={onBack}>
         <div className="back-arrow">←</div>
-        <span>My activity</span>
+        <span>My orders</span>
       </div>
 
       <div className="fraunces" style={{ fontSize: '24px', fontWeight: 900, color: 'var(--black)', letterSpacing: '-1px', marginBottom: '6px' }}>
         Order <em style={{ color: 'var(--green)', fontStyle: 'italic' }}>#{order._id.slice(-6).toUpperCase()}</em>
       </div>
       <div style={{ fontSize: '13px', color: 'var(--gray)', marginBottom: '24px', fontWeight: 300 }}>
-        {order.items.map(i => i.name).join(', ')} · {order.businesses[0]?.name || 'Pharmacy'}
+        {order.items.map(i => i.name).join(', ')} · {bizName || 'Pharmacy'}
       </div>
 
       <div className="glass-card" style={{ marginBottom: '20px' }}>
         <div className="timeline-container">
           {steps.map((step, idx) => (
             <div key={idx} className="timeline-item">
-              <div 
+              <div
                 className={`timeline-dot ${step.status === 'completed' ? 'badge-green' : (step.status === 'active' ? 'badge-pink timeline-pulse' : '')}`}
                 style={{ background: step.status === 'pending' ? '#eee' : undefined }}
               >
-                <div 
-                  className="timeline-dot-inner" 
-                  style={{ background: step.status === 'pending' ? '#ccc' : '#fff' }} 
-                />
+                <div className="timeline-dot-inner" style={{ background: step.status === 'pending' ? '#ccc' : '#fff' }} />
               </div>
               {idx < steps.length - 1 && (
-                <div 
-                  className="timeline-line" 
-                  style={{ background: step.status === 'completed' ? 'var(--green-pale)' : '#eee' }}
-                />
+                <div className="timeline-line" style={{ background: step.status === 'completed' ? 'var(--green-pale)' : '#eee' }} />
               )}
               <div>
                 <div className="timeline-content-title" style={{ color: step.status === 'pending' ? '#bbb' : 'var(--black)' }}>
@@ -337,17 +346,56 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
         </div>
       </div>
 
-      <div className="glass-card" style={{ marginBottom: '16px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--black)', marginBottom: '6px' }}>
-          {order.businesses[0]?.name || 'Pharmacy'}
+      {isPickup && (
+        <div className="glass-card" style={{ marginBottom: '16px', borderColor: '#0F6E56', borderWidth: '1.5px', borderStyle: 'solid' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+            Pickup from
+          </div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--black)', marginBottom: '8px', letterSpacing: '-0.3px' }}>
+            {pharmacy?.businessName || bizName || 'Your pharmacy'}
+          </div>
+          {pharmacyAddress ? (
+            <div style={{ fontSize: '12px', color: 'var(--gray)', lineHeight: 1.5, marginBottom: '6px' }}>
+              📍 {pharmacyAddress}
+            </div>
+          ) : null}
+          {pharmacy?.phone ? (
+            <div style={{ fontSize: '12px', color: 'var(--black)', fontWeight: 600, marginBottom: '4px' }}>
+              📞 {pharmacy.phone}
+            </div>
+          ) : null}
+          {pharmacy?.email ? (
+            <div style={{ fontSize: '12px', color: 'var(--gray)', marginBottom: '4px' }}>
+              ✉️ {pharmacy.email}
+            </div>
+          ) : null}
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--gray)', lineHeight: 1.5 }}>
-          📍 {order.businesses[0]?.address || '12 GRA Road, Benin City'} · 0.4km
+      )}
+
+      {isPickup && status !== 'Completed' && (
+        <button
+          onClick={handleCompleteOrder}
+          disabled={completing}
+          style={{
+            width: '100%', padding: '16px', background: completing ? '#ccc' : 'var(--green)',
+            color: 'white', border: 'none', borderRadius: '14px', fontSize: '14px',
+            fontWeight: 700, cursor: completing ? 'not-allowed' : 'pointer',
+            marginBottom: '8px', fontFamily: 'Sora, sans-serif',
+          }}
+        >
+          {completing ? 'Updating...' : 'Complete order'}
+        </button>
+      )}
+      {isPickup && status !== 'Completed' && (
+        <div style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginBottom: '16px', lineHeight: 1.5 }}>
+          Please click this button after you have successfully picked up and confirmed your medicines from the pharmacy.
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--green)', fontWeight: 600, marginTop: '8px', cursor: 'pointer' }}>
-          📞 Call pharmacist
+      )}
+      {isPickup && status === 'Completed' && (
+        <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--green)', fontWeight: 600, marginBottom: '16px' }}>
+          ✓ Order collected
         </div>
-      </div>
+      )}
 
       <button className="btn-outline">Report an issue</button>
     </motion.div>
