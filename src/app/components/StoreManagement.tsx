@@ -679,7 +679,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {/* Overlay: pharmacy name — tight box over cross + "SURGE CENTRAL" */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '-0.5%',
+                                top: '0.2%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 width: '76%',
@@ -715,7 +715,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '73%',
+                                  top: '74%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
                                   width: '38%',
