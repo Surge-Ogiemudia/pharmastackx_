@@ -197,6 +197,7 @@ export default function SocialContent() {
   const [postDetail, setPostDetail] = useState('');
   const [generating, setGenerating] = useState(false);
   const [variations, setVariations] = useState<PostVariation[]>([]);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [sharedIdx, setSharedIdx] = useState<number | null>(null);
 
   // ── Brand kit save ───────────────────────────────────────────────────────
@@ -223,7 +224,7 @@ export default function SocialContent() {
 
   // ── Photo upload ─────────────────────────────────────────────────────────
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files ?? []) as File[];
     if (!files.length) return;
     setUploadingPhoto(true);
     try {
@@ -249,12 +250,16 @@ export default function SocialContent() {
     if (!selectedCategory) return;
     setGenerating(true);
     setVariations([]);
+    setGenerateError(null);
+
+    const pharmacyName = user?.businessName || user?.username || 'My Pharmacy';
+    const storeUrl = `${user?.slug || 'pharmacy'}.psx.ng`;
 
     const base = {
       category: selectedCategory,
       detail: postDetail || undefined,
-      pharmacyName: user?.businessName || user?.username,
-      storeUrl: `${user?.slug}.psx.ng`,
+      pharmacyName,
+      storeUrl,
       tagline,
       photoTags: [...new Set(photos.map(p => p.tag))],
     };
@@ -266,10 +271,31 @@ export default function SocialContent() {
         axios.post('/api/ai/social-content', { ...base, tone: 'bold and attention-grabbing' }),
         axios.post('/api/ai/social-content', { ...base, tone: 'educational and trustworthy' }),
       ]);
+
+      let firstError = '';
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          const msg = (r.reason as Error)?.message || String(r.reason);
+          console.error(`Variation ${i + 1} failed:`, msg);
+          if (!firstError) firstError = msg;
+        }
+      });
+
       contents = results
         .filter(r => r.status === 'fulfilled')
-        .map(r => (r as PromiseFulfilledResult<{ data: GeneratedContent }>).value.data);
-    } catch (e) { console.error(e); }
+        .map(r => (r as PromiseFulfilledResult<{ data: GeneratedContent }>).value.data)
+        .filter(d => d?.headline && d?.caption);
+
+      if (!contents.length) {
+        // Extract server error message if axios error
+        const axiosMsg = (results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined)
+          ?.reason?.response?.data?.message;
+        setGenerateError(axiosMsg || firstError || 'Could not generate posts. Please try again.');
+      }
+    } catch (e) {
+      console.error('Generate error:', e);
+      setGenerateError('Unexpected error. Please try again.');
+    }
 
     setGenerating(false);
 
@@ -279,8 +305,6 @@ export default function SocialContent() {
     setVariations(contents.map(content => ({ content, previewUrl: null, building: true })));
 
     // Build canvases independently
-    const pharmacyName = user?.businessName || user?.username || 'My Pharmacy';
-    const storeUrl = `${user?.slug}.psx.ng`;
 
     contents.forEach(async (content, i) => {
       try {
@@ -530,6 +554,12 @@ export default function SocialContent() {
         >
           {generating ? 'Generating ideas...' : variations.length ? 'Regenerate' : 'Generate 3 ideas'}
         </Button>
+
+        {generateError && (
+          <Typography sx={{ mt: 1.5, fontSize: '12px', color: '#c0392b', textAlign: 'center', lineHeight: 1.5 }}>
+            {generateError}
+          </Typography>
+        )}
       </Box>
 
       {/* ── POST VARIATIONS ───────────────────────────────────────────── */}
