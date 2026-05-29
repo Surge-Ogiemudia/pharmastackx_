@@ -813,11 +813,11 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 </span>
                               </Box>
 
-                              {/* Overlay: QR code — shifted down, wider, bottom lands at ~87% */}
+                              {/* Overlay: QR code — shifted down, wider, bottom lands at ~86% */}
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '74.7%',
+                                  top: '73.5%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
                                   width: '36%',
