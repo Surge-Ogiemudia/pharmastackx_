@@ -350,27 +350,90 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   };
 
   // --- LOGIC: Flyer ---
-  const captureFlyerCanvas = async () => {
-    if (!flyerRef.current) return null;
-    // Temporarily swap gradient text to solid color — html2canvas can't render webkit-text-fill-color
-    const gradientSpan = flyerRef.current.querySelector('[data-flyer-name]') as HTMLElement | null;
-    if (gradientSpan) {
-      gradientSpan.style.webkitTextFillColor = '#0F6E56';
-      gradientSpan.style.backgroundImage = 'none';
-    }
-    const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(flyerRef.current, {
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
+  // Renders the flyer directly to canvas (avoids html2canvas CSS quirks and gesture-expiry on iOS)
+  const buildFlyerCanvas = async (): Promise<HTMLCanvasElement> => {
+    await document.fonts.ready;
+
+    const SCALE = 3;
+    const W = 400 * SCALE; // 1200
+    const H = 566 * SCALE; // 1698
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+
+    const fillRoundRect = (x: number, y: number, w: number, h: number, r: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    // 1. Base flyer image
+    await new Promise<void>((res, rej) => {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0, W, H); res(); };
+      img.onerror = rej;
+      img.src = '/storeflyer.png';
     });
-    // Restore gradient
-    if (gradientSpan) {
-      gradientSpan.style.webkitTextFillColor = 'transparent';
-      gradientSpan.style.backgroundImage = 'linear-gradient(120deg, #0F6E56 0%, #1a9e7a 40%, #c0396b 80%, #FF4D97 100%)';
-    }
+
+    // 2. Pharmacy name pill — matches CSS: top 0.2%, width 76%, py 3.5% of H, radius 12px at ref
+    const nameFontSize = Math.round(W * 0.033);
+    const namePadV = H * 0.035;
+    const namePillW = W * 0.76;
+    const namePillH = namePadV * 2 + nameFontSize * 1.2;
+    const namePillX = (W - namePillW) / 2;
+    const namePillY = H * 0.002;
+
+    ctx.fillStyle = '#f6f5f4';
+    fillRoundRect(namePillX, namePillY, namePillW, namePillH, 12 * SCALE);
+
+    ctx.font = `italic 900 ${nameFontSize}px Fraunces, serif`;
+    ctx.fillStyle = '#0F6E56';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(userBusinessName.toUpperCase(), W / 2, namePillY + namePillH / 2);
+
+    // 3. QR code — CSS: center at top 74.7%, width 36%, aspect 1:1
+    const qrW = W * 0.36;
+    const qrCenterY = H * 0.747;
+    const qrX = (W - qrW) / 2;
+    const qrY = qrCenterY - qrW / 2;
+
+    await new Promise<void>((res, rej) => {
+      const qrImg = new Image();
+      qrImg.onload = () => { ctx.drawImage(qrImg, qrX, qrY, qrW, qrW); res(); };
+      qrImg.onerror = rej;
+      qrImg.src = qrCodeDataUrl;
+    });
+
+    // 4. URL pill — CSS: top 89.36%, left 50% centered, minWidth 52%, py 0, lineHeight 1
+    const urlFontSize = Math.round(W * 0.033);
+    ctx.font = `800 ${urlFontSize}px Sora, sans-serif`;
+    const urlText = `⊕ ${userSlug}.psx.ng`;
+    const urlTextW = ctx.measureText(urlText).width;
+    const urlPillW = Math.max(urlTextW + W * 0.08, W * 0.52);
+    const urlPillH = urlFontSize * 1.4;
+    const urlPillX = (W - urlPillW) / 2;
+    const urlPillY = H * 0.8936;
+
+    ctx.fillStyle = '#f6f5f4';
+    fillRoundRect(urlPillX, urlPillY, urlPillW, urlPillH, urlPillH / 2);
+
+    ctx.fillStyle = '#0F6E56';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(urlText, W / 2, urlPillY + urlPillH / 2);
+
     return canvas;
   };
 
@@ -382,7 +445,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const handleDownloadFlyer = async () => {
     setFlyerLoading(true);
     try {
-      const canvas = await captureFlyerCanvas();
+      const canvas = await buildFlyerCanvas();
       if (!canvas) return;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
@@ -412,7 +475,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const handleShareFlyer = async () => {
     setFlyerLoading(true);
     try {
-      const canvas = await captureFlyerCanvas();
+      const canvas = await buildFlyerCanvas();
       if (!canvas) return;
       const blob = await canvasToBlob(canvas);
       const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
