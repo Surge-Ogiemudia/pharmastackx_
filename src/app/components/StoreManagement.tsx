@@ -105,6 +105,13 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const [copied, setCopied] = useState(false);
   const [synkkStatus, setSynkkStatus] = useState<{ connected: boolean; itemCount: number; lastSync: string | null } | null>(null);
 
+  // -- Payout Modal State --
+  const [payoutOpen, setPayoutOpen] = useState(false);
+  const [payoutBalance, setPayoutBalance] = useState<{ unpaid: number; totalRevenue: number } | null>(null);
+  const [payoutForm, setPayoutForm] = useState({ accountNumber: '', bankName: '', accountName: '' });
+  const [payoutSubmitting, setPayoutSubmitting] = useState(false);
+  const [payoutSuccess, setPayoutSuccess] = useState(false);
+
   // -- Orders Tab State --
   const [ordersFilter, setOrdersFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('month');
   const [ordersData, setOrdersData] = useState<{ totalOrders: number; totalRevenue: number; visitCount: number; orders: any[] } | null>(null);
@@ -1146,16 +1153,22 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                     </Box>
                   ) : ordersData && (
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
-                      {[
-                        { label: 'ORDERS', value: ordersData.totalOrders, color: '#000', format: (v: number) => v.toString() },
-                        { label: 'REVENUE', value: ordersData.totalRevenue, color: '#0F6E56', format: (v: number) => `₦${v.toLocaleString()}` },
-                        { label: 'STORE VISITS', value: ordersData.visitCount, color: '#7C3AED', format: (v: number) => v.toString() },
-                      ].map((stat, i) => (
-                        <Box key={i} sx={{ bgcolor: 'white', borderRadius: '16px', p: 1.8, textAlign: 'center', border: '1px solid #eee' }}>
-                          <Typography sx={{ fontSize: i === 1 ? '14px' : '22px', fontWeight: 800, color: stat.color, mb: 0, lineHeight: 1.1, wordBreak: 'break-all' }}>{stat.format(stat.value)}</Typography>
-                          <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.5px', mt: 0.3 }}>{stat.label}</Typography>
-                        </Box>
-                      ))}
+                      {/* ORDERS */}
+                      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1.8, textAlign: 'center', border: '1px solid #eee' }}>
+                        <Typography sx={{ fontSize: '22px', fontWeight: 800, color: '#000', lineHeight: 1.1 }}>{ordersData.totalOrders}</Typography>
+                        <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.5px', mt: 0.3 }}>ORDERS</Typography>
+                      </Box>
+                      {/* REVENUE + PAYOUT */}
+                      <Box onClick={() => { setPayoutSuccess(false); setPayoutForm({ accountNumber: '', bankName: '', accountName: '' }); axios.get('/api/payout').then(r => setPayoutBalance(r.data)).catch(() => {}); setPayoutOpen(true); }} sx={{ bgcolor: '#0F6E56', borderRadius: '16px', p: 1.8, textAlign: 'center', border: '1px solid #0F6E56', cursor: 'pointer', transition: 'opacity 0.2s', '&:hover': { opacity: 0.9 } }}>
+                        <Typography sx={{ fontSize: '13px', fontWeight: 900, color: 'white', lineHeight: 1.1, wordBreak: 'break-all' }}>₦{ordersData.totalRevenue.toLocaleString()}</Typography>
+                        <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', mt: 0.3 }}>REVENUE</Typography>
+                        <Typography sx={{ fontSize: '8px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', mt: 0.5 }}>tap to request payout →</Typography>
+                      </Box>
+                      {/* STORE VISITS */}
+                      <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: 1.8, textAlign: 'center', border: '1px solid #eee' }}>
+                        <Typography sx={{ fontSize: '22px', fontWeight: 800, color: '#7C3AED', lineHeight: 1.1 }}>{ordersData.visitCount}</Typography>
+                        <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.5px', mt: 0.3 }}>STORE VISITS</Typography>
+                      </Box>
                     </Box>
                   )}
 
@@ -1277,6 +1290,79 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
           </AnimatePresence>
         </Box>
       </Container>
+
+      {/* PAYOUT MODAL */}
+      <Modal open={payoutOpen} onClose={() => { if (!payoutSubmitting) setPayoutOpen(false); }} closeAfterTransition slots={{ backdrop: (props) => <Box {...props} sx={{ position: 'fixed', inset: 0, bgcolor: 'rgba(10,15,12,0.5)', backdropFilter: 'blur(12px)', zIndex: -1 }} /> }}>
+        <Fade in={payoutOpen}>
+          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: { xs: '92%', sm: '440px' }, bgcolor: 'white', borderRadius: '28px', p: 3.5, outline: 'none', boxShadow: '0 32px 100px rgba(0,0,0,0.18)' }}>
+            {payoutSuccess ? (
+              /* SUCCESS STATE */
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Box sx={{ width: 64, height: 64, bgcolor: '#EBF7F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <Typography sx={{ fontSize: '28px' }}>✓</Typography>
+                </Box>
+                <Typography className="fraunces" sx={{ fontSize: '22px', fontWeight: 900, color: '#0F6E56', mb: 1 }}>Request Received</Typography>
+                <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.45)', fontWeight: 500, lineHeight: 1.6, mb: 3 }}>
+                  Your payout request has been logged. Our team will process it and reach out if any clarification is needed.
+                </Typography>
+                <Button fullWidth onClick={() => setPayoutOpen(false)} sx={{ bgcolor: '#0F6E56', color: 'white', borderRadius: '14px', py: 1.5, fontWeight: 800, textTransform: 'none', fontSize: '14px', boxShadow: 'none', '&:hover': { bgcolor: '#0a5240', boxShadow: 'none' } }}>Done</Button>
+              </Box>
+            ) : (
+              /* FORM STATE */
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
+                  <Box>
+                    <Typography className="fraunces" sx={{ fontSize: '20px', fontWeight: 900, color: '#000', mb: 0.3 }}>Request Payout</Typography>
+                    {payoutBalance && (
+                      <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', fontWeight: 500 }}>
+                        Available: <span style={{ color: '#0F6E56', fontWeight: 800 }}>₦{payoutBalance.unpaid.toLocaleString()}</span>
+                      </Typography>
+                    )}
+                  </Box>
+                  <IconButton onClick={() => setPayoutOpen(false)} size="small" sx={{ bgcolor: '#f5f5f5' }}><Close sx={{ fontSize: 16 }} /></IconButton>
+                </Box>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box>
+                    <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Bank Name</Typography>
+                    <TextField fullWidth placeholder="e.g. First Bank, GTBank…" value={payoutForm.bankName} onChange={e => setPayoutForm(p => ({ ...p, bankName: e.target.value }))} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Account Number</Typography>
+                    <TextField fullWidth placeholder="10-digit account number" value={payoutForm.accountNumber} onChange={e => setPayoutForm(p => ({ ...p, accountNumber: e.target.value }))} variant="outlined" inputProps={{ maxLength: 10 }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Account Name</Typography>
+                    <TextField fullWidth placeholder="Name on the account" value={payoutForm.accountName} onChange={e => setPayoutForm(p => ({ ...p, accountName: e.target.value }))} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                  </Box>
+                  {payoutBalance && (
+                    <Box sx={{ bgcolor: '#EBF7F2', borderRadius: '14px', p: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#0F6E56' }}>Amount to request</Typography>
+                      <Typography sx={{ fontSize: '16px', fontWeight: 900, color: '#0F6E56' }}>₦{payoutBalance.unpaid.toLocaleString()}</Typography>
+                    </Box>
+                  )}
+                  <Button
+                    fullWidth
+                    disabled={payoutSubmitting || !payoutForm.bankName || !payoutForm.accountNumber || !payoutForm.accountName || !payoutBalance?.unpaid}
+                    onClick={async () => {
+                      if (!payoutBalance?.unpaid) return;
+                      setPayoutSubmitting(true);
+                      try {
+                        await axios.post('/api/payout', { ...payoutForm, amount: payoutBalance.unpaid });
+                        setPayoutSuccess(true);
+                      } catch (e) { alert('Request failed. Please try again.'); }
+                      finally { setPayoutSubmitting(false); }
+                    }}
+                    sx={{ bgcolor: '#0F6E56', color: 'white', borderRadius: '14px', py: 1.8, fontWeight: 800, textTransform: 'none', fontSize: '14px', boxShadow: 'none', mt: 0.5, '&:hover': { bgcolor: '#0a5240', boxShadow: 'none' }, '&:disabled': { bgcolor: '#ccc', color: 'white' } }}
+                  >
+                    {payoutSubmitting ? 'Submitting…' : 'Confirm & Request Payout'}
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Fade>
+      </Modal>
 
       {/* PRODUCT EDITOR MODAL */}
       <Modal 
