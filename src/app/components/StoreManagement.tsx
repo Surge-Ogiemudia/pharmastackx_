@@ -378,10 +378,25 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
       ctx.fill();
     };
 
-    // 1. Base flyer image
+    // 1. Base flyer image — drawn with objectFit:cover to match CSS rendering
     await new Promise<void>((res, rej) => {
       const img = new Image();
-      img.onload = () => { ctx.drawImage(img, 0, 0, W, H); res(); };
+      img.onload = () => {
+        const imgRatio = img.naturalWidth / img.naturalHeight;
+        const canvasRatio = W / H;
+        let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+        if (imgRatio > canvasRatio) {
+          // image wider than canvas — crop sides
+          sw = img.naturalHeight * canvasRatio;
+          sx = (img.naturalWidth - sw) / 2;
+        } else {
+          // image taller than canvas — crop top/bottom
+          sh = img.naturalWidth / canvasRatio;
+          sy = (img.naturalHeight - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+        res();
+      };
       img.onerror = rej;
       img.src = '/storeflyer.png';
     });
