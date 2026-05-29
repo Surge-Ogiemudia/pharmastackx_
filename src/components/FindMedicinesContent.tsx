@@ -392,17 +392,25 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                     )}
                     
                     {medicine.distance != null && (
-                      <div className={styles.lowStock}>
+                      <div className={styles.travelTime}>
                         {medicine.travelTime?.toFixed(0)} mins ({medicine.distance?.toFixed(1)} km)
                       </div>
+                    )}
+
+                    {medicine.stockQty !== null && medicine.stockQty === 0 && (
+                      <div className={styles.outOfStock}>Out of stock</div>
+                    )}
+                    {medicine.stockQty !== null && medicine.stockQty > 0 && medicine.stockQty <= 10 && (
+                      <div className={styles.lowStock}>Only {medicine.stockQty} left</div>
                     )}
 
                     <div className={styles.productFooter} style={{ marginTop: 'auto', paddingTop: '12px' }}>
                       <div className={styles.productPrice}>
                         {medicine.formattedPrice} <span>/ each</span>
                       </div>
-                      <button 
-                        className={styles.addBtn}
+                      <button
+                        className={`${styles.addBtn} ${!medicine.inStock ? styles.addBtnDisabled : ''}`}
+                        disabled={!medicine.inStock}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAddToCart(medicine);

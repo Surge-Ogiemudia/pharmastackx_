@@ -123,7 +123,8 @@ export async function GET(req) {
           POM: product.POM || false,
           info: product.info,
           slug: product.slug,
-          inStock: true,
+          stockQty: typeof product.quantity === 'number' ? product.quantity : null,
+          inStock: typeof product.quantity === 'number' ? product.quantity > 0 : true,
         };
       } catch (error) {
         console.error('Error transforming product:', { 

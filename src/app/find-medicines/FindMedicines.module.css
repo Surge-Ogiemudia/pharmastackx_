@@ -656,15 +656,28 @@
   background: #22C55E;
 }
 
-/* ── LOW STOCK WARNING ── */
+/* ── STOCK BADGES ── */
+.travelTime {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 4px;
+}
 .lowStock {
   font-size: 10px;
   color: var(--amber);
-  font-weight: 500;
+  font-weight: 600;
   margin-top: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+}
+.outOfStock {
+  font-size: 10px;
+  color: var(--red);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.addBtnDisabled {
+  background: var(--muted-2) !important;
+  cursor: not-allowed !important;
 }
 .lowStock::before {
   content: '';
