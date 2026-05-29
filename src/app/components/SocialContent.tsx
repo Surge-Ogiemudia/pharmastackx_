@@ -75,96 +75,167 @@ async function buildPostCanvas(
   const canvas = document.createElement('canvas');
   canvas.width = S; canvas.height = S;
   const ctx = canvas.getContext('2d')!;
+  const PAD = 60;
+
+  // wrap text helper (sets font before measuring)
+  function wrap(text: string, font: string, maxW: number, maxLines: number): string[] {
+    ctx.font = font;
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(t).width > maxW) { if (cur) lines.push(cur); cur = w; }
+      else cur = t;
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, maxLines);
+  }
+
+  // rounded-rect path helper
+  function rrect(x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
 
   if (photo) {
+    // ── LAYOUT A: photo on top, white card floating up from bottom ────────
+    const PHOTO_H = 550;
+    const CARD_Y = PHOTO_H - 50;
+
+    // Draw photo (cover-fit to top portion)
     await new Promise<void>((res, rej) => {
       const img = new Image();
       img.onload = () => {
-        const ir = img.naturalWidth / img.naturalHeight;
+        const tR = S / PHOTO_H;
+        const iR = img.naturalWidth / img.naturalHeight;
         let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-        if (ir > 1) { sw = img.naturalHeight; sx = (img.naturalWidth - sw) / 2; }
-        else { sh = img.naturalWidth; sy = (img.naturalHeight - sh) / 2; }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, S, S);
+        if (iR > tR) { sw = sh * tR; sx = (img.naturalWidth - sw) / 2; }
+        else { sh = sw / tR; sy = (img.naturalHeight - sh) / 2; }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, S, PHOTO_H);
         res();
       };
       img.onerror = rej;
       img.src = photo.url;
     });
-    const grad = ctx.createLinearGradient(0, 0, 0, S);
-    grad.addColorStop(0, 'rgba(0,0,0,0.55)');
-    grad.addColorStop(0.4, 'rgba(0,0,0,0.15)');
-    grad.addColorStop(0.7, 'rgba(0,0,0,0.35)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.75)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, S, S);
-  } else {
-    const grad = ctx.createLinearGradient(0, 0, S, S);
-    grad.addColorStop(0, brandPrimary);
-    grad.addColorStop(1, brandSecondary);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, S, S);
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    for (let x = 0; x < S; x += 40) for (let y = 0; y < S; y += 40) {
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+
+    // White card with rounded top corners
+    ctx.fillStyle = '#ffffff';
+    rrect(0, CARD_Y, S, S - CARD_Y + 2, 40);
+    ctx.fill();
+
+    // Thin brand colour strip at very top of card
+    ctx.fillStyle = brandPrimary;
+    ctx.fillRect(PAD, CARD_Y + 34, 52, 4);
+
+    // Layout text
+    let y = CARD_Y + 52;
+
+    ctx.font = `600 20px 'Poppins', sans-serif`;
+    ctx.fillStyle = brandPrimary;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(pharmacyName.toUpperCase(), PAD, y);
+    y += 40;
+
+    const hlFont = `800 56px 'Poppins', sans-serif`;
+    for (const l of wrap(content.headline, hlFont, S - PAD * 2, 2)) {
+      ctx.font = hlFont; ctx.fillStyle = '#111'; ctx.fillText(l, PAD, y); y += 66;
     }
+    y += 6;
+
+    const capFont = `400 25px 'Sora', sans-serif`;
+    for (const l of wrap(content.caption, capFont, S - PAD * 2, 3)) {
+      ctx.font = capFont; ctx.fillStyle = '#555'; ctx.fillText(l, PAD, y); y += 34;
+    }
+    y += 10;
+
+    ctx.font = `600 18px 'Sora', sans-serif`;
+    ctx.fillStyle = brandPrimary;
+    ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), PAD, y);
+
+    // URL pinned to bottom
+    ctx.font = `500 20px 'Sora', sans-serif`;
+    ctx.fillStyle = '#bbb';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`⊕  ${storeUrl}`, PAD, S - 42);
+
+  } else {
+    // ── LAYOUT B: brand hero block (top), white text area (bottom) ────────
+
+    // Off-white background
+    ctx.fillStyle = '#f8f8f6';
+    ctx.fillRect(0, 0, S, S);
+
+    // Brand colour hero block with diagonal bottom edge
+    ctx.fillStyle = brandPrimary;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(S, 0); ctx.lineTo(S, 350); ctx.lineTo(0, 415);
+    ctx.closePath();
+    ctx.fill();
+
+    // Decorative circle inside hero (semi-transparent secondary)
+    ctx.fillStyle = brandSecondary + '30';
+    ctx.beginPath();
+    ctx.arc(S - 90, -70, 280, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Smaller accent circle
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath();
+    ctx.arc(100, 340, 180, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pharmacy name (white, inside hero block)
+    ctx.font = `700 28px 'Poppins', sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(pharmacyName.toUpperCase(), PAD, 76);
+
+    // Store URL small, under name
+    ctx.font = `400 20px 'Sora', sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(storeUrl, PAD, 120);
+
+    // Dot row (decorative)
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath(); ctx.arc(PAD + i * 20, 230, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Text content below hero block
+    let y = 460;
+
+    const hlFont = `800 62px 'Poppins', sans-serif`;
+    for (const l of wrap(content.headline, hlFont, S - PAD * 2, 2)) {
+      ctx.font = hlFont; ctx.fillStyle = '#111'; ctx.fillText(l, PAD, y); y += 74;
+    }
+    y += 8;
+
+    const capFont = `400 27px 'Sora', sans-serif`;
+    for (const l of wrap(content.caption, capFont, S - PAD * 2, 3)) {
+      ctx.font = capFont; ctx.fillStyle = '#555'; ctx.fillText(l, PAD, y); y += 36;
+    }
+    y += 16;
+
+    ctx.font = `600 20px 'Sora', sans-serif`;
+    ctx.fillStyle = brandPrimary;
+    ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), PAD, y);
+
+    // Bottom brand accent bar
+    ctx.fillStyle = brandSecondary;
+    ctx.fillRect(0, S - 10, S, 10);
   }
-
-  const textColor = '#ffffff';
-
-  ctx.font = '700 38px Poppins, sans-serif';
-  ctx.fillStyle = textColor;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(pharmacyName.toUpperCase(), S / 2, 60);
-
-  ctx.fillStyle = brandSecondary;
-  ctx.fillRect(S / 2 - 30, 108, 60, 4);
-
-  ctx.font = '800 72px Poppins, sans-serif';
-  ctx.fillStyle = textColor;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const words = content.headline.split(' ');
-  const lines: string[] = [];
-  let line = '';
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > S * 0.85) { lines.push(line); line = word; }
-    else line = test;
-  }
-  if (line) lines.push(line);
-  const lineH = 84;
-  const headlineY = S / 2 - (lines.length * lineH) / 2;
-  lines.forEach((l, i) => ctx.fillText(l, S / 2, headlineY + i * lineH));
-
-  ctx.font = '400 28px Sora, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  const captionWords = content.caption.split(' ');
-  const captionLines: string[] = [];
-  let cLine = '';
-  for (const w of captionWords) {
-    const t = cLine ? `${cLine} ${w}` : w;
-    if (ctx.measureText(t).width > S * 0.78) { captionLines.push(cLine); cLine = w; }
-    else cLine = t;
-  }
-  if (cLine) captionLines.push(cLine);
-  const captionStartY = headlineY + lines.length * lineH + 40;
-  captionLines.slice(0, 3).forEach((l, i) => {
-    ctx.fillText(l, S / 2, captionStartY + i * 40);
-  });
-
-  ctx.fillStyle = brandPrimary;
-  ctx.fillRect(0, S - 110, S, 110);
-
-  ctx.font = '700 30px Sora, sans-serif';
-  ctx.fillStyle = textColor;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(`⊕ ${storeUrl}`, S / 2, S - 65);
-
-  ctx.font = '400 20px Sora, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), S / 2, S - 30);
 
   return canvas;
 }
