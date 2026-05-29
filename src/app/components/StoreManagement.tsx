@@ -97,7 +97,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
 
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const flyerRef = useRef<HTMLDivElement>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [flyerLoading, setFlyerLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // --- INITIALIZATION ---
@@ -314,6 +316,52 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // --- LOGIC: Flyer ---
+  const captureFlyerCanvas = async () => {
+    if (!flyerRef.current) return null;
+    const html2canvas = (await import('html2canvas')).default;
+    return html2canvas(flyerRef.current, {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      logging: false,
+    });
+  };
+
+  const handleDownloadFlyer = async () => {
+    setFlyerLoading(true);
+    try {
+      const canvas = await captureFlyerCanvas();
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = `${userSlug}-flyer.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) { console.error('Download failed', e); }
+    finally { setFlyerLoading(false); }
+  };
+
+  const handleShareFlyer = async () => {
+    setFlyerLoading(true);
+    try {
+      const canvas = await captureFlyerCanvas();
+      if (!canvas) return;
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: `${userBusinessName} — PharmaStackX`, text: `Order medicines online at ${userSlug}.psx.ng` });
+        } else {
+          // Fallback: just copy link
+          navigator.clipboard.writeText(`https://${userSlug}.psx.ng`);
+          alert('Link copied to clipboard — sharing not supported on this device.');
+        }
+      }, 'image/png');
+    } catch (e) { console.error('Share failed', e); }
+    finally { setFlyerLoading(false); }
   };
 
   // --- LOGIC: UI Helpers ---
@@ -608,19 +656,114 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                         <Box>
                           <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '0.8px', mb: 0.8, textTransform: 'uppercase' }}>STORE FLYER</Typography>
                           <Box sx={{ background: 'white', borderRadius: '20px', padding: '12px', border: '1px solid #eee', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                            <Box sx={{ background: '#0F6E56', borderRadius: '16px', padding: '16px', color: 'white', position: 'relative', mb: 1.2, overflow: 'hidden' }}>
-                              <Typography sx={{ fontSize: '11px', fontWeight: 900, mb: 1 }}>PharmaStack<span style={{ color: '#FF4D97' }}>X</span></Typography>
-                              <Typography className="fraunces" sx={{ fontSize: '16px', fontWeight: 900, lineHeight: 1.2, mb: 0.8, maxWidth: '180px' }}>
-                                Find medicines at <em style={{ fontStyle: 'italic', opacity: 0.9 }}>{userBusinessName}'s</em> store.
-                              </Typography>
-                              <Typography sx={{ fontSize: '10px', opacity: 0.5, fontWeight: 500 }}>{userSlug}.psx.ng</Typography>
-                              <Box sx={{ position: 'absolute', bottom: 15, right: 15, width: 44, height: 44, bgcolor: 'white', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', p: '2px' }}>
-                                {qrCodeDataUrl ? <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: '4px' }} /> : <Box sx={{ width: 10, height: 10, bgcolor: '#eee', borderRadius: '50%' }} />}
+                            {/* FLYER PREVIEW — html2canvas captures this div */}
+                            <Box
+                              ref={flyerRef}
+                              sx={{
+                                position: 'relative',
+                                width: '100%',
+                                aspectRatio: '400 / 566',
+                                borderRadius: '10px',
+                                overflow: 'hidden',
+                                mb: 1.2,
+                                userSelect: 'none',
+                              }}
+                            >
+                              {/* Base flyer image */}
+                              <img
+                                src="/storeflyer.png"
+                                alt="Store flyer"
+                                style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+                                crossOrigin="anonymous"
+                              />
+
+                              {/* Overlay: Pharmacy name over "SURGE CENTRAL" */}
+                              <Box sx={{
+                                position: 'absolute',
+                                top: '8.2%',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '70%',
+                                textAlign: 'center',
+                              }}>
+                                <span style={{
+                                  fontFamily: '"Sora", sans-serif',
+                                  fontWeight: 900,
+                                  fontSize: 'clamp(10px, 3.8vw, 18px)',
+                                  color: '#111',
+                                  letterSpacing: '0.08em',
+                                  textTransform: 'uppercase',
+                                  lineHeight: 1.1,
+                                  display: 'block',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}>
+                                  {userBusinessName}
+                                </span>
+                              </Box>
+
+                              {/* Overlay: QR code over existing QR */}
+                              {qrCodeDataUrl && (
+                                <Box sx={{
+                                  position: 'absolute',
+                                  top: '60.5%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  width: '36%',
+                                  aspectRatio: '1/1',
+                                  bgcolor: 'white',
+                                  borderRadius: '6px',
+                                  p: '3px',
+                                  boxShadow: '0 0 0 3px white',
+                                }}>
+                                  <img
+                                    src={qrCodeDataUrl}
+                                    alt="QR Code"
+                                    style={{ width: '100%', height: '100%', display: 'block', borderRadius: '4px' }}
+                                  />
+                                </Box>
+                              )}
+
+                              {/* Overlay: Store URL over "surge.psx.ng" */}
+                              <Box sx={{
+                                position: 'absolute',
+                                top: '80%',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '60%',
+                                textAlign: 'center',
+                              }}>
+                                <span style={{
+                                  fontFamily: '"Sora", sans-serif',
+                                  fontWeight: 700,
+                                  fontSize: 'clamp(8px, 2.8vw, 13px)',
+                                  color: '#111',
+                                  letterSpacing: '0.02em',
+                                  whiteSpace: 'nowrap',
+                                }}>
+                                  {userSlug}.psx.ng
+                                </span>
                               </Box>
                             </Box>
+
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Button fullWidth sx={{ bgcolor: '#E1F5EE', color: '#0F6E56', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#d4ece3' } }}>Download flyer</Button>
-                              <Button fullWidth sx={{ bgcolor: '#FDF2F5', color: '#FF4D97', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#fbe4eb' } }}>Share flyer</Button>
+                              <Button
+                                fullWidth
+                                onClick={handleDownloadFlyer}
+                                disabled={flyerLoading}
+                                sx={{ bgcolor: '#E1F5EE', color: '#0F6E56', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#d4ece3' } }}
+                              >
+                                {flyerLoading ? 'Processing...' : 'Download flyer'}
+                              </Button>
+                              <Button
+                                fullWidth
+                                onClick={handleShareFlyer}
+                                disabled={flyerLoading}
+                                sx={{ bgcolor: '#FDF2F5', color: '#FF4D97', borderRadius: '10px', py: 1.2, fontSize: '13px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#fbe4eb' } }}
+                              >
+                                Share flyer
+                              </Button>
                             </Box>
                           </Box>
                         </Box>
