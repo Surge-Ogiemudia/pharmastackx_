@@ -254,140 +254,190 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
 
     const accountUser = detailedUser;
 
+    const quickCardSx = {
+        background: '#fff',
+        border: '1px solid rgba(0,0,0,0.06)',
+        borderRadius: '20px',
+        p: 2,
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' },
+        '&:active': { transform: 'scale(0.97)' },
+    };
+    const quickIconSx = (color: string, bg: string) => ({
+        width: 38, height: 38, borderRadius: '12px', bgcolor: bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '18px', mb: 1.5,
+    });
+    const quickTitleSx = { fontSize: '13px', fontWeight: 700, color: '#111', fontFamily: 'Sora, sans-serif', lineHeight: 1.2, mb: 0.25 };
+    const quickDescSx = { fontSize: '11px', color: '#aaa', fontFamily: 'Sora, sans-serif', lineHeight: 1.3 };
+
     return (
         <Box sx={{ position: 'relative', width: '100%' }}>
             <AnimatePresence mode="wait">
                 {profileMode === 'list' && !showSubscription ? (
-                    <Box 
+                    <Box
                         key="list"
                         component={motion.div}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        sx={{ 
-                            p: { xs: 2, sm: 3 },
-                            maxWidth: '1000px',
-                            margin: '0 auto'
-                        }}
+                        sx={{ maxWidth: '480px', margin: '0 auto', pb: '120px' }}
                     >
-                        <div className="profile-top-bar">
-                            <div className="profile-role-tag">{accountUser.role}</div>
-                        </div>
+                        {/* ── Hero ── */}
+                        <Box sx={{ px: 3, pt: 3, pb: 2, textAlign: 'center' }}>
+                            <Avatar
+                                src={accountUser.profilePicture}
+                                sx={{ width: 80, height: 80, mx: 'auto', mb: 1.5, border: '3px solid #fff', boxShadow: '0 8px 24px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 28, fontWeight: 700 }}
+                            >
+                                {!accountUser.profilePicture && accountUser.username?.[0]?.toUpperCase()}
+                            </Avatar>
+                            <Typography sx={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#111' }}>
+                                {accountUser.username}
+                            </Typography>
+                            <Typography sx={{ fontSize: '12px', color: '#aaa', fontWeight: 600, mb: 1.5, textTransform: 'capitalize' }}>
+                                {accountUser.businessName || accountUser.role}
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                                <Box sx={{ px: 1.5, py: 0.5, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '11px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif' }}>
+                                    ✓ Verified
+                                </Box>
+                                <Box
+                                    onClick={() => setShowSubscription(true)}
+                                    sx={{ px: 1.5, py: 0.5, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '11px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer' }}
+                                >
+                                    {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
+                                </Box>
+                            </Box>
+                        </Box>
 
-                        <div className="profile-main-header">
-                            <Avatar src={accountUser.profilePicture} sx={{ width: 80, height: 80, mb: 2 }} />
-                            <div className="profile-name">{accountUser.username}</div>
-                            <div className="badge-row">
-                                <div className="badge badge-verified">Verified</div>
-                                <div className="badge badge-rating" onClick={() => setShowSubscription(true)}>
-                                    {accountUser.subscriptionStatus === 'subscribed' ? 'Pro' : 'Basic'}
-                                </div>
-                            </div>
-                        </div>
+                        {/* ── Quick-action cards ── */}
+                        <Box sx={{ px: 2, mb: 1 }}>
+                            <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
+                                Quick actions
+                            </Typography>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
 
-                        <div className="sec-tag">Personal Information</div>
-                        <div className="glass-card" style={{ padding: '8px' }}>
-                            <div className="profile-row-action" onClick={() => setProfileMode('profile')}>
-                                <Person style={{ color: 'var(--primary-green)' }} />
-                                <span className="profile-row-label">User Profile</span>
-                                <span className="profile-chevron">›</span>
-                            </div>
-                        </div>
+                                {/* Profile */}
+                                <Box onClick={() => setProfileMode('profile')} sx={quickCardSx}>
+                                    <Box sx={quickIconSx('#0F6E56', 'rgba(15,110,86,0.08)')}>👤</Box>
+                                    <Typography sx={quickTitleSx}>My Profile</Typography>
+                                    <Typography sx={quickDescSx}>Name, email, phone</Typography>
+                                </Box>
 
-                        {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
-                            <>
-                                <div className="sec-tag">Pharmacy Management</div>
-                                <div className="glass-card" style={{ padding: '8px' }}>
-                                    {['pharmacy', 'admin'].includes(accountUser.role) && (
-                                        <div className="profile-row-action" onClick={() => setProfileMode('store')}>
-                                            <Business style={{ color: 'var(--primary-green)' }} />
-                                            <span className="profile-row-label">Store Management</span>
-                                            <span className="profile-chevron">›</span>
-                                        </div>
-                                    )}
-                                    <div className="profile-row-action" onClick={() => setProfileMode('restock')}>
-                                        <LocalHospital style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Medicine Restock</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                                {/* Orders — route to activity hub */}
+                                <Box onClick={() => setView('orders')} sx={quickCardSx}>
+                                    <Box sx={quickIconSx('#1565C0', 'rgba(21,101,192,0.07)')}>📦</Box>
+                                    <Typography sx={quickTitleSx}>My Orders</Typography>
+                                    <Typography sx={quickDescSx}>Track deliveries</Typography>
+                                </Box>
 
+                                {/* Store Management — pharmacy + admin only */}
+                                {['pharmacy', 'admin'].includes(accountUser.role) && (
+                                    <Box onClick={() => setProfileMode('store')} sx={quickCardSx}>
+                                        <Box sx={quickIconSx('#B45309', 'rgba(180,83,9,0.07)')}>🏪</Box>
+                                        <Typography sx={quickTitleSx}>Store</Typography>
+                                        <Typography sx={quickDescSx}>Manage inventory</Typography>
+                                    </Box>
+                                )}
+
+                                {/* Medicine Restock — pharmacy, pharmacist, admin */}
+                                {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
+                                    <Box onClick={() => setProfileMode('restock')} sx={quickCardSx}>
+                                        <Box sx={quickIconSx('#0F6E56', 'rgba(15,110,86,0.08)')}>💊</Box>
+                                        <Typography sx={quickTitleSx}>Restock</Typography>
+                                        <Typography sx={quickDescSx}>Request medicines</Typography>
+                                    </Box>
+                                )}
+
+                                {/* Subscription upgrade for non-pro */}
+                                {accountUser.subscriptionStatus !== 'subscribed' && (
+                                    <Box onClick={() => setShowSubscription(true)} sx={{ ...quickCardSx, background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '1.5px solid rgba(124,58,237,0.2)' }}>
+                                        <Box sx={quickIconSx('#7c3aed', 'rgba(124,58,237,0.1)')}>⚡</Box>
+                                        <Typography sx={{ ...quickTitleSx, color: '#7c3aed' }}>Go Pro</Typography>
+                                        <Typography sx={quickDescSx}>Unlock features</Typography>
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+
+                        {/* ── Admin tools (collapsed section) ── */}
                         {accountUser.role === 'admin' && (
-                            <>
-                                <div className="sec-tag">Administration</div>
-                                <div className="glass-card" style={{ padding: '8px' }}>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('platform')}>
-                                        <Assignment style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Platform Controls</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('whatsapp')}>
-                                        <WhatsAppIcon style={{ color: '#25D366' }} />
-                                        <span className="profile-row-label">WhatsApp Management</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('datacentre')}>
-                                        <Business style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Data Hub</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('top-contacts')}>
-                                        <WhatsAppIcon style={{ color: '#0F6E56' }} />
-                                        <span className="profile-row-label">Top Contacts</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('delivery-agents')}>
-                                        <WhatsAppIcon style={{ color: '#0F6E56' }} />
-                                        <span className="profile-row-label">Delivery Agents</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('aicentre')}>
-                                        <SmartToy style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">AI Centre</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('consultations')}>
-                                        <MedicationIcon style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Consultations</span>
-                                        {consultations.length > 0 && <Chip label={consultations.length} size="small" sx={{ ml: 1, bgcolor: '#B45309', color: '#fff' }} />}
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => window.open('https://www.pharmastackx.com/admin/pulse-analytics', '_blank')}>
-                                        <BarChart style={{ color: 'var(--primary-green)' }} />
-                                        <span className="profile-row-label">Pulse Analytics</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                    <div className="profile-row-action" onClick={() => setProfileMode('godmode')}>
-                                        <Security style={{ color: '#D32F2F' }} />
-                                        <span className="profile-row-label">God Mode</span>
-                                        <span className="profile-chevron">›</span>
-                                    </div>
-                                </div>
-                            </>
+                            <Box sx={{ px: 2, mt: 3, mb: 1 }}>
+                                <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
+                                    Administration
+                                </Typography>
+                                <Box sx={{ background: '#fff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                                    {[
+                                        { label: 'Platform Controls', icon: <Assignment sx={{ fontSize: 18 }} />, mode: 'platform' },
+                                        { label: 'WhatsApp Management', icon: <WhatsAppIcon sx={{ fontSize: 18, color: '#25D366' }} />, mode: 'whatsapp' },
+                                        { label: 'Data Hub', icon: <Business sx={{ fontSize: 18 }} />, mode: 'datacentre' },
+                                        { label: 'Top Contacts', icon: <WhatsAppIcon sx={{ fontSize: 18 }} />, mode: 'top-contacts' },
+                                        { label: 'Delivery Agents', icon: <WhatsAppIcon sx={{ fontSize: 18 }} />, mode: 'delivery-agents' },
+                                        { label: 'AI Centre', icon: <SmartToy sx={{ fontSize: 18 }} />, mode: 'aicentre' },
+                                        { label: 'Consultations', icon: <MedicationIcon sx={{ fontSize: 18 }} />, mode: 'consultations', badge: consultations.length },
+                                        { label: 'Pulse Analytics', icon: <BarChart sx={{ fontSize: 18 }} />, mode: 'pulse-analytics' },
+                                    ].map((item, i) => (
+                                        <Box
+                                            key={item.mode}
+                                            onClick={() => item.mode === 'pulse-analytics' ? window.open('https://www.pharmastackx.com/admin/pulse-analytics', '_blank') : setProfileMode(item.mode as any)}
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, color: '#0F6E56' }}
+                                        >
+                                            {item.icon}
+                                            <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#222', fontFamily: 'Sora, sans-serif' }}>{item.label}</Typography>
+                                            {item.badge ? <Box sx={{ bgcolor: '#B45309', color: '#fff', fontSize: '10px', fontWeight: 700, px: 1, py: 0.25, borderRadius: '100px' }}>{item.badge}</Box> : null}
+                                            <Typography sx={{ color: '#ddd', fontSize: '16px' }}>›</Typography>
+                                        </Box>
+                                    ))}
+                                    {/* God Mode — special red row */}
+                                    <Box
+                                        onClick={() => setProfileMode('godmode')}
+                                        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: '1px solid rgba(0,0,0,0.04)', bgcolor: 'rgba(211,47,47,0.03)', '&:hover': { bgcolor: 'rgba(211,47,47,0.06)' } }}
+                                    >
+                                        <Security sx={{ fontSize: 18, color: '#D32F2F' }} />
+                                        <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 700, color: '#D32F2F', fontFamily: 'Sora, sans-serif' }}>God Mode</Typography>
+                                        <Typography sx={{ color: '#D32F2F', fontSize: '16px', opacity: 0.4 }}>›</Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
                         )}
 
-                        <div className="sec-tag">Support</div>
-                        <div className="glass-card" style={{ padding: '8px' }}>
-                            <div className="profile-row-action" onClick={() => setProfileMode('contact')}>
-                                <ContactMail sx={{ color: 'var(--primary-green)' }} />
-                                <span className="profile-row-label">Contact Us</span>
-                                <span className="profile-chevron">›</span>
-                            </div>
-                            <div className="profile-row-action" onClick={() => setProfileMode('about')}>
-                                <Info sx={{ color: 'var(--primary-green)' }} />
-                                <span className="profile-row-label">About Us</span>
-                                <span className="profile-chevron">›</span>
-                            </div>
-                            <div className="profile-row-action" onClick={() => setProfileMode('privacy')}>
-                                <Assignment sx={{ color: 'var(--primary-green)' }} />
-                                <span className="profile-row-label">Privacy Policy</span>
-                                <span className="profile-chevron">›</span>
-                            </div>
-                        </div>
+                        {/* ── Footer rows ── */}
+                        <Box sx={{ px: 2, mt: 3 }}>
+                            <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '1px', mb: 1.5, ml: 0.5, fontFamily: 'Sora, sans-serif' }}>
+                                Support
+                            </Typography>
+                            <Box sx={{ background: '#fff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                                {[
+                                    { label: 'Contact Us', icon: <ContactMail sx={{ fontSize: 18 }} />, mode: 'contact' },
+                                    { label: 'About PharmaStackX', icon: <Info sx={{ fontSize: 18 }} />, mode: 'about' },
+                                    { label: 'Privacy Policy', icon: <Assignment sx={{ fontSize: 18 }} />, mode: 'privacy' },
+                                ].map((item, i) => (
+                                    <Box
+                                        key={item.mode}
+                                        onClick={() => setProfileMode(item.mode as any)}
+                                        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, cursor: 'pointer', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, color: '#0F6E56' }}
+                                    >
+                                        {item.icon}
+                                        <Typography sx={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#222', fontFamily: 'Sora, sans-serif' }}>{item.label}</Typography>
+                                        <Typography sx={{ color: '#ddd', fontSize: '16px' }}>›</Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
 
-                        <div className="account-signout" onClick={handleLogout}>Sign out</div>
+                        {/* ── Sign out ── */}
+                        <Box sx={{ px: 2, mt: 3 }}>
+                            <Box
+                                onClick={handleLogout}
+                                sx={{ textAlign: 'center', py: 1.5, borderRadius: '16px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#C84B8F', fontFamily: 'Sora, sans-serif', '&:hover': { bgcolor: 'rgba(200,75,143,0.05)' } }}
+                            >
+                                Sign out
+                            </Box>
+                            <Typography sx={{ textAlign: 'center', fontSize: '10px', color: '#ddd', mt: 0.5, fontFamily: 'Sora, sans-serif' }}>
+                                PharmaStackX v2
+                            </Typography>
+                        </Box>
                     </Box>
                 ) : (
                     <>
