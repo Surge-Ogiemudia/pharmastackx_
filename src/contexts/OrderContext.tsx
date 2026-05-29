@@ -93,11 +93,16 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           return; // Don't throw — just leave cached data in place
         }
         const data = await response.json();
-        setOrders(data);
-        
-        // Phase 2: Update Cache
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('psx_cached_orders', JSON.stringify(data));
+        if (Array.isArray(data) && data.length > 0) {
+          setOrders(data);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('psx_cached_orders', JSON.stringify(data));
+          }
+        } else if (Array.isArray(data) && data.length === 0) {
+          // Only clear if we're confident: don't wipe cache if API returns empty
+          // (could be a transient auth/query issue). Only clear if cache is also empty.
+          const cached = typeof window !== 'undefined' ? localStorage.getItem('psx_cached_orders') : null;
+          if (!cached) setOrders([]);
         }
       } catch (error) {
         console.error('Error fetching orders:', error);
