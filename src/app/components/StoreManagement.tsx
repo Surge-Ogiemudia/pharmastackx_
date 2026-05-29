@@ -321,15 +321,32 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   // --- LOGIC: Flyer ---
   const captureFlyerCanvas = async () => {
     if (!flyerRef.current) return null;
+    // Temporarily swap gradient text to solid color — html2canvas can't render webkit-text-fill-color
+    const gradientSpan = flyerRef.current.querySelector('[data-flyer-name]') as HTMLElement | null;
+    if (gradientSpan) {
+      gradientSpan.style.webkitTextFillColor = '#0F6E56';
+      gradientSpan.style.backgroundImage = 'none';
+    }
     const html2canvas = (await import('html2canvas')).default;
-    return html2canvas(flyerRef.current, {
+    const canvas = await html2canvas(flyerRef.current, {
       scale: 3,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
       logging: false,
     });
+    // Restore gradient
+    if (gradientSpan) {
+      gradientSpan.style.webkitTextFillColor = 'transparent';
+      gradientSpan.style.backgroundImage = 'linear-gradient(120deg, #0F6E56 0%, #1a9e7a 40%, #c0396b 80%, #FF4D97 100%)';
+    }
+    return canvas;
   };
+
+  const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+    new Promise((resolve, reject) =>
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png')
+    );
 
   const handleDownloadFlyer = async () => {
     setFlyerLoading(true);
@@ -337,21 +354,21 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
       const canvas = await captureFlyerCanvas();
       if (!canvas) return;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile && navigator.canShare) {
-        // On mobile: use Web Share API so iOS saves to Photos, Android to Gallery
-        canvas.toBlob(async (blob) => {
-          if (!blob) return;
-          const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: `${userBusinessName} Flyer` });
-          } else {
-            // Fallback: open image in new tab for long-press save
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-          }
-        }, 'image/png');
+      if (isMobile) {
+        const blob = await canvasToBlob(canvas);
+        const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: `${userBusinessName} Flyer` });
+        } else {
+          // Fallback: trigger download via object URL
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${userSlug}-flyer.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
       } else {
-        // Desktop: standard download
         const link = document.createElement('a');
         link.download = `${userSlug}-flyer.png`;
         link.href = canvas.toDataURL('image/png');
@@ -366,17 +383,14 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     try {
       const canvas = await captureFlyerCanvas();
       if (!canvas) return;
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: `${userBusinessName} — PharmaStackX`, text: `Order medicines online at ${userSlug}.psx.ng` });
-        } else {
-          // Fallback: just copy link
-          navigator.clipboard.writeText(`https://${userSlug}.psx.ng`);
-          alert('Link copied to clipboard — sharing not supported on this device.');
-        }
-      }, 'image/png');
+      const blob = await canvasToBlob(canvas);
+      const file = new File([blob], `${userSlug}-flyer.png`, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${userBusinessName} — PharmaStackX`, text: `Order medicines online at ${userSlug}.psx.ng` });
+      } else {
+        await navigator.clipboard.writeText(`https://${userSlug}.psx.ng`);
+        alert('Link copied to clipboard — sharing not supported on this device.');
+      }
     } catch (e) { console.error('Share failed', e); }
     finally { setFlyerLoading(false); }
   };
@@ -711,7 +725,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                               }}>
-                                <span style={{
+                                <span data-flyer-name style={{
                                   fontFamily: '"Playfair Display", "Georgia", serif',
                                   fontWeight: 800,
                                   fontStyle: 'italic',
