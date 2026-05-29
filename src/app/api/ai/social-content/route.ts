@@ -52,7 +52,7 @@ Return ONLY a single valid JSON object, no markdown, no explanation:
   })();
 
   const imagePromise = (async () => {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-preview-image-generation' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
     const imagePrompt = `Design a stunning, professional social media post image (1:1 square, Instagram-ready) for a Nigerian pharmacy brand.
 
 Pharmacy name: ${pharmacyName}
