@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { Box, Typography, Button, TextField, CircularProgress, Chip } from '@mui/material';
-import { Add, Delete, AutoAwesome, Download, Share, Edit, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Add, Delete, AutoAwesome, Share, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
@@ -11,18 +11,18 @@ const PHOTO_TAGS = ['staff', 'store', 'product', 'event', 'other'] as const;
 type PhotoTag = typeof PHOTO_TAGS[number];
 
 const POST_CATEGORIES = [
-  { id: 'health_tip',       label: 'Health Tip',          emoji: '💊' },
-  { id: 'product_spotlight',label: 'Product Spotlight',   emoji: '🔦' },
-  { id: 'ailment_awareness',label: 'Ailment Awareness',   emoji: '🩺' },
-  { id: 'public_health_day',label: 'Health Day',          emoji: '🌍' },
-  { id: 'new_stock',        label: 'New Stock',           emoji: '📦' },
-  { id: 'promo_offer',      label: 'Promo / Offer',       emoji: '🏷️' },
-  { id: 'staff_spotlight',  label: 'Staff Spotlight',     emoji: '👤' },
-  { id: 'public_holiday',   label: 'Public Holiday',      emoji: '🎉' },
-  { id: 'birthday',         label: 'Birthday',            emoji: '🎂' },
-  { id: 'health_advice',    label: 'Health Advice',       emoji: '📋' },
-  { id: 'did_you_know',     label: 'Did You Know',        emoji: '💡' },
-  { id: 'seasonal_tip',     label: 'Seasonal Tip',        emoji: '🌧️' },
+  { id: 'health_tip',        label: 'Health Tip',        emoji: '💊' },
+  { id: 'product_spotlight', label: 'Product Spotlight', emoji: '🔦' },
+  { id: 'ailment_awareness', label: 'Ailment Awareness', emoji: '🩺' },
+  { id: 'public_health_day', label: 'Health Day',        emoji: '🌍' },
+  { id: 'new_stock',         label: 'New Stock',         emoji: '📦' },
+  { id: 'promo_offer',       label: 'Promo / Offer',     emoji: '🏷️' },
+  { id: 'staff_spotlight',   label: 'Staff Spotlight',   emoji: '👤' },
+  { id: 'public_holiday',    label: 'Public Holiday',    emoji: '🎉' },
+  { id: 'birthday',          label: 'Birthday',          emoji: '🎂' },
+  { id: 'health_advice',     label: 'Health Advice',     emoji: '📋' },
+  { id: 'did_you_know',      label: 'Did You Know',      emoji: '💡' },
+  { id: 'seasonal_tip',      label: 'Seasonal Tip',      emoji: '🌧️' },
 ] as const;
 
 const G = '#0F6E56';
@@ -35,6 +35,12 @@ interface GeneratedContent {
   hashtags: string[];
   suggestedPhotoTag: PhotoTag;
   colorMood: string;
+}
+
+interface PostVariation {
+  content: GeneratedContent;
+  previewUrl: string | null;
+  building: boolean;
 }
 
 interface SocialPhoto { url: string; tag: PhotoTag; uploadedAt?: string; }
@@ -76,12 +82,10 @@ async function buildPostCanvas(
   canvas.width = S; canvas.height = S;
   const ctx = canvas.getContext('2d')!;
 
-  // Background
   if (photo) {
     await new Promise<void>((res, rej) => {
       const img = new Image();
       img.onload = () => {
-        // objectFit: cover
         const ir = img.naturalWidth / img.naturalHeight;
         let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
         if (ir > 1) { sw = img.naturalHeight; sx = (img.naturalWidth - sw) / 2; }
@@ -92,7 +96,6 @@ async function buildPostCanvas(
       img.onerror = rej;
       img.src = photo.url;
     });
-    // Dark gradient overlay for readability
     const grad = ctx.createLinearGradient(0, 0, 0, S);
     grad.addColorStop(0, 'rgba(0,0,0,0.55)');
     grad.addColorStop(0.4, 'rgba(0,0,0,0.15)');
@@ -101,13 +104,11 @@ async function buildPostCanvas(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, S, S);
   } else {
-    // Solid brand gradient background
     const grad = ctx.createLinearGradient(0, 0, S, S);
     grad.addColorStop(0, brandPrimary);
     grad.addColorStop(1, brandSecondary);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, S, S);
-    // subtle dot pattern
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
     for (let x = 0; x < S; x += 40) for (let y = 0; y < S; y += 40) {
       ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
@@ -116,18 +117,15 @@ async function buildPostCanvas(
 
   const textColor = '#ffffff';
 
-  // ── Pharmacy name (top) ────────────────────────────────────────────────
   ctx.font = '700 38px Poppins, sans-serif';
   ctx.fillStyle = textColor;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(pharmacyName.toUpperCase(), S / 2, 60);
 
-  // Accent line under name
   ctx.fillStyle = brandSecondary;
   ctx.fillRect(S / 2 - 30, 108, 60, 4);
 
-  // ── Headline (center) ──────────────────────────────────────────────────
   ctx.font = '800 72px Poppins, sans-serif';
   ctx.fillStyle = textColor;
   ctx.textAlign = 'center';
@@ -145,7 +143,6 @@ async function buildPostCanvas(
   const headlineY = S / 2 - (lines.length * lineH) / 2;
   lines.forEach((l, i) => ctx.fillText(l, S / 2, headlineY + i * lineH));
 
-  // ── Caption (below headline) ───────────────────────────────────────────
   ctx.font = '400 28px Sora, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
   const captionWords = content.caption.split(' ');
@@ -162,19 +159,15 @@ async function buildPostCanvas(
     ctx.fillText(l, S / 2, captionStartY + i * 40);
   });
 
-  // ── Bottom bar ─────────────────────────────────────────────────────────
-  // Brand color strip
   ctx.fillStyle = brandPrimary;
   ctx.fillRect(0, S - 110, S, 110);
 
-  // Store URL
   ctx.font = '700 30px Sora, sans-serif';
   ctx.fillStyle = textColor;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(`⊕ ${storeUrl}`, S / 2, S - 65);
 
-  // Hashtags row (first 3)
   ctx.font = '400 20px Sora, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText(content.hashtags.slice(0, 4).map(h => `#${h}`).join('  '), S / 2, S - 30);
@@ -186,7 +179,7 @@ async function buildPostCanvas(
 export default function SocialContent() {
   const { user, refreshSession } = useSession();
 
-  // Brand kit state
+  // Brand kit
   const [brandPrimary, setBrandPrimary] = useState<string>(user?.brandKit?.primaryColor || G);
   const [brandSecondary, setBrandSecondary] = useState<string>(user?.brandKit?.secondaryColor || P);
   const [tagline, setTagline] = useState<string>(user?.brandKit?.tagline || '');
@@ -194,19 +187,17 @@ export default function SocialContent() {
   const [savingBrand, setSavingBrand] = useState(false);
   const [brandKitOpen, setBrandKitOpen] = useState(false);
 
-  // Photo library state
+  // Photo library
   const [photos, setPhotos] = useState<SocialPhoto[]>((user?.socialPhotos as SocialPhoto[]) || []);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // Create post state
+  // Create post
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [postDetail, setPostDetail] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<GeneratedContent | null>(null);
-  const [postPreviewUrl, setPostPreviewUrl] = useState<string | null>(null);
-  const [buildingCanvas, setBuildingCanvas] = useState(false);
-  const [captionCopied, setCaptionCopied] = useState(false);
+  const [variations, setVariations] = useState<PostVariation[]>([]);
+  const [sharedIdx, setSharedIdx] = useState<number | null>(null);
 
   // ── Brand kit save ───────────────────────────────────────────────────────
   const saveBrandKit = async () => {
@@ -249,80 +240,85 @@ export default function SocialContent() {
     setPhotos(prev => prev.filter(p => p.url !== url));
   };
 
-  const updatePhotoTag = async (url: string, tag: PhotoTag) => {
+  const updatePhotoTag = (url: string, tag: PhotoTag) => {
     setPhotos(prev => prev.map(p => p.url === url ? { ...p, tag } : p));
-    // persist via a simple approach: delete + re-add is too heavy; just update local state for now
-    // Full tag persistence can be a future enhancement
   };
 
-  // ── Generate post ────────────────────────────────────────────────────────
+  // ── Generate 3 variations ────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!selectedCategory) return;
     setGenerating(true);
-    setGenerated(null);
-    setPostPreviewUrl(null);
+    setVariations([]);
+
+    const base = {
+      category: selectedCategory,
+      detail: postDetail || undefined,
+      pharmacyName: user?.businessName || user?.username,
+      storeUrl: `${user?.slug}.psx.ng`,
+      tagline,
+      photoTags: [...new Set(photos.map(p => p.tag))],
+    };
+
+    let contents: GeneratedContent[] = [];
     try {
-      const photoTags = [...new Set(photos.map(p => p.tag))];
-      const res = await axios.post('/api/ai/social-content', {
-        category: selectedCategory,
-        detail: postDetail || undefined,
-        pharmacyName: user?.businessName || user?.username,
-        storeUrl: `${user?.slug}.psx.ng`,
-        tagline,
-        photoTags,
-      });
-      setGenerated(res.data);
+      const results = await Promise.allSettled([
+        axios.post('/api/ai/social-content', { ...base, tone: 'warm and community-focused' }),
+        axios.post('/api/ai/social-content', { ...base, tone: 'bold and attention-grabbing' }),
+        axios.post('/api/ai/social-content', { ...base, tone: 'educational and trustworthy' }),
+      ]);
+      contents = results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => (r as PromiseFulfilledResult<typeof axios.post extends (...a: any[]) => Promise<infer R> ? R : never>).value.data as GeneratedContent);
     } catch (e) { console.error(e); }
-    finally { setGenerating(false); }
+
+    setGenerating(false);
+
+    if (!contents.length) return;
+
+    // Seed variations (building=true, no preview yet)
+    setVariations(contents.map(content => ({ content, previewUrl: null, building: true })));
+
+    // Build canvases independently
+    const pharmacyName = user?.businessName || user?.username || 'My Pharmacy';
+    const storeUrl = `${user?.slug}.psx.ng`;
+
+    contents.forEach(async (content, i) => {
+      try {
+        const suggestedPhoto = photos.find(p => p.tag === content.suggestedPhotoTag) || photos[0] || null;
+        const canvas = await buildPostCanvas(suggestedPhoto, content, pharmacyName, storeUrl, brandPrimary, brandSecondary);
+        const url = canvas.toDataURL('image/jpeg', 0.92);
+        setVariations(prev => prev.map((v, j) => j === i ? { ...v, previewUrl: url, building: false } : v));
+      } catch {
+        setVariations(prev => prev.map((v, j) => j === i ? { ...v, building: false } : v));
+      }
+    });
   };
 
-  // ── Build canvas preview ─────────────────────────────────────────────────
-  const buildPreview = useCallback(async () => {
-    if (!generated) return;
-    setBuildingCanvas(true);
+  // ── Post / share ─────────────────────────────────────────────────────────
+  const handlePost = async (variation: PostVariation, idx: number) => {
+    if (!variation.previewUrl) return;
+    const text = `${variation.content.caption}\n\n${variation.content.hashtags.map(h => `#${h}`).join(' ')}`;
+
     try {
-      const suggestedPhoto = photos.find(p => p.tag === generated.suggestedPhotoTag) || photos[0] || null;
-      const canvas = await buildPostCanvas(
-        suggestedPhoto,
-        generated,
-        user?.businessName || user?.username || 'My Pharmacy',
-        `${user?.slug}.psx.ng`,
-        brandPrimary,
-        brandSecondary,
-      );
-      setPostPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
-    } finally { setBuildingCanvas(false); }
-  }, [generated, photos, brandPrimary, brandSecondary, user]);
-
-  // Auto-build preview when content is generated
-  React.useEffect(() => { if (generated) buildPreview(); }, [generated]);
-
-  // ── Download ─────────────────────────────────────────────────────────────
-  const handleDownload = async () => {
-    if (!postPreviewUrl || !generated) return;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && navigator.canShare) {
-      const res = await fetch(postPreviewUrl);
+      const res = await fetch(variation.previewUrl);
       const blob = await res.blob();
       const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${user?.businessName} — Post` });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text });
         return;
       }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
     }
+
+    // Desktop fallback: copy caption + download image
+    try { navigator.clipboard.writeText(text); } catch {}
     const a = document.createElement('a');
-    a.href = postPreviewUrl;
+    a.href = variation.previewUrl;
     a.download = 'social-post.jpg';
     a.click();
-  };
-
-  // ── Copy caption ─────────────────────────────────────────────────────────
-  const copyCaption = () => {
-    if (!generated) return;
-    const text = `${generated.caption}\n\n${generated.hashtags.map(h => `#${h}`).join(' ')}`;
-    navigator.clipboard.writeText(text);
-    setCaptionCopied(true);
-    setTimeout(() => setCaptionCopied(false), 2000);
+    setSharedIdx(idx);
+    setTimeout(() => setSharedIdx(null), 3000);
   };
 
   // ── Shared styles ─────────────────────────────────────────────────────────
@@ -354,127 +350,127 @@ export default function SocialContent() {
             >
               <Box sx={{ pt: 2 }}>
 
-        {/* Colors */}
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-          {[
-            { label: 'Primary', value: brandPrimary, set: setBrandPrimary },
-            { label: 'Secondary', value: brandSecondary, set: setBrandSecondary },
-          ].map(({ label, value, set }) => (
-            <Box key={label} sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>{label}</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f9f9f7', borderRadius: '12px', p: 1, border: BORDER }}>
-                <Box
-                  component="label"
-                  sx={{ width: 28, height: 28, borderRadius: '8px', bgcolor: value, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                {/* Colors */}
+                <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+                  {[
+                    { label: 'Primary', value: brandPrimary, set: setBrandPrimary },
+                    { label: 'Secondary', value: brandSecondary, set: setBrandSecondary },
+                  ].map(({ label, value, set }) => (
+                    <Box key={label} sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>{label}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f9f9f7', borderRadius: '12px', p: 1, border: BORDER }}>
+                        <Box
+                          component="label"
+                          sx={{ width: 28, height: 28, borderRadius: '8px', bgcolor: value, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                        >
+                          <input type="color" value={value} onChange={e => set(e.target.value)} style={{ opacity: 0, width: 0, height: 0 }} />
+                        </Box>
+                        <Typography sx={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', color: '#333' }}>{value}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                {/* Logo */}
+                <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Logo</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                  {logoUrl ? (
+                    <Box sx={{ width: 56, height: 56, borderRadius: '12px', overflow: 'hidden', border: BORDER, flexShrink: 0 }}>
+                      <img src={logoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </Box>
+                  ) : (
+                    <Box sx={{ width: 56, height: 56, borderRadius: '12px', bgcolor: brandPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '16px', fontFamily: 'Poppins, sans-serif' }}>
+                        {(user?.businessName || user?.username || 'P').charAt(0).toUpperCase()}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Button
+                    component="label"
+                    size="small"
+                    sx={{ bgcolor: '#f4f4f2', color: '#333', borderRadius: '10px', textTransform: 'none', fontSize: '12px', fontWeight: 600, px: 1.5, py: 0.8, boxShadow: 'none' }}
+                  >
+                    {logoUrl ? 'Change logo' : 'Upload logo'}
+                    <input ref={logoInputRef} type="file" accept="image/*" hidden onChange={handleLogoUpload} />
+                  </Button>
+                  {logoUrl && (
+                    <Button size="small" onClick={() => setLogoUrl('')} sx={{ color: '#999', textTransform: 'none', fontSize: '12px', minWidth: 0, p: 0.5 }}>
+                      Remove
+                    </Button>
+                  )}
+                </Box>
+
+                {/* Tagline */}
+                <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Tagline</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. Your health, our priority"
+                  value={tagline}
+                  onChange={e => setTagline(e.target.value)}
+                  sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#f9f9f7' } }}
+                />
+
+                <Button
+                  fullWidth
+                  onClick={saveBrandKit}
+                  disabled={savingBrand}
+                  sx={{ bgcolor: G, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.2, boxShadow: 'none', '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' } }}
                 >
-                  <input type="color" value={value} onChange={e => set(e.target.value)} style={{ opacity: 0, width: 0, height: 0 }} />
-                </Box>
-                <Typography sx={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', color: '#333' }}>{value}</Typography>
-              </Box>
-            </Box>
-          ))}
-        </Box>
+                  {savingBrand ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save brand kit'}
+                </Button>
 
-        {/* Logo */}
-        <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Logo</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          {logoUrl ? (
-            <Box sx={{ width: 56, height: 56, borderRadius: '12px', overflow: 'hidden', border: BORDER, flexShrink: 0 }}>
-              <img src={logoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </Box>
-          ) : (
-            <Box sx={{ width: 56, height: 56, borderRadius: '12px', bgcolor: brandPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '16px', fontFamily: 'Poppins, sans-serif' }}>
-                {(user?.businessName || user?.username || 'P').charAt(0).toUpperCase()}
-              </Typography>
-            </Box>
-          )}
-          <Button
-            component="label"
-            size="small"
-            sx={{ bgcolor: '#f4f4f2', color: '#333', borderRadius: '10px', textTransform: 'none', fontSize: '12px', fontWeight: 600, px: 1.5, py: 0.8, boxShadow: 'none' }}
-          >
-            {logoUrl ? 'Change logo' : 'Upload logo'}
-            <input ref={logoInputRef} type="file" accept="image/*" hidden onChange={handleLogoUpload} />
-          </Button>
-          {logoUrl && (
-            <Button size="small" onClick={() => setLogoUrl('')} sx={{ color: '#999', textTransform: 'none', fontSize: '12px', minWidth: 0, p: 0.5 }}>
-              Remove
-            </Button>
-          )}
-        </Box>
-
-        {/* Tagline */}
-        <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Tagline</Typography>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="e.g. Your health, our priority"
-          value={tagline}
-          onChange={e => setTagline(e.target.value)}
-          sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#f9f9f7' } }}
-        />
-
-        <Button
-          fullWidth
-          onClick={saveBrandKit}
-          disabled={savingBrand}
-          sx={{ bgcolor: G, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.2, boxShadow: 'none', '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' } }}
-        >
-          {savingBrand ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save brand kit'}
-        </Button>
-
-        {/* ── PHOTO LIBRARY (inside brand kit) ────────────────────────── */}
-        <Box sx={{ mt: 2.5, pt: 2, borderTop: BORDER }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-            <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Photo Library ({photos.length})</Typography>
-            <Button
-              component="label"
-              size="small"
-              disabled={uploadingPhoto}
-              startIcon={uploadingPhoto ? <CircularProgress size={12} /> : <Add sx={{ fontSize: '16px' }} />}
-              sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '11px', px: 1.5, py: 0.7, boxShadow: 'none', minWidth: 0 }}
-            >
-              Add photos
-              <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
-            </Button>
-          </Box>
-
-          {photos.length === 0 ? (
-            <Box
-              component="label"
-              sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '16px', py: 4, cursor: 'pointer' }}
-            >
-              <Typography sx={{ fontSize: '28px' }}>📸</Typography>
-              <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.4)' }}>Add photos to your library</Typography>
-              <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>Staff, store, products — anything</Typography>
-              <input type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
-            </Box>
-          ) : (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-              {photos.map((photo) => (
-                <Box key={photo.url} sx={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee' }}>
-                  <img src={photo.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  <Box
-                    sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'rgba(0,0,0,0.6)', borderRadius: '6px', px: 0.8, py: 0.2, cursor: 'pointer' }}
-                    onClick={() => {
-                      const idx = PHOTO_TAGS.indexOf(photo.tag);
-                      updatePhotoTag(photo.url, PHOTO_TAGS[(idx + 1) % PHOTO_TAGS.length]);
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{photo.tag}</Typography>
+                {/* ── PHOTO LIBRARY ─────────────────────────────────────── */}
+                <Box sx={{ mt: 2.5, pt: 2, borderTop: BORDER }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Photo Library ({photos.length})</Typography>
+                    <Button
+                      component="label"
+                      size="small"
+                      disabled={uploadingPhoto}
+                      startIcon={uploadingPhoto ? <CircularProgress size={12} /> : <Add sx={{ fontSize: '16px' }} />}
+                      sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '11px', px: 1.5, py: 0.7, boxShadow: 'none', minWidth: 0 }}
+                    >
+                      Add photos
+                      <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
+                    </Button>
                   </Box>
-                  <Box
-                    onClick={() => handleDeletePhoto(photo.url)}
-                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <Delete sx={{ fontSize: '12px', color: '#fff' }} />
-                  </Box>
+
+                  {photos.length === 0 ? (
+                    <Box
+                      component="label"
+                      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '16px', py: 4, cursor: 'pointer' }}
+                    >
+                      <Typography sx={{ fontSize: '28px' }}>📸</Typography>
+                      <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.4)' }}>Add photos to your library</Typography>
+                      <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>Staff, store, products — anything</Typography>
+                      <input type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+                      {photos.map((photo) => (
+                        <Box key={photo.url} sx={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee' }}>
+                          <img src={photo.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <Box
+                            sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'rgba(0,0,0,0.6)', borderRadius: '6px', px: 0.8, py: 0.2, cursor: 'pointer' }}
+                            onClick={() => {
+                              const idx = PHOTO_TAGS.indexOf(photo.tag);
+                              updatePhotoTag(photo.url, PHOTO_TAGS[(idx + 1) % PHOTO_TAGS.length]);
+                            }}
+                          >
+                            <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{photo.tag}</Typography>
+                          </Box>
+                          <Box
+                            onClick={() => handleDeletePhoto(photo.url)}
+                            sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <Delete sx={{ fontSize: '12px', color: '#fff' }} />
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </Box>
-              ))}
-            </Box>
-          )}
-        </Box>
 
               </Box>
             </motion.div>
@@ -530,66 +526,83 @@ export default function SocialContent() {
           onClick={handleGenerate}
           disabled={!selectedCategory || generating}
           startIcon={generating ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <AutoAwesome sx={{ fontSize: '16px' }} />}
-          sx={{ bgcolor: P, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.3, boxShadow: 'none', mb: 2, '&:hover': { bgcolor: '#a8346f', boxShadow: 'none' }, '&:disabled': { bgcolor: 'rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.3)' } }}
+          sx={{ bgcolor: P, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.3, boxShadow: 'none', mb: 0, '&:hover': { bgcolor: '#a8346f', boxShadow: 'none' }, '&:disabled': { bgcolor: 'rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.3)' } }}
         >
-          {generating ? 'Generating...' : 'Generate post'}
+          {generating ? 'Generating ideas...' : variations.length ? 'Regenerate' : 'Generate 3 ideas'}
         </Button>
+      </Box>
 
-        {/* Post preview */}
-        <AnimatePresence>
-          {(postPreviewUrl || buildingCanvas) && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <Box sx={{ borderRadius: '16px', overflow: 'hidden', mb: 1.5, position: 'relative', aspectRatio: '1/1', bgcolor: '#f0f0ee' }}>
-                {buildingCanvas ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                    <CircularProgress sx={{ color: G }} />
+      {/* ── POST VARIATIONS ───────────────────────────────────────────── */}
+      <AnimatePresence>
+        {variations.map((v, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, delay: idx * 0.08 }}
+          >
+            <Box sx={{ ...cardSx, p: 0, overflow: 'hidden' }}>
+              {/* Preview image */}
+              <Box sx={{ aspectRatio: '1/1', bgcolor: '#f0f0ee', position: 'relative' }}>
+                {v.building ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
+                    <CircularProgress sx={{ color: G }} size={28} />
                   </Box>
+                ) : v.previewUrl ? (
+                  <img src={v.previewUrl} style={{ width: '100%', display: 'block' }} />
                 ) : (
-                  <img src={postPreviewUrl!} style={{ width: '100%', display: 'block' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
+                    <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)' }}>Preview unavailable</Typography>
+                  </Box>
                 )}
-              </Box>
 
-              {generated && (
-                <Box sx={{ bgcolor: '#f9f9f7', borderRadius: '14px', p: 1.5, mb: 1.5, border: BORDER }}>
-                  <Typography sx={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>CAPTION</Typography>
-                  <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, mb: 1 }}>{generated.caption}</Typography>
-                  <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600 }}>
-                    {generated.hashtags.slice(0, 5).map(h => `#${h}`).join(' ')}
+                {/* Variation badge */}
+                <Box sx={{ position: 'absolute', top: 10, left: 10, bgcolor: 'rgba(0,0,0,0.55)', borderRadius: '8px', px: 1, py: 0.4 }}>
+                  <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>
+                    IDEA {idx + 1}
                   </Typography>
                 </Box>
-              )}
-
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  fullWidth
-                  onClick={copyCaption}
-                  sx={{ bgcolor: '#f4f4f2', color: '#333', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 1.1, boxShadow: 'none' }}
-                >
-                  {captionCopied ? '✓ Copied' : 'Copy caption'}
-                </Button>
-                <Button
-                  fullWidth
-                  onClick={handleDownload}
-                  startIcon={<Download sx={{ fontSize: '16px' }} />}
-                  sx={{ bgcolor: G, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 1.1, boxShadow: 'none', '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' } }}
-                >
-                  Save image
-                </Button>
               </Box>
 
-              {/* Regenerate */}
-              <Button
-                fullWidth
-                onClick={handleGenerate}
-                disabled={generating}
-                sx={{ mt: 1, color: 'rgba(0,0,0,0.4)', textTransform: 'none', fontSize: '12px', fontWeight: 600 }}
-              >
-                {generating ? 'Regenerating...' : '↺ Try another version'}
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Box>
+              {/* Caption */}
+              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {v.content.caption}
+                </Typography>
+                <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
+                  {v.content.hashtags.slice(0, 4).map(h => `#${h}`).join(' ')}
+                </Typography>
+              </Box>
+
+              {/* Post button */}
+              <Box sx={{ px: 2, pb: 2, pt: 1.5 }}>
+                <Button
+                  fullWidth
+                  disabled={v.building || !v.previewUrl}
+                  onClick={() => handlePost(v, idx)}
+                  startIcon={<Share sx={{ fontSize: '16px' }} />}
+                  sx={{
+                    bgcolor: sharedIdx === idx ? '#2e7d5a' : G,
+                    color: '#fff',
+                    borderRadius: '14px',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    py: 1.4,
+                    boxShadow: 'none',
+                    transition: 'background 0.3s',
+                    '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' },
+                    '&:disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.25)' },
+                  }}
+                >
+                  {sharedIdx === idx ? 'Caption copied + image saved' : 'Post this'}
+                </Button>
+              </Box>
+            </Box>
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
     </Box>
   );
