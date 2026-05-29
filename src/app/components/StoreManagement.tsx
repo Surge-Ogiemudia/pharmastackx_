@@ -85,6 +85,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     itemName: '',
     activeIngredient: '',
     amount: 0,
+    quantity: 0,
     category: '',
     info: '',
     POM: false,
@@ -290,7 +291,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
         const res = await axios.post('/api/stock', payload);
         if (isMounted.current) {
             setStockData([res.data.product, ...stockData]);
-            setFormValues({ itemName: '', activeIngredient: '', amount: 0, category: '', info: '', POM: false, imageUrl: '' });
+            setFormValues({ itemName: '', activeIngredient: '', amount: 0, quantity: 0, category: '', info: '', POM: false, imageUrl: '' });
             setShowUploadForm(false);
             alert('Product added successfully!');
         }
@@ -304,8 +305,8 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const handleDownloadSampleCsv = () => {
     // UTF-8 BOM for Excel compatibility
     const BOM = "\ufeff";
-    const headers = "itemName,activeIngredient,category,amount,info,POM\n";
-    const sampleRow = "Amoxicillin 500mg,Amoxicillin,Antibiotics,1500,Standard dosage: 1 tab every 8 hours,false";
+    const headers = "itemName,activeIngredient,category,amount,quantity,info,POM\n";
+    const sampleRow = "Amoxicillin 500mg,Amoxicillin,Antibiotics,1500,50,Standard dosage: 1 tab every 8 hours,false";
     const csvContent = BOM + headers + sampleRow;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -886,6 +887,12 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 <TextField fullWidth type="number" name="amount" value={formValues.amount} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
                               </Box>
                             </Box>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                              <Box>
+                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>QTY IN STOCK</Typography>
+                                <TextField fullWidth type="number" name="quantity" value={formValues.quantity} onChange={handleFormChange} placeholder="0" variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} inputProps={{ min: 0 }} />
+                              </Box>
+                            </Box>
                             <Box>
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>DESCRIPTION / INFO</Typography>
                               <TextField fullWidth multiline rows={2} placeholder="Dosage, side effects, or administration instructions..." name="info" value={formValues.info} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
@@ -926,7 +933,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                           </Box>
                           <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#000', mb: 1 }}>Upload CSV file</Typography>
                           <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '280px', margin: '0 auto 25px', lineHeight: 1.5 }}>
-                            Name, Active Ingredient, Category, Price required.<br />
+                            Name, Active Ingredient, Category, Price, Qty required.<br />
                             <span style={{ opacity: 0.8 }}>Image column optional — add URL or leave blank.</span>
                           </Typography>
                           <input type="file" id="bulk-stock-file" style={{ display: 'none' }} onChange={handleBulkFileUpload} />
