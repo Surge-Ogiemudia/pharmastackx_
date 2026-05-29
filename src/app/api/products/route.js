@@ -1,6 +1,7 @@
 
 import { dbConnect } from '../../../lib/mongoConnect';
 import Product from '@/models/Product';
+import User from '@/models/User';
 import { NextResponse } from 'next/server';
 
 
@@ -105,6 +106,22 @@ export async function GET(req) {
         .lean();
     }
 
+    // Build a map of businessName -> businessCoordinates from User collection
+    const uniqueBusinessNames = [...new Set(products.map(p => p.businessName).filter(Boolean))];
+    const pharmacyUsers = await User.find(
+      { businessName: { $in: uniqueBusinessNames } },
+      { businessName: 1, businessCoordinates: 1 }
+    ).lean();
+    const coordMap = {};
+    pharmacyUsers.forEach(u => {
+      if (u.businessCoordinates?.latitude && u.businessCoordinates?.longitude) {
+        coordMap[u.businessName] = {
+          lat: u.businessCoordinates.latitude,
+          lon: u.businessCoordinates.longitude,
+        };
+      }
+    });
+
     const transformedProducts = products.map(product => {
       try {
          if (!product.itemName || typeof product.amount === 'undefined') {
@@ -119,7 +136,7 @@ export async function GET(req) {
           price: product.amount,
           formattedPrice: formatPrice(product.amount),
           pharmacy: product.businessName || 'Unknown Pharmacy',
-          pharmacyCoordinates: parseCoordinatesString(product.coordinates),
+          pharmacyCoordinates: coordMap[product.businessName] || null,
           POM: product.POM || false,
           info: product.info,
           slug: product.slug,

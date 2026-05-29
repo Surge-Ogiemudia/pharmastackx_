@@ -391,9 +391,9 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                       <div className={styles.productPharmacy}>{medicine.pharmacy}</div>
                     )}
                     
-                    {medicine.distance != null && (
+                    {medicine.travelTime != null && (
                       <div className={styles.travelTime}>
-                        {medicine.travelTime?.toFixed(0)} mins ({medicine.distance?.toFixed(1)} km)
+                        ~{Math.round(medicine.travelTime)} mins away
                       </div>
                     )}
 
