@@ -297,7 +297,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                                 <Avatar
                                     src={accountUser.profilePicture}
-                                    sx={{ width: 56, height: 56, border: '2px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', bgcolor: '#0F6E56', fontSize: 22, fontWeight: 700, flexShrink: 0, mt: 0.5 }}
+                                    sx={{ width: 56, height: 56, border: '2px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.10)', bgcolor: '#E91E63', fontSize: 22, fontWeight: 700, flexShrink: 0, mt: 0.5 }}
                                 >
                                     {!accountUser.profilePicture && accountUser.username?.[0]?.toUpperCase()}
                                 </Avatar>
