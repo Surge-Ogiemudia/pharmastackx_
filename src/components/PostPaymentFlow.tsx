@@ -15,7 +15,7 @@ type Step =
   | 'failed';
 
 interface Props {
-  requestId: string;
+  requestId: string | null;
   deliveryOption: 'standard' | 'express' | 'pickup';
   deliveryState: string;
   patientName: string;
@@ -40,7 +40,8 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
 
   const stopPolling = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
 
-  const startPolling = (reqId: string) => {
+  const startPolling = (reqId: string | null) => {
+    if (!reqId) return;
     pollStartRef.current = Date.now();
     pollRef.current = setInterval(async () => {
       try {
@@ -83,8 +84,8 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
         body: JSON.stringify({ patientName, deliveryState, deliveryOption, total, items, requestId }),
       }).catch(console.error);
 
-      // Fire delivery agent notification (only if delivery)
-      if (deliveryOption !== 'pickup') {
+      // Fire delivery agent notification (only if delivery and we have a requestId)
+      if (deliveryOption !== 'pickup' && requestId) {
         try {
           const res = await fetch('/api/notify-delivery-agent', {
             method: 'POST',
@@ -107,6 +108,9 @@ export default function PostPaymentFlow({ requestId, deliveryOption, deliverySta
           setFailReason("Couldn't reach our delivery network. Your order is saved — we'll follow up.");
           setStep('failed');
         }
+      } else if (deliveryOption !== 'pickup' && !requestId) {
+        // Catalog order without a requestId — skip rider dispatch, go straight to waiting
+        setStep('rider_waiting');
       }
     }, 2500);
 

@@ -36,12 +36,13 @@ interface PaystackButtonProps {
 
 const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
   const { user } = useSession();
-  const { items } = useCart(); // Removed clearCart as it's no longer called here
+  const { items } = useCart();
   const router = useRouter();
   const { track } = useTrack();
+  const [closedWithoutPaying, setClosedWithoutPaying] = React.useState(false);
 
   const config = {
-    reference: new Date().getTime().toString(),
+    reference: `psx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     email: props.deliveryEmail,
     amount: props.total * 100,
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
@@ -71,20 +72,13 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
   const initializePayment = usePaystackPayment(config);
 
   const onSuccess = (reference: any) => {
-    // We don't create the order here anymore.
-    // Instead, we redirect to the same page with a success flag.
     console.log('Payment successful. Reference:', reference.reference);
-    
-    // Construct the new URL. This assumes we are already on the page that shows the cart.
-    const currentPath = window.location.pathname;
-    const newUrl = `${currentPath}?redirect_status=success`;
-    
-    // We don't clear the cart here. The cart page will do it after creating the order.
-    router.push(newUrl);
+    router.push(`/?view=confirmOrder&redirect_status=success`);
   };
 
   const onClose = () => {
-    console.log('Payment modal closed');
+    setClosedWithoutPaying(true);
+    setTimeout(() => setClosedWithoutPaying(false), 4000);
   };
 
   const handleCheckout = () => {
@@ -111,6 +105,12 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
   }
 
   return (
+    <>
+    {closedWithoutPaying && (
+      <div style={{ marginBottom: 12, padding: '10px 16px', background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10, fontSize: 13, color: '#7a5c00', textAlign: 'center' }}>
+        Payment was not completed. Your cart is still saved — try again when ready.
+      </div>
+    )}
     <Button
       fullWidth
       variant="contained"
@@ -138,6 +138,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
     >
       {getButtonText()}
     </Button>
+    </>
   );
 };
 
