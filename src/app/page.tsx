@@ -323,6 +323,18 @@ useEffect(() => {
 }, [searchParams]);
 
 useEffect(() => {
+  const slug = searchParams?.get('slug');
+  if (slug) {
+    fetch('/api/store-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+}, []); // fire once on mount — slug store landing
+
+useEffect(() => {
   // Safely check for notification permission only on the client-side
   if (typeof window !== 'undefined' && 'Notification' in window) {
     setPermission(Notification.permission);

@@ -105,6 +105,12 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const [copied, setCopied] = useState(false);
   const [synkkStatus, setSynkkStatus] = useState<{ connected: boolean; itemCount: number; lastSync: string | null } | null>(null);
 
+  // -- Orders Tab State --
+  const [ordersFilter, setOrdersFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('month');
+  const [ordersData, setOrdersData] = useState<{ totalOrders: number; totalRevenue: number; visitCount: number; orders: any[] } | null>(null);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
   // --- INITIALIZATION ---
   useEffect(() => {
     isMounted.current = true;
@@ -117,6 +123,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
         fetchInitialData();
         setIsStoreSetupRequired(false);
         axios.get('/api/stock/synkk-status').then(r => { if (isMounted.current) setSynkkStatus(r.data); }).catch(() => {});
+        fetchOrdersData('month');
       }
     }
     return () => { isMounted.current = false; };
@@ -320,6 +327,16 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // --- LOGIC: Orders ---
+  const fetchOrdersData = async (filter: string) => {
+    setOrdersLoading(true);
+    try {
+      const res = await axios.get(`/api/orders/pharmacy-stats?filter=${filter}`);
+      if (isMounted.current) setOrdersData(res.data);
+    } catch (e) { console.error('Orders fetch failed', e); }
+    finally { if (isMounted.current) setOrdersLoading(false); }
   };
 
   // --- LOGIC: Flyer ---
@@ -1079,10 +1096,128 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
             {/* TAB 2: ORDERS */}
             {selectedTab === 2 && (
               <motion.div key="tab2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <Box sx={{ px: 0.5 }}>
-                  <Typography sx={{ fontSize: '14px', color: 'rgba(0,0,0,0.4)', fontWeight: 500, lineHeight: 1.5 }}>
-                    Orders content coming soon.
-                  </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pb: 12 }}>
+
+                  {/* FILTER PILLS */}
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {(['today', 'week', 'month', 'year', 'all'] as const).map((f) => (
+                      <Box key={f} onClick={() => { setOrdersFilter(f); fetchOrdersData(f); }} sx={{ px: 2, py: 0.7, borderRadius: '100px', cursor: 'pointer', bgcolor: ordersFilter === f ? '#0F6E56' : 'white', color: ordersFilter === f ? 'white' : 'rgba(0,0,0,0.4)', fontSize: '11px', fontWeight: 800, fontFamily: 'var(--sora)', border: '1px solid', borderColor: ordersFilter === f ? '#0F6E56' : '#eee', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'all 0.2s' }}>
+                        {f === 'today' ? 'Today' : f === 'week' ? 'This Week' : f === 'month' ? 'This Month' : f === 'year' ? 'This Year' : 'All Time'}
+                      </Box>
+                    ))}
+                  </Box>
+
+                  {/* STATS BANNER */}
+                  {ordersLoading ? (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
+                      {[1,2,3].map(i => <Box key={i} sx={{ bgcolor: 'white', borderRadius: '16px', p: 2, height: 72, border: '1px solid #eee' }} />)}
+                    </Box>
+                  ) : ordersData && (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
+                      {[
+                        { label: 'ORDERS', value: ordersData.totalOrders, color: '#000', format: (v: number) => v.toString() },
+                        { label: 'REVENUE', value: ordersData.totalRevenue, color: '#0F6E56', format: (v: number) => `₦${v.toLocaleString()}` },
+                        { label: 'STORE VISITS', value: ordersData.visitCount, color: '#7C3AED', format: (v: number) => v.toString() },
+                      ].map((stat, i) => (
+                        <Box key={i} sx={{ bgcolor: 'white', borderRadius: '16px', p: 1.8, textAlign: 'center', border: '1px solid #eee' }}>
+                          <Typography sx={{ fontSize: i === 1 ? '14px' : '22px', fontWeight: 800, color: stat.color, mb: 0, lineHeight: 1.1, wordBreak: 'break-all' }}>{stat.format(stat.value)}</Typography>
+                          <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.5px', mt: 0.3 }}>{stat.label}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+
+                  {/* ORDERS LIST */}
+                  {!ordersLoading && ordersData && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {ordersData.orders.length === 0 ? (
+                        <Box sx={{ bgcolor: 'white', borderRadius: '20px', p: 4, textAlign: 'center', border: '1px solid #eee' }}>
+                          <Typography sx={{ fontSize: '14px', fontWeight: 700, color: 'rgba(0,0,0,0.25)' }}>No orders in this period</Typography>
+                        </Box>
+                      ) : ordersData.orders.map((order: any) => {
+                        const isExpanded = expandedOrder === order._id;
+                        const statusColor = order.status === 'Completed' ? '#0F6E56' : order.status === 'Cancelled' ? '#ef4444' : order.status === 'Pending' ? '#B45309' : '#7C3AED';
+                        return (
+                          <Box key={order._id} sx={{ bgcolor: 'white', borderRadius: '20px', border: '1px solid #eee', overflow: 'hidden' }}>
+                            {/* ORDER HEADER */}
+                            <Box onClick={() => setExpandedOrder(isExpanded ? null : order._id)} sx={{ p: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#000', mb: 0.3 }}>{order.patientName}</Typography>
+                                <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.35)', fontWeight: 500 }}>
+                                  {new Date(order.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })} · {order.items?.length} item{order.items?.length !== 1 ? 's' : ''}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                                <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#000', mb: 0.3 }}>₦{Number(order.totalAmount).toLocaleString()}</Typography>
+                                <Typography sx={{ fontSize: '10px', fontWeight: 700, color: statusColor }}>{order.status}</Typography>
+                              </Box>
+                              <Box sx={{ ml: 1.5, color: 'rgba(0,0,0,0.25)', fontSize: 18, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>
+                                <ExpandMore sx={{ fontSize: 20 }} />
+                              </Box>
+                            </Box>
+
+                            {/* EXPANDED DETAIL */}
+                            {isExpanded && (
+                              <Box sx={{ px: 2, pb: 2, borderTop: '1px solid #f5f5f5' }}>
+                                {/* PATIENT INFO */}
+                                <Box sx={{ bgcolor: '#F9FBFB', borderRadius: '14px', p: 1.8, mb: 1.5, mt: 1.5 }}>
+                                  <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '1px', textTransform: 'uppercase', mb: 1 }}>Patient Details</Typography>
+                                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                    {[
+                                      { label: 'Name', value: order.patientName },
+                                      { label: 'Age', value: order.patientAge || '—' },
+                                      { label: 'Phone', value: order.deliveryPhone },
+                                      { label: 'Email', value: order.deliveryEmail },
+                                    ].map(f => (
+                                      <Box key={f.label}>
+                                        <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'rgba(0,0,0,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{f.label}</Typography>
+                                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#000', wordBreak: 'break-all' }}>{f.value}</Typography>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                  {order.patientCondition && (
+                                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                                      <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'rgba(0,0,0,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.3 }}>Condition / Note</Typography>
+                                      <Typography sx={{ fontSize: '12px', fontWeight: 500, color: '#333' }}>{order.patientCondition}</Typography>
+                                    </Box>
+                                  )}
+                                  {(order.deliveryAddress || order.deliveryCity) && (
+                                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                                      <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'rgba(0,0,0,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.3 }}>Delivery Address</Typography>
+                                      <Typography sx={{ fontSize: '12px', fontWeight: 500, color: '#333' }}>{[order.deliveryAddress, order.deliveryCity, order.deliveryState].filter(Boolean).join(', ')}</Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+
+                                {/* ITEMS */}
+                                <Box sx={{ bgcolor: '#F9FBFB', borderRadius: '14px', p: 1.8 }}>
+                                  <Typography sx={{ fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '1px', textTransform: 'uppercase', mb: 1 }}>Items Ordered</Typography>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                                    {order.items?.map((item: any, idx: number) => (
+                                      <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          {item.image && <img src={item.image} style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'contain', border: '1px solid #eee' }} />}
+                                          <Box>
+                                            <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#000' }}>{item.name}</Typography>
+                                            <Typography sx={{ fontSize: '10px', color: 'rgba(0,0,0,0.35)', fontWeight: 500 }}>Qty: {item.qty}</Typography>
+                                          </Box>
+                                        </Box>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#0F6E56' }}>₦{(item.price * item.qty).toLocaleString()}</Typography>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                  <Box sx={{ borderTop: '1px dashed #ddd', mt: 1.5, pt: 1.5, display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography sx={{ fontSize: '12px', fontWeight: 800, color: '#000' }}>Total Paid</Typography>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 900, color: '#0F6E56' }}>₦{Number(order.totalAmount).toLocaleString()}</Typography>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
                 </Box>
               </motion.div>
             )}
