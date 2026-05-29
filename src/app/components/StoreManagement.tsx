@@ -676,23 +676,27 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                               />
 
-                              {/* Overlay: Pharmacy name over "SURGE CENTRAL" */}
+                              {/* Overlay: white block + pharmacy name covering cross icon + "SURGE CENTRAL" */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '8.2%',
+                                top: '4%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                width: '70%',
+                                width: '72%',
+                                bgcolor: 'white',
+                                borderRadius: '4px',
+                                py: '1.2%',
+                                px: '2%',
                                 textAlign: 'center',
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
                                   fontWeight: 900,
-                                  fontSize: 'clamp(10px, 3.8vw, 18px)',
+                                  fontSize: 'clamp(9px, 3.4vw, 16px)',
                                   color: '#111',
-                                  letterSpacing: '0.08em',
+                                  letterSpacing: '0.06em',
                                   textTransform: 'uppercase',
-                                  lineHeight: 1.1,
+                                  lineHeight: 1.2,
                                   display: 'block',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
@@ -706,42 +710,46 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '60.5%',
+                                  top: '55%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '36%',
+                                  width: '30%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'white',
-                                  borderRadius: '6px',
-                                  p: '3px',
-                                  boxShadow: '0 0 0 3px white',
+                                  borderRadius: '4px',
+                                  p: '2px',
+                                  boxShadow: '0 0 0 4px white',
                                 }}>
                                   <img
                                     src={qrCodeDataUrl}
                                     alt="QR Code"
-                                    style={{ width: '100%', height: '100%', display: 'block', borderRadius: '4px' }}
+                                    style={{ width: '100%', height: '100%', display: 'block', borderRadius: '3px' }}
                                   />
                                 </Box>
                               )}
 
-                              {/* Overlay: Store URL over "surge.psx.ng" */}
+                              {/* Overlay: Store URL covering "surge.psx.ng" pill */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '80%',
+                                top: '83.5%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                width: '60%',
+                                bgcolor: 'white',
+                                borderRadius: '100px',
+                                px: '3%',
+                                py: '0.6%',
                                 textAlign: 'center',
+                                minWidth: '50%',
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
                                   fontWeight: 700,
-                                  fontSize: 'clamp(8px, 2.8vw, 13px)',
+                                  fontSize: 'clamp(7px, 2.6vw, 12px)',
                                   color: '#111',
                                   letterSpacing: '0.02em',
                                   whiteSpace: 'nowrap',
                                 }}>
-                                  {userSlug}.psx.ng
+                                  ⊕ {userSlug}.psx.ng
                                 </span>
                               </Box>
                             </Box>
