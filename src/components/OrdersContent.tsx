@@ -320,13 +320,13 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
   const [pharmacy, setPharmacy] = useState<{ businessName?: string; businessAddress?: string; city?: string; state?: string; email?: string; phone?: string; phoneNumber?: string; mobile?: string } | null>(null);
 
   useEffect(() => {
-    if (isPickup && bizName) {
+    if (bizName) {
       fetch(`/api/pharmacies?businessName=${encodeURIComponent(bizName)}`)
         .then(r => r.json())
         .then(data => { const p = data.pharmacies?.[0]; if (p) setPharmacy(p); })
         .catch(() => {});
     }
-  }, [isPickup, bizName]);
+  }, [bizName]);
 
   const handleCompleteOrder = async () => {
     setCompleting(true);
@@ -353,9 +353,9 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
     { label: 'Completed',            desc: status === 'Completed' ? 'Order collected — thank you!' : 'Confirm after collection', time: status === 'Completed' ? 'Done' : '-', status: status === 'Completed' ? 'completed' : 'active' },
   ] : [
     { label: 'Order placed',         desc: 'Payment confirmed',        time: orderTime, status: 'completed' },
-    { label: 'Pharmacist confirmed', desc: status === 'Pending' ? 'Waiting for confirmation' : 'Preparing your order', time: status === 'Pending' ? '-' : orderTime, status: status === 'Pending' ? 'active' : 'completed' },
-    { label: 'Dispatched',           desc: status === 'Dispatched' || status === 'In Transit' ? 'Rider is on the way' : 'Pending', time: (status === 'Dispatched' || status === 'In Transit') ? 'Now' : '-', status: (status === 'Dispatched' || status === 'In Transit') ? 'active' : (status === 'Completed' ? 'completed' : 'pending') },
-    { label: 'Delivered',            desc: status === 'Completed' ? 'Thank you for your order' : 'Pending', time: status === 'Completed' ? 'Done' : '-', status: status === 'Completed' ? 'completed' : 'pending' },
+    { label: 'Pharmacist confirmed', desc: 'Preparing your order',     time: orderTime, status: 'completed' },
+    { label: 'Dispatched',           desc: 'Rider is on the way',      time: 'Now',     status: 'completed' },
+    { label: 'Received',             desc: status === 'Completed' ? 'Thank you for your order!' : 'Awaiting your confirmation', time: status === 'Completed' ? 'Done' : '-', status: status === 'Completed' ? 'completed' : 'active' },
   ];
 
   const pharmacyAddress = [pharmacy?.businessAddress, pharmacy?.city, pharmacy?.state].filter(Boolean).join(', ');
@@ -405,10 +405,10 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
         </div>
       </div>
 
-      {isPickup && (
+      {(pharmacy || bizName) && (
         <div className="glass-card" style={{ marginBottom: '16px', borderColor: '#0F6E56', borderWidth: '1.5px', borderStyle: 'solid' }}>
           <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            Pickup from
+            {isPickup ? 'Pickup from' : 'Pharmacy contact'}
           </div>
           <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--black)', marginBottom: '8px', letterSpacing: '-0.3px' }}>
             {pharmacy?.businessName || bizName || 'Your pharmacy'}
@@ -428,6 +428,12 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
               ✉️ {pharmacy.email}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {!isPickup && status !== 'Completed' && (
+        <div style={{ fontSize: '12px', color: '#888', textAlign: 'center', marginBottom: '16px', lineHeight: 1.6, padding: '12px 16px', background: '#f9f9f9', borderRadius: '12px' }}>
+          A customer service agent will contact you soon to process your order and give you necessary info.
         </div>
       )}
 
@@ -453,6 +459,31 @@ const OrderTrackingView = ({ order, onBack }: { order: Order, onBack: () => void
       {isPickup && status === 'Completed' && (
         <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--green)', fontWeight: 600, marginBottom: '16px' }}>
           ✓ Order collected
+        </div>
+      )}
+
+      {!isPickup && status !== 'Completed' && (
+        <button
+          onClick={handleCompleteOrder}
+          disabled={completing}
+          style={{
+            width: '100%', padding: '16px', background: completing ? '#ccc' : 'var(--green)',
+            color: 'white', border: 'none', borderRadius: '14px', fontSize: '14px',
+            fontWeight: 700, cursor: completing ? 'not-allowed' : 'pointer',
+            marginBottom: '8px', fontFamily: 'Sora, sans-serif',
+          }}
+        >
+          {completing ? 'Updating...' : 'Received'}
+        </button>
+      )}
+      {!isPickup && status !== 'Completed' && (
+        <div style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginBottom: '16px', lineHeight: 1.5 }}>
+          Only click this button when you have received your medicines from the rider.
+        </div>
+      )}
+      {!isPickup && status === 'Completed' && (
+        <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--green)', fontWeight: 600, marginBottom: '16px' }}>
+          ✓ Order received
         </div>
       )}
 
@@ -623,9 +654,9 @@ export default function OrdersContent({ setView, setSelectedRequestId, initialVi
             </div>
           ) : (
             selectedOrder && (
-              <OrderTrackingView 
-                order={selectedOrder} 
-                onBack={() => setViewMode('list')} 
+              <OrderTrackingView
+                order={selectedOrder}
+                onBack={() => setViewMode('orders-list')}
               />
             )
           )}
