@@ -790,8 +790,8 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 justifyContent: 'center',
                               }}>
                                 <span data-flyer-name style={{
-                                  fontFamily: '"Playfair Display", "Georgia", serif',
-                                  fontWeight: 800,
+                                  fontFamily: '"Fraunces", serif',
+                                  fontWeight: 900,
                                   fontStyle: 'italic',
                                   fontSize: 'clamp(8px, 3.2vw, 13px)',
                                   background: 'linear-gradient(120deg, #0F6E56 0%, #1a9e7a 40%, #c0396b 80%, #FF4D97 100%)',
