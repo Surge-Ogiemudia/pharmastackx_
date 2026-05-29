@@ -843,19 +843,18 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 transform: 'translateX(-50%)',
                                 bgcolor: '#f6f5f4',
                                 borderRadius: '100px',
-                                px: '3%',
-                                py: '0.4%',
+                                px: '2%',
+                                py: '0.3%',
                                 textAlign: 'center',
-                                minWidth: '40%',
                                 boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
                                 border: '1px solid rgba(255,255,255,0.9)',
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
                                   fontWeight: 800,
-                                  fontSize: 'clamp(8px, 2.6vw, 11px)',
+                                  fontSize: 'clamp(6px, 1.6vw, 8px)',
                                   color: '#0F6E56',
-                                  letterSpacing: '0.04em',
+                                  letterSpacing: '0.03em',
                                   whiteSpace: 'nowrap',
                                   textShadow: '0 1px 2px rgba(15,110,86,0.12)',
                                 }}>
