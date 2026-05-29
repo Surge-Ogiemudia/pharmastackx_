@@ -684,9 +684,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 transform: 'translateX(-50%)',
                                 width: '76%',
                                 bgcolor: '#f6f5f4',
-                                borderRadius: '10px',
-                                py: '1.6%',
-                                px: '4%',
+                                borderRadius: '12px',
+                                py: '3%',
+                                px: '8%',
                                 textAlign: 'center',
                                 boxShadow: '0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)',
                                 border: '1px solid rgba(255,255,255,0.9)',
@@ -720,10 +720,10 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                   transform: 'translate(-50%, -50%)',
                                   width: '40%',
                                   aspectRatio: '1/1',
-                                  bgcolor: 'white',
-                                  borderRadius: '6px',
-                                  p: '3px',
-                                  boxShadow: '0 0 0 6px white',
+                                  bgcolor: 'transparent',
+                                  borderRadius: 0,
+                                  p: 0,
+                                  boxShadow: 'none',
                                 }}>
                                   <img
                                     src={qrCodeDataUrl}
