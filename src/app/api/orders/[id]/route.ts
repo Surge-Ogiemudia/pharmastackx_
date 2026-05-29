@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import Order from '@/models/Order';
-import { getSession } from '@/lib/session';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+
+async function getSession(req: NextRequest) {
+  const token = req.cookies.get('session_token')?.value;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+  } catch {
+    return null;
+  }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   await dbConnect();
