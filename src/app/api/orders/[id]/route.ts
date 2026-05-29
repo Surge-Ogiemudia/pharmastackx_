@@ -15,10 +15,12 @@ async function getSession(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await dbConnect();
   const session = await getSession(req);
   if (!session) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
 
   try {
     const { status } = await req.json();
@@ -28,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const order = await Order.findOneAndUpdate(
-      { _id: params.id, user: session.userId },
+      { _id: id, user: session.userId },
       { status, ...(status === 'Completed' ? { completedAt: new Date() } : {}) },
       { new: true }
     );
