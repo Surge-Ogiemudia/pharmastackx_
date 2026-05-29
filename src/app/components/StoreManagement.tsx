@@ -676,25 +676,30 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                               />
 
-                              {/* Overlay: white block + pharmacy name covering cross icon + "SURGE CENTRAL" */}
+                              {/* Overlay: pharmacy name — covers cross + "SURGE CENTRAL" */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '4%',
+                                top: '2%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                width: '72%',
-                                bgcolor: 'white',
-                                borderRadius: '4px',
-                                py: '1.2%',
-                                px: '2%',
+                                width: '76%',
+                                bgcolor: '#f6f5f4',
+                                borderRadius: '10px',
+                                py: '3.5%',
+                                px: '4%',
                                 textAlign: 'center',
+                                boxShadow: '0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)',
+                                border: '1px solid rgba(255,255,255,0.9)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
-                                  fontWeight: 900,
-                                  fontSize: 'clamp(9px, 3.4vw, 16px)',
-                                  color: '#111',
-                                  letterSpacing: '0.06em',
+                                  fontWeight: 800,
+                                  fontSize: 'clamp(8px, 3.2vw, 15px)',
+                                  color: '#1a1a1a',
+                                  letterSpacing: '0.07em',
                                   textTransform: 'uppercase',
                                   lineHeight: 1.2,
                                   display: 'block',
@@ -706,19 +711,19 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 </span>
                               </Box>
 
-                              {/* Overlay: QR code over existing QR */}
+                              {/* Overlay: QR code — bottom lands exactly at 83% */}
                               {qrCodeDataUrl && (
                                 <Box sx={{
                                   position: 'absolute',
-                                  top: '55%',
+                                  top: '70%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '30%',
+                                  width: '37%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'white',
-                                  borderRadius: '4px',
-                                  p: '2px',
-                                  boxShadow: '0 0 0 4px white',
+                                  borderRadius: '6px',
+                                  p: '3px',
+                                  boxShadow: '0 0 0 5px white',
                                 }}>
                                   <img
                                     src={qrCodeDataUrl}
@@ -728,24 +733,26 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 </Box>
                               )}
 
-                              {/* Overlay: Store URL covering "surge.psx.ng" pill */}
+                              {/* Overlay: store URL pill — sits 3px below QR bottom (~83.5%) */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '83.5%',
+                                top: '84%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
-                                bgcolor: 'white',
+                                bgcolor: '#f6f5f4',
                                 borderRadius: '100px',
-                                px: '3%',
-                                py: '0.6%',
+                                px: '4%',
+                                py: '1%',
                                 textAlign: 'center',
-                                minWidth: '50%',
+                                minWidth: '52%',
+                                boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+                                border: '1px solid rgba(255,255,255,0.9)',
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
                                   fontWeight: 700,
-                                  fontSize: 'clamp(7px, 2.6vw, 12px)',
-                                  color: '#111',
+                                  fontSize: 'clamp(7px, 2.5vw, 11px)',
+                                  color: '#1a1a1a',
                                   letterSpacing: '0.02em',
                                   whiteSpace: 'nowrap',
                                 }}>
