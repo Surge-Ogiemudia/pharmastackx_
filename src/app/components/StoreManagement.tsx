@@ -679,13 +679,13 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {/* Overlay: pharmacy name — tight box over cross + "SURGE CENTRAL" */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '1%',
+                                top: '-0.5%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 width: '76%',
                                 bgcolor: '#f6f5f4',
                                 borderRadius: '12px',
-                                py: '3%',
+                                py: '3.5%',
                                 px: '8%',
                                 textAlign: 'center',
                                 boxShadow: '0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)',
@@ -718,7 +718,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                   top: '73%',
                                   left: '50%',
                                   transform: 'translate(-50%, -50%)',
-                                  width: '40%',
+                                  width: '38%',
                                   aspectRatio: '1/1',
                                   bgcolor: 'transparent',
                                   borderRadius: 0,
@@ -736,7 +736,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               {/* Overlay: store URL pill — just below QR bottom (~87.5%) */}
                               <Box sx={{
                                 position: 'absolute',
-                                top: '87.5%',
+                                top: '88.2%',
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 bgcolor: '#f6f5f4',
