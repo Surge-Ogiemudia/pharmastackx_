@@ -81,6 +81,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const [postPaymentMessage, setPostPaymentMessage] = useState('');
   const [showPostPaymentFlow, setShowPostPaymentFlow] = useState(false);
   const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
+  const [completedPharmacyName, setCompletedPharmacyName] = useState<string | undefined>(undefined);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'pickup'>('standard');
@@ -267,6 +268,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
     if (result.success) {
       const capturedRequestId = requestId;
+      const capturedPharmacyName = uniquePharmacies[0];
       if (capturedRequestId) {
         fetch(`/api/requests/${capturedRequestId}`, {
           method: 'PATCH',
@@ -285,6 +287,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       router.replace(window.location.pathname, { scroll: false });
       setPostPaymentStatus('idle');
       setCompletedRequestId(capturedRequestId ?? null);
+      setCompletedPharmacyName(capturedPharmacyName);
       setShowPostPaymentFlow(true);
     } else {
       setPostPaymentStatus('error');
@@ -330,7 +333,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           patientName={patientName}
           total={total}
           items={items.map(i => ({ name: i.name, qty: i.quantity, price: i.price }))}
-          pharmacyName={uniquePharmacies[0]}
+          pharmacyName={completedPharmacyName}
           onDone={() => { setShowPostPaymentFlow(false); setView('orderManagement'); }}
         />
       )}
