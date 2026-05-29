@@ -696,16 +696,17 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
-                                  fontWeight: 800,
-                                  fontSize: 'clamp(8px, 3.2vw, 15px)',
-                                  color: '#1a1a1a',
-                                  letterSpacing: '0.07em',
+                                  fontWeight: 900,
+                                  fontSize: 'clamp(13px, 4.8vw, 22px)',
+                                  color: '#0F6E56',
+                                  letterSpacing: '0.12em',
                                   textTransform: 'uppercase',
-                                  lineHeight: 1.2,
+                                  lineHeight: 1.1,
                                   display: 'block',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
+                                  textShadow: '0 1px 2px rgba(15,110,86,0.15)',
                                 }}>
                                   {userBusinessName}
                                 </span>
@@ -750,11 +751,12 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               }}>
                                 <span style={{
                                   fontFamily: '"Sora", sans-serif',
-                                  fontWeight: 700,
-                                  fontSize: 'clamp(7px, 2.5vw, 11px)',
-                                  color: '#1a1a1a',
-                                  letterSpacing: '0.02em',
+                                  fontWeight: 800,
+                                  fontSize: 'clamp(10px, 3.2vw, 14px)',
+                                  color: '#0F6E56',
+                                  letterSpacing: '0.06em',
                                   whiteSpace: 'nowrap',
+                                  textShadow: '0 1px 2px rgba(15,110,86,0.12)',
                                 }}>
                                   ⊕ {userSlug}.psx.ng
                                 </span>
