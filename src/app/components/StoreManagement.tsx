@@ -674,7 +674,6 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 src="/storeflyer.png"
                                 alt="Store flyer"
                                 style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
-                                crossOrigin="anonymous"
                               />
 
                               {/* Overlay: Pharmacy name over "SURGE CENTRAL" */}
