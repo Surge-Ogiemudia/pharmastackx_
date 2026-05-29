@@ -88,7 +88,9 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           return; // Not logged in — skip silently
         }
         if (!response.ok) {
-          throw new Error('Failed to fetch orders');
+          const body = await response.json().catch(() => ({}));
+          console.error('Failed to fetch orders:', response.status, body);
+          return; // Don't throw — just leave cached data in place
         }
         const data = await response.json();
         setOrders(data);

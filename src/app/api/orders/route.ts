@@ -36,20 +36,16 @@ export async function GET(req: NextRequest) {
 
     // Get the user to check their role
     const user = await User.findById(session.userId);
-    if (!user) {
-       return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
+    const role = user?.role || session.role || 'customer';
 
-    if (user.role === 'admin' || user.role === 'stockManager') {
-      // Admins see everything, but can still filter by businessName if provided
+    if (role === 'admin' || role === 'stockManager') {
       if (businessName) {
         query.businesses = businessName;
       }
-    } else if (user.role === 'pharmacy' || user.role === 'pharmacist') {
-      // Pharmacies see orders where they are involved
-      query.businesses = user.businessName;
+    } else if (role === 'pharmacy' || role === 'pharmacist') {
+      query.businesses = user?.businessName || businessName;
     } else {
-      // Customers see their own orders
+      // Customers (and anyone whose user doc wasn't found) see their own orders
       query.user = session.userId;
     }
 
