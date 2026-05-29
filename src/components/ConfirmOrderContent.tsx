@@ -322,7 +322,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
   return (
     <div className="co-container">
-      {showPostPaymentFlow && completedRequestId && (
+      {showPostPaymentFlow && (
         <PostPaymentFlow
           requestId={completedRequestId}
           deliveryOption={deliveryOption}
@@ -332,6 +332,14 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           items={items.map(i => ({ name: i.name, qty: i.quantity, price: i.price }))}
           onDone={() => { setShowPostPaymentFlow(false); setView('orderManagement'); }}
         />
+      )}
+
+      {/* POST-PAYMENT PROCESSING OVERLAY */}
+      {postPaymentStatus === 'processing' && (
+        <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255,255,255,0.98)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, gap: 2 }}>
+          <CircularProgress sx={{ color: '#0F6E56' }} />
+          <Typography variant="body2" color="text.secondary">Confirming your order...</Typography>
+        </Box>
       )}
 
       {/* POST-PAYMENT ERROR OVERLAY (order creation failed) */}
