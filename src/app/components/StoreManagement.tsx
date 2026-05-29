@@ -647,18 +647,20 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                           </Typography>
                         )}
                         {synkkStatus.connected && synkkStatus.lastSync && (
-                          <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--sora)', whiteSpace: 'nowrap' }}>
-                            Synced {(() => {
-                              const diff = Date.now() - new Date(synkkStatus.lastSync).getTime();
-                              const mins = Math.floor(diff / 60000);
-                              const hrs = Math.floor(mins / 60);
-                              const days = Math.floor(hrs / 24);
-                              if (days > 0) return `${days}d ago`;
-                              if (hrs > 0) return `${hrs}h ago`;
-                              if (mins > 0) return `${mins}m ago`;
-                              return 'just now';
-                            })()}
-                          </Typography>
+                          (() => {
+                            const diff = Date.now() - new Date(synkkStatus.lastSync).getTime();
+                            const mins = Math.floor(diff / 60000);
+                            const hrs = Math.floor(mins / 60);
+                            const days = Math.floor(hrs / 24);
+                            const label = days > 0 ? `${days}d ago` : hrs > 0 ? `${hrs}h ago` : mins > 0 ? `${mins}m ago` : 'just now';
+                            const color = days >= 1 ? '#f87171' : hrs >= 12 ? '#fbbf24' : 'rgba(255,255,255,0.45)';
+                            const prefix = days >= 1 ? '🔴 ' : hrs >= 12 ? '🟡 ' : '';
+                            return (
+                              <Typography sx={{ fontSize: '10px', fontWeight: 700, color, fontFamily: 'var(--sora)', whiteSpace: 'nowrap' }}>
+                                {prefix}Synced {label}
+                              </Typography>
+                            );
+                          })()
                         )}
                       </Box>
                     </Box>
