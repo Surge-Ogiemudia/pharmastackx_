@@ -110,6 +110,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const [ordersData, setOrdersData] = useState<{ totalOrders: number; totalRevenue: number; visitCount: number; orders: any[] } | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [ordersSearch, setOrdersSearch] = useState('');
+  const [ordersDatePicker, setOrdersDatePicker] = useState('');
+  const [ordersVisible, setOrdersVisible] = useState(4);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -1098,13 +1101,42 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
               <motion.div key="tab2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pb: 12 }}>
 
-                  {/* FILTER PILLS */}
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {(['today', 'week', 'month', 'year', 'all'] as const).map((f) => (
-                      <Box key={f} onClick={() => { setOrdersFilter(f); fetchOrdersData(f); }} sx={{ px: 2, py: 0.7, borderRadius: '100px', cursor: 'pointer', bgcolor: ordersFilter === f ? '#0F6E56' : 'white', color: ordersFilter === f ? 'white' : 'rgba(0,0,0,0.4)', fontSize: '11px', fontWeight: 800, fontFamily: 'var(--sora)', border: '1px solid', borderColor: ordersFilter === f ? '#0F6E56' : '#eee', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'all 0.2s' }}>
-                        {f === 'today' ? 'Today' : f === 'week' ? 'This Week' : f === 'month' ? 'This Month' : f === 'year' ? 'This Year' : 'All Time'}
-                      </Box>
-                    ))}
+                  {/* FILTER ROW: search + dropdown + date */}
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      placeholder="Search patient or medicine…"
+                      value={ordersSearch}
+                      onChange={e => { setOrdersSearch(e.target.value); setOrdersVisible(4); }}
+                      variant="outlined"
+                      size="small"
+                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'white', fontSize: '12px', height: '40px' } }}
+                    />
+                    <Select
+                      value={ordersFilter}
+                      onChange={e => { const v = e.target.value as any; setOrdersFilter(v); setOrdersDatePicker(''); setOrdersVisible(4); fetchOrdersData(v); }}
+                      variant="outlined"
+                      size="small"
+                      sx={{ minWidth: 120, bgcolor: 'white', borderRadius: '12px', fontSize: '12px', fontWeight: 700, height: '40px', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#eee' } }}
+                    >
+                      <MenuItem value="today" sx={{ fontSize: '12px' }}>Today</MenuItem>
+                      <MenuItem value="week" sx={{ fontSize: '12px' }}>This Week</MenuItem>
+                      <MenuItem value="month" sx={{ fontSize: '12px' }}>This Month</MenuItem>
+                      <MenuItem value="year" sx={{ fontSize: '12px' }}>This Year</MenuItem>
+                      <MenuItem value="all" sx={{ fontSize: '12px' }}>All Time</MenuItem>
+                    </Select>
+                    <TextField
+                      type="date"
+                      value={ordersDatePicker}
+                      onChange={e => {
+                        const d = e.target.value;
+                        setOrdersDatePicker(d);
+                        setOrdersVisible(4);
+                        if (d) fetchOrdersData(`custom&start=${d}&end=${d}`);
+                      }}
+                      size="small"
+                      sx={{ width: 44, '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'white', height: '40px', px: 0, cursor: 'pointer', '& input': { p: 0, width: 0, visibility: 'hidden' }, '& input[type=date]::-webkit-calendar-picker-indicator': { opacity: 1, cursor: 'pointer', margin: 'auto', width: 20, height: 20 } }, '& .MuiOutlinedInput-notchedOutline': { borderColor: '#eee' } }}
+                      inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                    />
                   </Box>
 
                   {/* STATS BANNER */}
@@ -1130,11 +1162,24 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                   {/* ORDERS LIST */}
                   {!ordersLoading && ordersData && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                      {ordersData.orders.length === 0 ? (
-                        <Box sx={{ bgcolor: 'white', borderRadius: '20px', p: 4, textAlign: 'center', border: '1px solid #eee' }}>
-                          <Typography sx={{ fontSize: '14px', fontWeight: 700, color: 'rgba(0,0,0,0.25)' }}>No orders in this period</Typography>
-                        </Box>
-                      ) : ordersData.orders.map((order: any) => {
+                      {(() => {
+                        const q = ordersSearch.toLowerCase().trim();
+                        const filtered = q
+                          ? ordersData.orders.filter((o: any) =>
+                              o.patientName?.toLowerCase().includes(q) ||
+                              o.deliveryPhone?.includes(q) ||
+                              o.items?.some((it: any) => it.name?.toLowerCase().includes(q))
+                            )
+                          : ordersData.orders;
+                        const visible = filtered.slice(0, ordersVisible);
+                        const remaining = filtered.length - ordersVisible;
+                        return filtered.length === 0 ? (
+                          <Box sx={{ bgcolor: 'white', borderRadius: '20px', p: 4, textAlign: 'center', border: '1px solid #eee' }}>
+                            <Typography sx={{ fontSize: '14px', fontWeight: 700, color: 'rgba(0,0,0,0.25)' }}>{q ? 'No matches found' : 'No orders in this period'}</Typography>
+                          </Box>
+                        ) : (
+                          <>
+                          {visible.map((order: any) => {
                         const isExpanded = expandedOrder === order._id;
                         const statusColor = order.status === 'Completed' ? '#0F6E56' : order.status === 'Cancelled' ? '#ef4444' : order.status === 'Pending' ? '#B45309' : '#7C3AED';
                         return (
@@ -1215,7 +1260,15 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                             )}
                           </Box>
                         );
-                      })}
+                          })}
+                          {remaining > 0 && (
+                            <Button onClick={() => setOrdersVisible(v => v + 3)} variant="outlined" fullWidth sx={{ borderRadius: '14px', textTransform: 'none', fontWeight: 700, fontSize: '13px', color: '#0F6E56', borderColor: '#EBF7F2', bgcolor: '#EBF7F2', py: 1.2, '&:hover': { bgcolor: '#def1ea', borderColor: '#def1ea' } }}>
+                              Show more ({Math.min(remaining, 3)} of {remaining} remaining)
+                            </Button>
+                          )}
+                          </>
+                        );
+                      })()}
                     </Box>
                   )}
                 </Box>
