@@ -408,7 +408,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
             <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
             <div className="co-delivery-opt-body">
               <div className="co-delivery-opt-title">Pickup from pharmacy</div>
-              <div className="co-delivery-opt-sub">You'll receive the pharmacy address and contact after payment.</div>
+              <div className="co-delivery-opt-sub">The pharmacy is notified instantly. Pay now and walk in to collect — no waiting.</div>
             </div>
             <div className="co-delivery-opt-price" style={{color: deliveryOption === 'pickup' ? 'var(--green)' : '#bbb'}}>Free</div>
           </div>
@@ -441,9 +441,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
             </div>
           </div>
         )}
-        <div style={{marginTop: 10, fontSize: 10, color: '#bbb', fontWeight: 300}}>
-          {deliveryOption === 'pickup' ? '*Pickup service charge is 25% instead of 20%' : '*Service charge is 20% for deliveries'}
-        </div>
       </div>
 
       {/* CONTACT INFO */}
@@ -523,12 +520,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           <div className="co-summary-total-value">₦{total.toLocaleString()}</div>
         </div>
 
-        <div className="co-service-note">
-          <div className="co-service-bar"></div>
-          <div className="co-service-text">
-            PharmaStackX charges a <strong>{sfcPercentage}% service fee</strong> to keep the platform running and ensure your orders are secured.
-          </div>
-        </div>
       </div>
 
       {/* PROCEED SECTION */}
