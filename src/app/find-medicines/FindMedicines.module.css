@@ -309,9 +309,12 @@
 .searchRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+  padding-bottom: 2px;
 }
 .searchRow::-webkit-scrollbar { display: none; }
 .searchBar {
@@ -357,7 +360,7 @@
 .filterPills {
   display: flex;
   gap: 6px;
-  overflow-x: auto;
+  flex-shrink: 0;
   scrollbar-width: none;
 }
 .filterPills::-webkit-scrollbar {
@@ -365,6 +368,7 @@
 }
 .pill {
   white-space: nowrap;
+  flex-shrink: 0;
   padding: 8px 14px;
   border-radius: 100px;
   font-size: 12px;
