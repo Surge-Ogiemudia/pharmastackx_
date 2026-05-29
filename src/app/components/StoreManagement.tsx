@@ -578,11 +578,10 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   }
 
   return (
-    <Box className="store-mgmt-free" sx={{ 
-      background: COLORS.bg, 
-      minHeight: '100vh', 
+    <Box className="store-mgmt-free" sx={{
+      background: COLORS.bg,
       pt: 0,
-      pb: '100px',
+      pb: '8px',
       fontFamily: '"Sora", sans-serif',
       color: COLORS.text
     }}>
