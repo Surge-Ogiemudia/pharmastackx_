@@ -306,9 +306,19 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
+          <select
+            className={styles.sortSelect}
+            value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+          >
+            <option value="recommended">Recommended</option>
+            <option value="price">Price</option>
+            <option value="name">Name</option>
+            <option value="distance">Distance</option>
+          </select>
           <div className={styles.filterPills}>
             {drugClasses.map(cat => (
-              <button 
+              <button
                 key={cat}
                 className={`${styles.pill} ${filterBy === cat.toLowerCase() || (filterBy === 'all' && cat === 'all') ? styles.active : ''}`}
                 onClick={() => { setFilterBy(cat.toLowerCase()); setCurrentPage(1); }}
