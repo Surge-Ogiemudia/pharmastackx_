@@ -1,8 +1,27 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Walk from the first '{' to its matching '}', ignoring nested braces inside strings.
+function extractFirstJSON(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
-  const { category, detail, pharmacyName, storeUrl, tagline, photoTags, tone } = await req.json();
+  const { category, detail, pharmacyName, storeUrl, tagline, photoTags } = await req.json();
 
   if (!category || !pharmacyName) {
     return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
@@ -23,13 +42,11 @@ Their store URL is ${storeUrl || `${pharmacyName.toLowerCase().replace(/\s/g, ''
 Post category: ${category}
 ${detail ? `Additional detail: ${detail}` : ''}
 ${photoTags?.length ? `Available photo types in their library: ${photoTags.join(', ')}` : ''}
-${tone ? `Tone / angle for this variation: ${tone}` : ''}
 
 Generate a post that feels authentic, warm, and professional for a Nigerian pharmacy audience.
 Use Nigerian English naturally where appropriate. Keep it relatable and trustworthy.
-Make this post feel distinctly different from other variations — different angle, different words.
 
-Return ONLY valid JSON in this exact format:
+Return ONLY a single valid JSON object — no markdown, no explanation, nothing else:
 {
   "headline": "short punchy headline, max 6 words, ALL CAPS",
   "caption": "2-3 sentence caption, warm and engaging, ends with a subtle call to action",
@@ -41,12 +58,12 @@ Return ONLY valid JSON in this exact format:
   try {
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON in Gemini response:', text.slice(0, 200));
-      throw new Error('No JSON in response');
+    const jsonStr = extractFirstJSON(text);
+    if (!jsonStr) {
+      console.error('No JSON found in model response:', text.slice(0, 300));
+      throw new Error('Model did not return JSON');
     }
-    const content = JSON.parse(jsonMatch[0]);
+    const content = JSON.parse(jsonStr);
     return NextResponse.json(content);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

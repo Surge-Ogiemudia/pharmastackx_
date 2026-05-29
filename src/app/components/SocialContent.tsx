@@ -37,12 +37,6 @@ interface GeneratedContent {
   colorMood: string;
 }
 
-interface PostVariation {
-  content: GeneratedContent;
-  previewUrl: string | null;
-  building: boolean;
-}
-
 interface SocialPhoto { url: string; tag: PhotoTag; uploadedAt?: string; }
 
 // ── resize + base64 encode ──────────────────────────────────────────────────
@@ -196,9 +190,11 @@ export default function SocialContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [postDetail, setPostDetail] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [variations, setVariations] = useState<PostVariation[]>([]);
+  const [generated, setGenerated] = useState<GeneratedContent | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [buildingCanvas, setBuildingCanvas] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [sharedIdx, setSharedIdx] = useState<number | null>(null);
+  const [shared, setShared] = useState(false);
 
   // ── Brand kit save ───────────────────────────────────────────────────────
   const saveBrandKit = async () => {
@@ -245,86 +241,52 @@ export default function SocialContent() {
     setPhotos(prev => prev.map(p => p.url === url ? { ...p, tag } : p));
   };
 
-  // ── Generate 3 variations ────────────────────────────────────────────────
+  // ── Generate post ────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!selectedCategory) return;
     setGenerating(true);
-    setVariations([]);
+    setGenerated(null);
+    setPreviewUrl(null);
     setGenerateError(null);
 
     const pharmacyName = user?.businessName || user?.username || 'My Pharmacy';
     const storeUrl = `${user?.slug || 'pharmacy'}.psx.ng`;
 
-    const base = {
-      category: selectedCategory,
-      detail: postDetail || undefined,
-      pharmacyName,
-      storeUrl,
-      tagline,
-      photoTags: [...new Set(photos.map(p => p.tag))],
-    };
-
-    let contents: GeneratedContent[] = [];
     try {
-      const results = await Promise.allSettled([
-        axios.post('/api/ai/social-content', { ...base, tone: 'warm and community-focused' }),
-        axios.post('/api/ai/social-content', { ...base, tone: 'bold and attention-grabbing' }),
-        axios.post('/api/ai/social-content', { ...base, tone: 'educational and trustworthy' }),
-      ]);
-
-      let firstError = '';
-      results.forEach((r, i) => {
-        if (r.status === 'rejected') {
-          const msg = (r.reason as Error)?.message || String(r.reason);
-          console.error(`Variation ${i + 1} failed:`, msg);
-          if (!firstError) firstError = msg;
-        }
+      const res = await axios.post('/api/ai/social-content', {
+        category: selectedCategory,
+        detail: postDetail || undefined,
+        pharmacyName,
+        storeUrl,
+        tagline,
+        photoTags: [...new Set(photos.map(p => p.tag))],
       });
+      const content: GeneratedContent = res.data;
+      setGenerated(content);
+      setGenerating(false);
 
-      contents = results
-        .filter(r => r.status === 'fulfilled')
-        .map(r => (r as PromiseFulfilledResult<{ data: GeneratedContent }>).value.data)
-        .filter(d => d?.headline && d?.caption);
-
-      if (!contents.length) {
-        // Extract server error message if axios error
-        const axiosMsg = (results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined)
-          ?.reason?.response?.data?.message;
-        setGenerateError(axiosMsg || firstError || 'Could not generate posts. Please try again.');
-      }
-    } catch (e) {
-      console.error('Generate error:', e);
-      setGenerateError('Unexpected error. Please try again.');
-    }
-
-    setGenerating(false);
-
-    if (!contents.length) return;
-
-    // Seed variations (building=true, no preview yet)
-    setVariations(contents.map(content => ({ content, previewUrl: null, building: true })));
-
-    // Build canvases independently
-
-    contents.forEach(async (content, i) => {
+      // Build canvas
+      setBuildingCanvas(true);
       try {
         const suggestedPhoto = photos.find(p => p.tag === content.suggestedPhotoTag) || photos[0] || null;
         const canvas = await buildPostCanvas(suggestedPhoto, content, pharmacyName, storeUrl, brandPrimary, brandSecondary);
-        const url = canvas.toDataURL('image/jpeg', 0.92);
-        setVariations(prev => prev.map((v, j) => j === i ? { ...v, previewUrl: url, building: false } : v));
-      } catch {
-        setVariations(prev => prev.map((v, j) => j === i ? { ...v, building: false } : v));
-      }
-    });
+        setPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
+      } finally { setBuildingCanvas(false); }
+    } catch (e: unknown) {
+      const axiosMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const errMsg = (e instanceof Error) ? e.message : String(e);
+      setGenerateError(axiosMsg || errMsg || 'Could not generate post. Please try again.');
+      setGenerating(false);
+    }
   };
 
   // ── Post / share ─────────────────────────────────────────────────────────
-  const handlePost = async (variation: PostVariation, idx: number) => {
-    if (!variation.previewUrl) return;
-    const text = `${variation.content.caption}\n\n${variation.content.hashtags.map(h => `#${h}`).join(' ')}`;
+  const handlePost = async () => {
+    if (!previewUrl || !generated) return;
+    const text = `${generated.caption}\n\n${generated.hashtags.map(h => `#${h}`).join(' ')}`;
 
     try {
-      const res = await fetch(variation.previewUrl);
+      const res = await fetch(previewUrl);
       const blob = await res.blob();
       const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
       if (navigator.canShare?.({ files: [file] })) {
@@ -338,11 +300,11 @@ export default function SocialContent() {
     // Desktop fallback: copy caption + download image
     try { navigator.clipboard.writeText(text); } catch {}
     const a = document.createElement('a');
-    a.href = variation.previewUrl;
+    a.href = previewUrl;
     a.download = 'social-post.jpg';
     a.click();
-    setSharedIdx(idx);
-    setTimeout(() => setSharedIdx(null), 3000);
+    setShared(true);
+    setTimeout(() => setShared(false), 3000);
   };
 
   // ── Shared styles ─────────────────────────────────────────────────────────
@@ -552,7 +514,7 @@ export default function SocialContent() {
           startIcon={generating ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <AutoAwesome sx={{ fontSize: '16px' }} />}
           sx={{ bgcolor: P, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.3, boxShadow: 'none', mb: 0, '&:hover': { bgcolor: '#a8346f', boxShadow: 'none' }, '&:disabled': { bgcolor: 'rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.3)' } }}
         >
-          {generating ? 'Generating ideas...' : variations.length ? 'Regenerate' : 'Generate 3 ideas'}
+          {generating ? 'Generating...' : generated ? 'Regenerate' : 'Generate post'}
         </Button>
 
         {generateError && (
@@ -562,58 +524,48 @@ export default function SocialContent() {
         )}
       </Box>
 
-      {/* ── POST VARIATIONS ───────────────────────────────────────────── */}
+      {/* ── POST PREVIEW ──────────────────────────────────────────────── */}
       <AnimatePresence>
-        {variations.map((v, idx) => (
+        {(generated || buildingCanvas) && (
           <motion.div
-            key={idx}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, delay: idx * 0.08 }}
+            transition={{ duration: 0.25 }}
           >
             <Box sx={{ ...cardSx, p: 0, overflow: 'hidden' }}>
               {/* Preview image */}
-              <Box sx={{ aspectRatio: '1/1', bgcolor: '#f0f0ee', position: 'relative' }}>
-                {v.building ? (
+              <Box sx={{ aspectRatio: '1/1', bgcolor: '#f0f0ee' }}>
+                {buildingCanvas ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
                     <CircularProgress sx={{ color: G }} size={28} />
                   </Box>
-                ) : v.previewUrl ? (
-                  <img src={v.previewUrl} style={{ width: '100%', display: 'block' }} />
-                ) : (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
-                    <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)' }}>Preview unavailable</Typography>
-                  </Box>
-                )}
-
-                {/* Variation badge */}
-                <Box sx={{ position: 'absolute', top: 10, left: 10, bgcolor: 'rgba(0,0,0,0.55)', borderRadius: '8px', px: 1, py: 0.4 }}>
-                  <Typography sx={{ fontSize: '10px', fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>
-                    IDEA {idx + 1}
-                  </Typography>
-                </Box>
+                ) : previewUrl ? (
+                  <img src={previewUrl} style={{ width: '100%', display: 'block' }} />
+                ) : null}
               </Box>
 
               {/* Caption */}
-              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {v.content.caption}
-                </Typography>
-                <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
-                  {v.content.hashtags.slice(0, 4).map(h => `#${h}`).join(' ')}
-                </Typography>
-              </Box>
+              {generated && (
+                <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                  <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6 }}>
+                    {generated.caption}
+                  </Typography>
+                  <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
+                    {generated.hashtags.slice(0, 5).map(h => `#${h}`).join(' ')}
+                  </Typography>
+                </Box>
+              )}
 
               {/* Post button */}
               <Box sx={{ px: 2, pb: 2, pt: 1.5 }}>
                 <Button
                   fullWidth
-                  disabled={v.building || !v.previewUrl}
-                  onClick={() => handlePost(v, idx)}
+                  disabled={buildingCanvas || !previewUrl}
+                  onClick={handlePost}
                   startIcon={<Share sx={{ fontSize: '16px' }} />}
                   sx={{
-                    bgcolor: sharedIdx === idx ? '#2e7d5a' : G,
+                    bgcolor: shared ? '#2e7d5a' : G,
                     color: '#fff',
                     borderRadius: '14px',
                     textTransform: 'none',
@@ -626,12 +578,12 @@ export default function SocialContent() {
                     '&:disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.25)' },
                   }}
                 >
-                  {sharedIdx === idx ? 'Caption copied + image saved' : 'Post this'}
+                  {shared ? 'Caption copied + image saved' : 'Post this'}
                 </Button>
               </Box>
             </Box>
           </motion.div>
-        ))}
+        )}
       </AnimatePresence>
 
     </Box>
