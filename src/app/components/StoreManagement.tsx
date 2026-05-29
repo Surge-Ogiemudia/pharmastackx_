@@ -8,10 +8,10 @@ import {
   Select, MenuItem, InputLabel, FormControl, Collapse, Container, Grid
 } from '@mui/material';
 import { 
-  UploadFile, Inventory, Dashboard, History, ShoppingCart, 
+  UploadFile, Inventory, Dashboard, History, ShoppingCart,
   Search, FilterList, Refresh, Edit, Delete, Close,
   Share, QrCode, WhatsApp, ContentCopy, AddCircle, Help, ExpandMore, ExpandLess,
-  ArrowBackIos, ArrowForwardIos, ArrowBack as ArrowBackIcon
+  ArrowBackIos, ArrowForwardIos, ArrowBack as ArrowBackIcon, CalendarMonth
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
@@ -1138,11 +1138,17 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                         const d = e.target.value;
                         setOrdersDatePicker(d);
                         setOrdersVisible(4);
-                        if (d) fetchOrdersData(`custom&start=${d}&end=${d}`);
+                        if (d) { setOrdersFilter('today' as any); fetchOrdersData(`custom&start=${d}&end=${d}`); }
                       }}
                       size="small"
-                      sx={{ width: 44, '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'white', height: '40px', px: 0, cursor: 'pointer', '& input': { p: 0, width: 0, visibility: 'hidden' }, '& input[type=date]::-webkit-calendar-picker-indicator': { opacity: 1, cursor: 'pointer', margin: 'auto', width: 20, height: 20 } }, '& .MuiOutlinedInput-notchedOutline': { borderColor: '#eee' } }}
+                      title="Filter by specific date"
+                      sx={{ width: 46, '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'white', height: '40px', overflow: 'hidden', '& input': { opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer' } }, '& .MuiOutlinedInput-notchedOutline': { borderColor: ordersDatePicker ? '#0F6E56' : '#eee' } }}
                       inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                      InputProps={{ startAdornment: (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', pointerEvents: 'none' }}>
+                          <CalendarMonth sx={{ fontSize: 18, color: ordersDatePicker ? '#0F6E56' : 'rgba(0,0,0,0.3)' }} />
+                        </Box>
+                      ) }}
                     />
                   </Box>
 
