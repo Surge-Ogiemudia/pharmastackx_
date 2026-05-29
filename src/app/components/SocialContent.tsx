@@ -424,65 +424,62 @@ export default function SocialContent() {
           {savingBrand ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save brand kit'}
         </Button>
 
+        {/* ── PHOTO LIBRARY (inside brand kit) ────────────────────────── */}
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: BORDER }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Photo Library ({photos.length})</Typography>
+            <Button
+              component="label"
+              size="small"
+              disabled={uploadingPhoto}
+              startIcon={uploadingPhoto ? <CircularProgress size={12} /> : <Add sx={{ fontSize: '16px' }} />}
+              sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '11px', px: 1.5, py: 0.7, boxShadow: 'none', minWidth: 0 }}
+            >
+              Add photos
+              <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
+            </Button>
+          </Box>
+
+          {photos.length === 0 ? (
+            <Box
+              component="label"
+              sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '16px', py: 4, cursor: 'pointer' }}
+            >
+              <Typography sx={{ fontSize: '28px' }}>📸</Typography>
+              <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.4)' }}>Add photos to your library</Typography>
+              <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>Staff, store, products — anything</Typography>
+              <input type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+              {photos.map((photo) => (
+                <Box key={photo.url} sx={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee' }}>
+                  <img src={photo.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <Box
+                    sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'rgba(0,0,0,0.6)', borderRadius: '6px', px: 0.8, py: 0.2, cursor: 'pointer' }}
+                    onClick={() => {
+                      const idx = PHOTO_TAGS.indexOf(photo.tag);
+                      updatePhotoTag(photo.url, PHOTO_TAGS[(idx + 1) % PHOTO_TAGS.length]);
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{photo.tag}</Typography>
+                  </Box>
+                  <Box
+                    onClick={() => handleDeletePhoto(photo.url)}
+                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <Delete sx={{ fontSize: '12px', color: '#fff' }} />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+
               </Box>
             </motion.div>
           )}
         </AnimatePresence>
-      </Box>
-
-      {/* ── PHOTO LIBRARY ─────────────────────────────────────────────── */}
-      <Box sx={cardSx}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-          <Typography sx={sectionLabelSx}>Photo Library ({photos.length})</Typography>
-          <Button
-            component="label"
-            size="small"
-            disabled={uploadingPhoto}
-            startIcon={uploadingPhoto ? <CircularProgress size={12} /> : <Add sx={{ fontSize: '16px' }} />}
-            sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '11px', px: 1.5, py: 0.7, boxShadow: 'none', minWidth: 0 }}
-          >
-            Add photos
-            <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
-          </Button>
-        </Box>
-
-        {photos.length === 0 ? (
-          <Box
-            component="label"
-            sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '16px', py: 4, cursor: 'pointer' }}
-          >
-            <Typography sx={{ fontSize: '28px' }}>📸</Typography>
-            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.4)' }}>Add photos to your library</Typography>
-            <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>Staff, store, products — anything</Typography>
-            <input type="file" accept="image/*" multiple hidden onChange={handlePhotoUpload} />
-          </Box>
-        ) : (
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-            {photos.map((photo) => (
-              <Box key={photo.url} sx={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee' }}>
-                <img src={photo.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                {/* Tag chip */}
-                <Box
-                  sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'rgba(0,0,0,0.6)', borderRadius: '6px', px: 0.8, py: 0.2, cursor: 'pointer' }}
-                  onClick={() => {
-                    const idx = PHOTO_TAGS.indexOf(photo.tag);
-                    const next = PHOTO_TAGS[(idx + 1) % PHOTO_TAGS.length];
-                    updatePhotoTag(photo.url, next);
-                  }}
-                >
-                  <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{photo.tag}</Typography>
-                </Box>
-                {/* Delete */}
-                <Box
-                  onClick={() => handleDeletePhoto(photo.url)}
-                  sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                >
-                  <Delete sx={{ fontSize: '12px', color: '#fff' }} />
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        )}
       </Box>
 
       {/* ── CREATE POST ───────────────────────────────────────────────── */}
