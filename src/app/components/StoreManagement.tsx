@@ -39,6 +39,7 @@ interface StockItem {
   itemName: string;
   activeIngredient: string;
   amount: number;
+  quantity: number;
   category: string;
   isPublished: boolean;
   imageUrl?: string;
@@ -994,6 +995,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               </Box>
                               <Box sx={{ width: 85, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
                                 <Typography sx={{ fontSize: '17px', fontWeight: 800, color: '#000', mb: 0.2, whiteSpace: 'nowrap' }}>{item.amount > 0 ? `₦${Number(item.amount).toLocaleString()}` : '—'}</Typography>
+                                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: item.quantity > 0 ? '#0F6E56' : '#B45309', mb: 0.3 }}>
+                                  {item.quantity > 0 ? `${item.quantity} in stock` : 'Out of stock'}
+                                </Typography>
                                 <Typography onClick={() => { setSelectedProduct(item); setTileEditData(item); }} sx={{ fontSize: '13px', fontWeight: 700, color: '#FF4D97', cursor: 'pointer' }}>{needsFix ? 'Fix' : 'Edit'}</Typography>
                               </Box>
                             </Box>
@@ -1137,8 +1141,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                     <TextField label="Active Ingredient" fullWidth variant="outlined" value={tileEditData.activeIngredient} onChange={e => setTileEditData({...tileEditData, activeIngredient: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <TextField label="Price (₦)" type="number" fullWidth variant="outlined" value={tileEditData.amount} onChange={e => setTileEditData({...tileEditData, amount: Number(e.target.value)})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
-                      <TextField label="Category" fullWidth variant="outlined" value={tileEditData.category} onChange={e => setTileEditData({...tileEditData, category: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
+                      <TextField label="Qty in stock" type="number" fullWidth variant="outlined" value={tileEditData.quantity ?? 0} onChange={e => setTileEditData({...tileEditData, quantity: Number(e.target.value)})} disabled={!isEditingTile} inputProps={{ min: 0 }} InputProps={{ sx: { borderRadius: '16px' } }} />
                     </Box>
+                    <TextField label="Category" fullWidth variant="outlined" value={tileEditData.category} onChange={e => setTileEditData({...tileEditData, category: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
                     
                     <Box sx={{ background: '#fafafa', padding: '30px', borderRadius: '30px', display: 'flex', flexDirection: 'column', gap: '15px', border: `1.5px solid ${COLORS.border}` }}>
                         <Typography sx={{ fontSize: '10px', fontWeight: 900, color: COLORS.sub, letterSpacing: '1.5px', marginBottom: '5px', textTransform: 'uppercase' }}>VISIBILITY & COMPLIANCE</Typography>
