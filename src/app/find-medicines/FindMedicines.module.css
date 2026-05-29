@@ -437,6 +437,20 @@
   color: var(--muted);
 }
 
+.locationBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFF8E1;
+  border: 1px solid #FFE082;
+  color: #7A5C00;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
 /* ── SECTION HEADER ── */
 .sectionHeader {
   display: flex;
@@ -563,10 +577,20 @@
   font-size: 11px;
   color: var(--muted);
   font-family: 'Geist Mono', monospace;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.productPharmacy {
+  font-size: 10px;
+  color: var(--green);
+  font-weight: 600;
   margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.1px;
 }
 .productFooter {
   display: flex;

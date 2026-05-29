@@ -55,6 +55,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const [toastMsg, setToastMsg] = useState('');
   
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
   const isInitialLoad = useRef(true);
 
   const [pharmacyDetails, setPharmacyDetails] = useState<any>(null);
@@ -128,7 +129,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             lon: position.coords.longitude,
           });
         },
-        () => {}
+        () => setLocationDenied(true)
       );
     }
   }, []);
@@ -324,6 +325,13 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
 
 
+        {sortBy === 'distance' && locationDenied && (
+          <div className={styles.locationBanner}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Location access denied — enable it in your browser to sort by distance
+          </div>
+        )}
+
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitle}>All medicines</div>
           <div className={styles.sectionCount}>{totalProducts} items</div>
@@ -369,6 +377,9 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                   <div className={styles.productBody}>
                     <div className={styles.productName}>{medicine.name}</div>
                     <div className={styles.productStrength}>{medicine.activeIngredients || 'Standard'}</div>
+                    {!slug && medicine.businessName && (
+                      <div className={styles.productPharmacy}>{medicine.businessName}</div>
+                    )}
                     
                     {medicine.distance != null && (
                       <div className={styles.lowStock}>
