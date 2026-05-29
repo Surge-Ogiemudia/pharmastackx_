@@ -49,8 +49,8 @@ interface RequestData {
   quotes: Quote[];
 }
 
-const STANDARD_DELIVERY_FEE = 100;
-const EXPRESS_DELIVERY_FEE = 200;
+const STANDARD_DELIVERY_FEE = 1200;
+const EXPRESS_DELIVERY_FEE = 3000;
 
 export default function ConfirmOrderContent({ setView }: { setView: (view: string) => void }) {
   const { items, updateQuantity, removeFromCart, clearCart, requestId, quoteId, fetchCartFromDB } = useCart();
