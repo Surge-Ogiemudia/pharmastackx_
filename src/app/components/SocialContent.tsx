@@ -138,7 +138,7 @@ export default function SocialContent() {
     setGenerateError(null);
 
     try {
-      const res = await axios.post('/api/ai/social-content', {
+      const basePayload = {
         category: selectedCategory,
         detail: postDetail || undefined,
         pharmacyName: user?.businessName || user?.username || 'My Pharmacy',
@@ -146,13 +146,29 @@ export default function SocialContent() {
         tagline,
         brandPrimary,
         brandSecondary,
-      });
-      const { caption, hashtags, imageData, mimeType } = res.data;
-      setGenerated({ caption, hashtags });
-      setPreviewUrl(`data:${mimeType};base64,${imageData}`);
+      };
+
+      // We fire both requests in parallel. 
+      // If the text finishes first (it will), the UI updates instantly with the caption.
+      const textPromise = axios.post('/api/ai/social-content', { ...basePayload, action: 'text' })
+        .then(res => {
+          setGenerated({ caption: res.data.caption, hashtags: res.data.hashtags });
+        });
+
+      const imagePromise = axios.post('/api/ai/social-content', { ...basePayload, action: 'image' })
+        .then(res => {
+          setPreviewUrl(`data:${res.data.mimeType || 'image/jpeg'};base64,${res.data.imageData}`);
+        });
+
+      await Promise.all([textPromise, imagePromise]);
     } catch (e: unknown) {
       const axiosMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setGenerateError(axiosMsg || (e instanceof Error ? e.message : 'Could not generate post. Please try again.'));
+      // If the text succeeded but the image timed out (504), we don't want to nuke the text.
+      if (!generated) {
+        setGenerateError(axiosMsg || (e instanceof Error ? e.message : 'Could not generate post. Please try again.'));
+      } else {
+        setGenerateError('Caption generated, but image took too long (Timeout). Try again for image.');
+      }
     } finally {
       setGenerating(false);
     }
