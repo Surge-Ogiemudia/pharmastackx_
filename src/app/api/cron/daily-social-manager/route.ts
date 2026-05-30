@@ -63,9 +63,9 @@ export async function GET(req: NextRequest) {
           const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
           const prompt = `Generate a 30-day social media content plan for a Nigerian pharmacy named "${pharmacy.businessName || 'Pharmacy'}".
 Return a JSON object with a "schedule" array of exactly 30 items.
-Each item must have: "dayOffset" (1 to 30), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (either "image" or "video_idea"), and "topic" (a brief description).
-Make sure to mix in images and video ideas.
-{ "schedule": [ { "dayOffset": 1, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
+Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
+All 30 posts must be images. Do not include video ideas.
+{ "schedule": [ { "dayOffset": 0, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
           
           const result = await model.generateContent(prompt);
           const raw = result.response.text().trim();
@@ -79,7 +79,7 @@ Make sure to mix in images and video ideas.
 
             const schedule = data.schedule.map((item: any) => {
               const d = new Date(planStart);
-              d.setDate(d.getDate() + item.dayOffset - 1);
+              d.setDate(d.getDate() + item.dayOffset);
               return { date: d, category: item.category, type: item.type, topic: item.topic };
             });
 
@@ -143,11 +143,12 @@ Make sure to mix in images and video ideas.
                 } catch (imgErr) {
                   console.error('Image gen failed in cron', imgErr);
                 }
-              } else {
-                const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-                const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel about "${tomorrowTopic.topic}". Keep it very simple and practical.`);
-                videoIdeaText = vidRes.response.text().trim();
-              }
+              } // Closed if block
+
+              // Standalone Video Idea (always generated daily)
+              const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+              const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel. Keep it very simple and practical. Provide just the idea.`);
+              videoIdeaText = vidRes.response.text().trim();
 
               await DailyPost.create({
                 pharmacyId: pharmacy._id,

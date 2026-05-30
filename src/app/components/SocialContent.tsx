@@ -84,6 +84,7 @@ export default function SocialContent() {
   const [updatingPost, setUpdatingPost] = useState(false);
   const [shared, setShared] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [isStrategyExpanded, setIsStrategyExpanded] = useState(false);
 
   React.useEffect(() => {
     if (!user?._id) return;
@@ -211,15 +212,25 @@ export default function SocialContent() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
             p: 2.5,
             ...(brandKitOpen ? {} : {
-              background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
-              color: '#fff',
+              background: `radial-gradient(circle at top right, ${brandPrimary}33, transparent 40%), radial-gradient(circle at bottom left, ${brandSecondary}33, transparent 40%), linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4))`,
+              backdropFilter: 'blur(10px)',
+              borderBottom: '1px solid rgba(255,255,255,0.5)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+              color: '#333',
             })
           }}
         >
-          <Typography sx={{ ...sectionLabelSx, mb: 0, color: brandKitOpen ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)' }}>
-            {brandKitOpen ? 'Brand Kit' : '✨ Your Brand Identity'}
-          </Typography>
-          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '18px', color: '#fff' }} />}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {!brandKitOpen && (
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${brandPrimary}, ${brandSecondary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                <Typography sx={{ fontSize: '14px', color: '#fff' }}>✨</Typography>
+              </Box>
+            )}
+            <Typography sx={{ ...sectionLabelSx, mb: 0, color: brandKitOpen ? 'rgba(0,0,0,0.3)' : '#111', fontWeight: brandKitOpen ? 600 : 700, letterSpacing: brandKitOpen ? '1px' : '-0.2px' }}>
+              {brandKitOpen ? 'Brand Kit' : 'Your Brand Identity'}
+            </Typography>
+          </Box>
+          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '20px', color: '#666' }} />}
         </Box>
 
         <AnimatePresence initial={false}>
@@ -460,7 +471,7 @@ export default function SocialContent() {
                   </Box>
                 ) : activePlan ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {activePlan.schedule.slice(0, 5).map((item: any, i: number) => (
+                    {activePlan.schedule.slice(0, isStrategyExpanded ? 30 : 5).map((item: any, i: number) => (
                       <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: '#f9f9f7', borderRadius: '10px' }}>
                         <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: item.type === 'image' ? G : P, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
                           {item.type === 'image' ? '📸' : '🎥'}
@@ -475,7 +486,12 @@ export default function SocialContent() {
                       </Box>
                     ))}
                     {activePlan.schedule.length > 5 && (
-                      <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, textAlign: 'center', mt: 1, cursor: 'pointer' }}>View all {activePlan.schedule.length} topics</Typography>
+                      <Typography 
+                        onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}
+                        sx={{ fontSize: '11px', color: G, fontWeight: 600, textAlign: 'center', mt: 1, cursor: 'pointer', transition: '0.2s', '&:hover': { opacity: 0.7 } }}
+                      >
+                        {isStrategyExpanded ? 'Collapse Strategy' : `View all ${activePlan.schedule.length} topics`}
+                      </Typography>
                     )}
                   </Box>
                 ) : (

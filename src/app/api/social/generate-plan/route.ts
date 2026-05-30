@@ -41,16 +41,14 @@ export async function POST(req: NextRequest) {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     // 1. Generate the 30-day plan
     const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
     const prompt = `Generate a 30-day social media content plan for a Nigerian pharmacy named "${pharmacy.businessName || 'Pharmacy'}".
 Return a JSON object with a "schedule" array of exactly 30 items.
-Each item must have: "dayOffset" (1 to 30), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (either "image" or "video_idea"), and "topic" (a brief description).
-Make sure to mix in images and video ideas.
-{ "schedule": [ { "dayOffset": 1, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
+Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
+All 30 posts must be images. Do not include video ideas.
+{ "schedule": [ { "dayOffset": 0, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
     
     const result = await model.generateContent(prompt);
     const raw = result.response.text().trim();
@@ -59,13 +57,13 @@ Make sure to mix in images and video ideas.
     let createdPlan = null;
     if (jsonStr) {
       const data = JSON.parse(jsonStr);
-      const planStart = new Date(tomorrow); // Start tomorrow
+      const planStart = new Date(today); // Start today
       const planEnd = new Date(planStart);
       planEnd.setDate(planEnd.getDate() + 30);
 
       const schedule = data.schedule.map((item: any) => {
         const d = new Date(planStart);
-        d.setDate(d.getDate() + item.dayOffset - 1);
+        d.setDate(d.getDate() + item.dayOffset);
         return { date: d, category: item.category, type: item.type, topic: item.topic };
       });
 
@@ -82,14 +80,14 @@ Make sure to mix in images and video ideas.
       return NextResponse.json({ message: 'Failed to generate plan' }, { status: 500 });
     }
 
-    // 2. Generate tomorrow's post (dayOffset 1)
-    const tomorrowTopic = createdPlan.schedule[0];
+    // 2. Generate today's post (dayOffset 0)
+    const todayTopic = createdPlan.schedule[0];
     
     let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-    if (tomorrowTopic.type === 'image') {
+    if (todayTopic.type === 'image') {
       const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const txtRes = await txtModel.generateContent(`Write a short, engaging caption for a Nigerian pharmacy named "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
+      const txtRes = await txtModel.generateContent(`Write a short, engaging caption for a Nigerian pharmacy named "${pharmacy.businessName}". Topic: ${todayTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
       const txtJsonStr = extractFirstJSON(txtRes.response.text());
       if (txtJsonStr) {
         const tData = JSON.parse(txtJsonStr);
@@ -100,7 +98,7 @@ Make sure to mix in images and video ideas.
       try {
         const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
         const imgRes = await (imgModel as any).generateContent({
-          contents: [{ role: 'user', parts: [{ text: `Design a stunning 1:1 social media post for Nigerian pharmacy "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Clean, professional.` }] }],
+          contents: [{ role: 'user', parts: [{ text: `Design a stunning 1:1 social media post for Nigerian pharmacy "${pharmacy.businessName}". Topic: ${todayTopic.topic}. Clean, professional.` }] }],
           generationConfig: { responseModalities: ['image'] },
         });
         const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
@@ -112,15 +110,15 @@ Make sure to mix in images and video ideas.
       }
     } else {
       const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel about "${tomorrowTopic.topic}". Keep it very simple and practical.`);
+      const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel about "${todayTopic.topic}". Keep it very simple and practical.`);
       videoIdeaText = vidRes.response.text().trim();
     }
 
     await DailyPost.create({
       pharmacyId: pharmacy._id,
-      scheduledDate: tomorrow,
-      type: tomorrowTopic.type,
-      status: 'pending_review',
+      scheduledDate: today,
+      type: todayTopic.type,
+      status: 'ready_to_post', // Instantly ready since it's today
       caption,
       hashtags,
       imageUrl,
