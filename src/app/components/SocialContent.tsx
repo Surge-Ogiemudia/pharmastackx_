@@ -159,7 +159,7 @@ export default function SocialContent() {
   // ── Post / share ─────────────────────────────────────────────────────────
   const handlePost = async (post: any) => {
     if (!post || !post.imageUrl) return;
-    const text = `${post.caption}\n\n${(post.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
+    const text = `${post.caption}nn${(post.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
 
     try {
       const res = await fetch(post.imageUrl);
@@ -390,14 +390,14 @@ export default function SocialContent() {
 
               {/* 2. Review Tomorrow's Post */}
               {tomorrowsPost && tomorrowsPost.status === 'pending_review' && (
-                <Box sx={{ ...cardSx, border: \`2px solid \${P}40\` }}>
+                <Box sx={{ ...cardSx, border: `2px solid ${P}40` }}>
                   <Typography sx={{...sectionLabelSx, color: P}}>👀 Review Tomorrow's Post</Typography>
                   <Box sx={{ aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee', mb: 1.5 }}>
                     {tomorrowsPost.imageUrl && <img src={tomorrowsPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </Box>
                   <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.6, mb: 0.5 }}>{tomorrowsPost.caption}</Typography>
                   <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mb: 2 }}>
-                    {(tomorrowsPost.hashtags || []).map((h: string) => \`#\${h}\`).join(' ')}
+                    {(tomorrowsPost.hashtags || []).map((h: string) => `#${h}`).join(' ')}
                   </Typography>
                   
                   <Box sx={{ display: 'flex', gap: 1 }}>

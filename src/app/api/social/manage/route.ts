@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoConnect from '@/lib/mongoConnect';
+import { dbConnect } from '@/lib/mongoConnect';
 import ContentPlan from '@/models/ContentPlan';
 import DailyPost from '@/models/DailyPost';
-import { getServerSession } from 'next-auth';
+
 // Replace with however next-auth session is configured, or just use user email from request if using custom auth.
 // Based on typical PharmastackX pattern, we might receive user info in headers or body.
 
 export async function GET(req: NextRequest) {
   try {
-    await mongoConnect();
+    await dbConnect();
     // In a real implementation, extract userId from session. We will assume the client passes pharmacyId in query for now.
     const url = new URL(req.url);
     const pharmacyId = url.searchParams.get('pharmacyId');
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    await mongoConnect();
+    await dbConnect();
     const { postId, status, caption, hashtags } = await req.json();
     
     if (!postId || !status) return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
