@@ -10,6 +10,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { AuthModalProvider } from "@/contexts/AuthModalContext"; // Import the provider
 import MainLayout from "./MainLayout";
+import ThemeRegistry from "./ThemeRegistry";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const sora = Sora({ subsets: ["latin"], weight: ["300", "400", "600", "700", "800"], variable: '--font-sora' });
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${poppins.className} ${sora.variable} ${dmSans.variable} ${fraunces.variable}`}>
+        <ThemeRegistry>
         <Suspense fallback={null}>
           <SessionProvider>
             {/* Wrap with AuthModalProvider */}
@@ -71,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AuthModalProvider>
           </SessionProvider>
         </Suspense>
+        </ThemeRegistry>
 
         <script
           dangerouslySetInnerHTML={{
