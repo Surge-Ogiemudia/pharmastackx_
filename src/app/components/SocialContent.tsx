@@ -68,7 +68,7 @@ export default function SocialContent() {
   const [tagline, setTagline] = useState<string>(user?.brandKit?.tagline || '');
   const [logoUrl, setLogoUrl] = useState<string>(user?.brandKit?.logoUrl || '');
   const [savingBrand, setSavingBrand] = useState(false);
-  const [brandKitOpen, setBrandKitOpen] = useState(false);
+  const [brandKitOpen, setBrandKitOpen] = useState(!user?.hasSetupBrandKit);
 
   // Photo library
   const [photos, setPhotos] = useState<SocialPhoto[]>((user?.socialPhotos as SocialPhoto[]) || []);
@@ -83,6 +83,7 @@ export default function SocialContent() {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [updatingPost, setUpdatingPost] = useState(false);
   const [shared, setShared] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
 
   React.useEffect(() => {
     if (!user?._id) return;
@@ -90,6 +91,19 @@ export default function SocialContent() {
       setTodaysPost(res.data.todaysPost);
       setTomorrowsPost(res.data.tomorrowsPost);
       setActivePlan(res.data.activePlan || res.data.pendingPlan);
+
+      if (!res.data.activePlan && !res.data.pendingPlan) {
+        setGeneratingPlan(true);
+        axios.post('/api/social/generate-plan', { pharmacyId: user._id })
+          .then(() => axios.get(`/api/social/manage?pharmacyId=${user._id}`))
+          .then(refetchRes => {
+            setTodaysPost(refetchRes.data.todaysPost);
+            setTomorrowsPost(refetchRes.data.tomorrowsPost);
+            setActivePlan(refetchRes.data.activePlan || refetchRes.data.pendingPlan);
+          })
+          .catch(console.error)
+          .finally(() => setGeneratingPlan(false));
+      }
     }).catch(console.error).finally(() => setLoadingPlan(false));
   }, [user?._id]);
 
@@ -190,13 +204,22 @@ export default function SocialContent() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
       {/* ── BRAND KIT ─────────────────────────────────────────────────── */}
-      <Box sx={cardSx}>
+      <Box sx={{ ...cardSx, p: brandKitOpen ? 2.5 : 0, overflow: 'hidden' }}>
         <Box
           onClick={() => setBrandKitOpen(o => !o)}
-          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
+          sx={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
+            p: 2.5,
+            ...(brandKitOpen ? {} : {
+              background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
+              color: '#fff',
+            })
+          }}
         >
-          <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Brand Kit</Typography>
-          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} />}
+          <Typography sx={{ ...sectionLabelSx, mb: 0, color: brandKitOpen ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.8)' }}>
+            {brandKitOpen ? 'Brand Kit' : '✨ Your Brand Identity'}
+          </Typography>
+          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '18px', color: '#fff' }} />}
         </Box>
 
         <AnimatePresence initial={false}>
@@ -430,7 +453,12 @@ export default function SocialContent() {
               {/* 3. Monthly Strategy */}
               <Box sx={cardSx}>
                 <Typography sx={sectionLabelSx}>Monthly Strategy</Typography>
-                {activePlan ? (
+                {generatingPlan ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
+                    <CircularProgress size={24} sx={{ color: G }} />
+                    <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)' }}>Generating your personalized 30-day strategy...</Typography>
+                  </Box>
+                ) : activePlan ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {activePlan.schedule.slice(0, 5).map((item: any, i: number) => (
                       <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: '#f9f9f7', borderRadius: '10px' }}>
@@ -464,15 +492,6 @@ export default function SocialContent() {
       {activeTab === 'videos' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box sx={cardSx}>
-            <Typography sx={sectionLabelSx}>Generate Video</Typography>
-            <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ fontSize: '32px' }}>🎬</Typography>
-              <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>AI Video Generation</Typography>
-              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>Coming soon in the next update.</Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={cardSx}>
             <Typography sx={sectionLabelSx}>Today's Video Idea</Typography>
             {todaysPost && todaysPost.type === 'video_idea' && todaysPost.videoIdeaText ? (
               <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
@@ -481,6 +500,15 @@ export default function SocialContent() {
             ) : (
               <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>No video assigned for today. Check back tomorrow!</Typography>
             )}
+          </Box>
+          
+          <Box sx={cardSx}>
+            <Typography sx={sectionLabelSx}>Generate Video</Typography>
+            <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontSize: '32px' }}>🎬</Typography>
+              <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>AI Video Generation</Typography>
+              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>Coming soon in the next update.</Typography>
+            </Box>
           </Box>
         </Box>
       )}

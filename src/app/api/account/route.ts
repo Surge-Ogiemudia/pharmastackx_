@@ -92,7 +92,7 @@ export async function PUT(req: Request) {
             stateOfPractice,
             licenseNumber,
             slug,
-            ...(brandKit && { brandKit }),
+            ...(brandKit && { brandKit, hasSetupBrandKit: true }),
         };
 
         if (latitude !== undefined && longitude !== undefined) {
