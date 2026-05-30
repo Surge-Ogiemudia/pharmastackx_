@@ -309,13 +309,11 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         }
         #search-screen-container * { box-sizing: border-box; }
         
-        #search-screen-container .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
-        #search-screen-container .reveal.visible { opacity: 1; transform: translateY(0); }
-        #search-screen-container .d1 { transition-delay: 0.1s; } 
-        #search-screen-container .d2 { transition-delay: 0.2s; } 
+        #search-screen-container .d1 { transition-delay: 0.1s; }
+        #search-screen-container .d2 { transition-delay: 0.2s; }
         #search-screen-container .d3 { transition-delay: 0.3s; }
-        #search-screen-container .d4 { transition-delay: 0.4s; } 
-        #search-screen-container .d5 { transition-delay: 0.5s; } 
+        #search-screen-container .d4 { transition-delay: 0.4s; }
+        #search-screen-container .d5 { transition-delay: 0.5s; }
         #search-screen-container .d6 { transition-delay: 0.6s; }
 
         #search-screen-container .back-btn {
@@ -557,9 +555,6 @@ const DispatchForm: React.FC<DispatchFormProps> = ({ initialSearchValue, setView
         #search-screen-container .guest-gate-btn-green{width:100%;background:var(--green);color:#fff;border-radius:13px;padding:15px;font-size:13px;font-weight:600;text-align:center;font-family:'Sora',sans-serif;letter-spacing:-0.2px;border:none;cursor:pointer;margin-bottom:14px}
         #search-screen-container .guest-gate-note{text-align:center;font-size:11px;color:#bbb;font-weight:300}
         
-        .reveal-scale{opacity:0;transform:scale(0.94);transition:opacity 0.7s ease,transform 0.7s ease}
-        .reveal-scale.visible{opacity:1;transform:scale(1)}
-
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
