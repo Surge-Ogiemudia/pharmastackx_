@@ -38,6 +38,7 @@ export interface User {
     tag?: string;
     uploadedAt?: string;
   }>;
+  hasSetupBrandKit?: boolean;
 }
 
 export interface Business extends User {

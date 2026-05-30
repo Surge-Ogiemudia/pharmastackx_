@@ -55,6 +55,7 @@ export interface IUser extends Document {
     tag?: string;
     uploadedAt?: Date;
   }>;
+  hasSetupBrandKit?: boolean;
 }
 
 // The schema defines the blueprint for the database
@@ -119,6 +120,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     tag: { type: String, enum: ['staff', 'store', 'product', 'event', 'other'], default: 'other' },
     uploadedAt: { type: Date, default: Date.now },
   }],
+  hasSetupBrandKit: { type: Boolean, default: false },
 });
 
 // This line creates the model
