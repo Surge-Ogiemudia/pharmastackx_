@@ -29,11 +29,23 @@ export async function GET(req: NextRequest) {
     const todaysPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: today, $lt: tomorrow } });
     const tomorrowsPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: tomorrow, $lt: dayAfter } });
 
+    const dateParam = url.searchParams.get('date');
+    let selectedPost = null;
+
+    if (dateParam) {
+      const selectedDate = new Date(dateParam);
+      selectedDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(selectedDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+      selectedPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: selectedDate, $lt: nextDate } });
+    }
+
     return NextResponse.json({
       activePlan,
       pendingPlan,
       todaysPost,
-      tomorrowsPost
+      tomorrowsPost,
+      selectedPost
     });
   } catch (error) {
     console.error(error);

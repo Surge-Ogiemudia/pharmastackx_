@@ -42,9 +42,20 @@ export async function POST(req: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
+    const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
+    const photosContext = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || 'No photos available';
+    
+    const baseContext = `Pharmacy Profile:
+Name: "${pharmacy.businessName || 'Pharmacy'}"
+Contact Info: ${contactContext}
+${brandKitContext}
+Known physical store context from photos: ${photosContext}`;
+
     // 1. Generate the 30-day plan
     const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-    const prompt = `Generate a 30-day social media content plan for a Nigerian pharmacy named "${pharmacy.businessName || 'Pharmacy'}".
+    const prompt = `Generate a 30-day social media content plan.
+${baseContext}
 Return a JSON object with a "schedule" array of exactly 30 items.
 Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
 All 30 posts must be images. Do not include video ideas.
@@ -87,7 +98,7 @@ All 30 posts must be images. Do not include video ideas.
 
     if (todayTopic.type === 'image') {
       const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const txtRes = await txtModel.generateContent(`Write a short, engaging caption for a Nigerian pharmacy named "${pharmacy.businessName}". Topic: ${todayTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
+      const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${todayTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
       const txtJsonStr = extractFirstJSON(txtRes.response.text());
       if (txtJsonStr) {
         const tData = JSON.parse(txtJsonStr);
@@ -98,7 +109,7 @@ All 30 posts must be images. Do not include video ideas.
       try {
         const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
         const imgRes = await (imgModel as any).generateContent({
-          contents: [{ role: 'user', parts: [{ text: `Design a stunning 1:1 social media post for Nigerian pharmacy "${pharmacy.businessName}". Topic: ${todayTopic.topic}. Clean, professional.` }] }],
+          contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${todayTopic.topic}. Clean, professional.` }] }],
           generationConfig: { responseModalities: ['image'] },
         });
         const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
@@ -110,7 +121,7 @@ All 30 posts must be images. Do not include video ideas.
       }
     } else {
       const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel about "${todayTopic.topic}". Keep it very simple and practical.`);
+      const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${todayTopic.topic}". Keep it very simple and practical.`);
       videoIdeaText = vidRes.response.text().trim();
     }
 
