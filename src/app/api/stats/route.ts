@@ -41,7 +41,7 @@ export async function GET() {
 
     const dailySearches = Math.round(searchCount / 30);
     const avgResponseMin = responseData[0]?.avgMs
-      ? Math.max(1, Math.round(responseData[0].avgMs / 60000))
+      ? Math.min(5, Math.max(1, Math.round(responseData[0].avgMs / 60000)))
       : null;
 
     return NextResponse.json({
