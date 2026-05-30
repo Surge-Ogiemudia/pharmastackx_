@@ -75,14 +75,41 @@ export default function SocialContent() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // Create post
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [postDetail, setPostDetail] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<GeneratedContent | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  // Content Plan & Review
+  const [activeTab, setActiveTab] = useState<'images' | 'videos'>('images');
+  const [todaysPost, setTodaysPost] = useState<any>(null);
+  const [tomorrowsPost, setTomorrowsPost] = useState<any>(null);
+  const [activePlan, setActivePlan] = useState<any>(null);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [updatingPost, setUpdatingPost] = useState(false);
   const [shared, setShared] = useState(false);
+
+  React.useEffect(() => {
+    if (!user?._id) return;
+    axios.get(`/api/social/manage?pharmacyId=${user._id}`).then(res => {
+      setTodaysPost(res.data.todaysPost);
+      setTomorrowsPost(res.data.tomorrowsPost);
+      setActivePlan(res.data.activePlan || res.data.pendingPlan);
+    }).catch(console.error).finally(() => setLoadingPlan(false));
+  }, [user?._id]);
+
+  const handleApprove = async (postId: string) => {
+    setUpdatingPost(true);
+    try {
+      const res = await axios.put('/api/social/manage', { postId, status: 'ready_to_post' });
+      setTomorrowsPost(res.data.post);
+    } catch(e) { console.error(e); }
+    finally { setUpdatingPost(false); }
+  };
+
+  const handleFlag = async (postId: string) => {
+    setUpdatingPost(true);
+    try {
+      const res = await axios.put('/api/social/manage', { postId, status: 'flagged' });
+      setTomorrowsPost(res.data.post);
+    } catch(e) { console.error(e); }
+    finally { setUpdatingPost(false); }
+  };
 
   // ── Brand kit save ───────────────────────────────────────────────────────
   const saveBrandKit = async () => {
@@ -129,58 +156,13 @@ export default function SocialContent() {
     setPhotos(prev => prev.map(p => p.url === url ? { ...p, tag } : p));
   };
 
-  // ── Generate post ────────────────────────────────────────────────────────
-  const handleGenerate = async () => {
-    if (!selectedCategory) return;
-    setGenerating(true);
-    setGenerated(null);
-    setPreviewUrl(null);
-    setGenerateError(null);
-
-    try {
-      const basePayload = {
-        category: selectedCategory,
-        detail: postDetail || undefined,
-        pharmacyName: user?.businessName || user?.username || 'My Pharmacy',
-        storeUrl: `${user?.slug || 'pharmacy'}.psx.ng`,
-        tagline,
-        brandPrimary,
-        brandSecondary,
-      };
-
-      // We fire both requests in parallel. 
-      // If the text finishes first (it will), the UI updates instantly with the caption.
-      const textPromise = axios.post('/api/ai/social-content', { ...basePayload, action: 'text' })
-        .then(res => {
-          setGenerated({ caption: res.data.caption, hashtags: res.data.hashtags });
-        });
-
-      const imagePromise = axios.post('/api/ai/social-content', { ...basePayload, action: 'image' })
-        .then(res => {
-          setPreviewUrl(`data:${res.data.mimeType || 'image/jpeg'};base64,${res.data.imageData}`);
-        });
-
-      await Promise.all([textPromise, imagePromise]);
-    } catch (e: unknown) {
-      const axiosMsg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      // If the text succeeded but the image timed out (504), we don't want to nuke the text.
-      if (!generated) {
-        setGenerateError(axiosMsg || (e instanceof Error ? e.message : 'Could not generate post. Please try again.'));
-      } else {
-        setGenerateError('Caption generated, but image took too long (Timeout). Try again for image.');
-      }
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   // ── Post / share ─────────────────────────────────────────────────────────
-  const handlePost = async () => {
-    if (!previewUrl || !generated) return;
-    const text = `${generated.caption}\n\n${generated.hashtags.map(h => `#${h}`).join(' ')}`;
+  const handlePost = async (post: any) => {
+    if (!post || !post.imageUrl) return;
+    const text = `${post.caption}\n\n${(post.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
 
     try {
-      const res = await fetch(previewUrl);
+      const res = await fetch(post.imageUrl);
       const blob = await res.blob();
       const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
       if (navigator.canShare?.({ files: [file] })) {
@@ -191,10 +173,9 @@ export default function SocialContent() {
       if ((e as Error).name === 'AbortError') return;
     }
 
-    // Desktop fallback: copy caption + download image
     try { navigator.clipboard.writeText(text); } catch {}
     const a = document.createElement('a');
-    a.href = previewUrl;
+    a.href = post.imageUrl;
     a.download = 'social-post.jpg';
     a.click();
     setShared(true);
@@ -358,124 +339,151 @@ export default function SocialContent() {
         </AnimatePresence>
       </Box>
 
-      {/* ── CREATE POST ───────────────────────────────────────────────── */}
-      <Box sx={cardSx}>
-        <Typography sx={sectionLabelSx}>Create Post</Typography>
-
-        {/* Category grid */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 2 }}>
-          {POST_CATEGORIES.map(cat => (
-            <Chip
-              key={cat.id}
-              label={`${cat.emoji} ${cat.label}`}
-              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              sx={{
-                bgcolor: selectedCategory === cat.id ? G : '#f4f4f2',
-                color: selectedCategory === cat.id ? '#fff' : '#333',
-                fontWeight: 700,
-                fontSize: '11px',
-                borderRadius: '10px',
-                height: '32px',
-                '& .MuiChip-label': { px: 1.2 },
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            />
-          ))}
-        </Box>
-
-        {/* Optional detail */}
-        {selectedCategory && (
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={
-              selectedCategory === 'product_spotlight' ? 'Which product? (e.g. Vitamin C 1000mg)' :
-              selectedCategory === 'ailment_awareness' ? 'Which ailment? (e.g. malaria, diabetes)' :
-              selectedCategory === 'staff_spotlight' ? 'Staff name / role (optional)' :
-              'Any extra detail? (optional)'
-            }
-            value={postDetail}
-            onChange={e => setPostDetail(e.target.value)}
-            sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#f9f9f7' } }}
-          />
-        )}
-
+      {/* ── SUB-NAVIGATION TABS ───────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
         <Button
-          fullWidth
-          onClick={handleGenerate}
-          disabled={!selectedCategory || generating}
-          startIcon={generating ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <AutoAwesome sx={{ fontSize: '16px' }} />}
-          sx={{ bgcolor: P, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.3, boxShadow: 'none', mb: 0, '&:hover': { bgcolor: '#a8346f', boxShadow: 'none' }, '&:disabled': { bgcolor: 'rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.3)' } }}
+          onClick={() => setActiveTab('images')}
+          sx={{ flex: 1, py: 1.2, borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', bgcolor: activeTab === 'images' ? G : '#fff', color: activeTab === 'images' ? '#fff' : 'rgba(0,0,0,0.5)', border: activeTab === 'images' ? 'none' : BORDER }}
         >
-          {generating ? 'Generating...' : generated ? 'Regenerate' : 'Generate post'}
+          Designed Post (Images)
         </Button>
-
-        {generateError && (
-          <Typography sx={{ mt: 1.5, fontSize: '12px', color: '#c0392b', textAlign: 'center', lineHeight: 1.5 }}>
-            {generateError}
-          </Typography>
-        )}
+        <Button
+          onClick={() => setActiveTab('videos')}
+          sx={{ flex: 1, py: 1.2, borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', bgcolor: activeTab === 'videos' ? G : '#fff', color: activeTab === 'videos' ? '#fff' : 'rgba(0,0,0,0.5)', border: activeTab === 'videos' ? 'none' : BORDER }}
+        >
+          Video Post
+        </Button>
       </Box>
 
-      {/* ── POST PREVIEW ──────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {generated && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Box sx={{ ...cardSx, p: 0, overflow: 'hidden' }}>
-              {/* AI-generated image */}
-              <Box sx={{ aspectRatio: '1/1', bgcolor: '#f0f0ee' }}>
-                {previewUrl
-                  ? <img src={previewUrl} style={{ width: '100%', display: 'block' }} />
-                  : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
-                      <CircularProgress sx={{ color: G }} size={28} />
+      {/* ── IMAGES TAB ────────────────────────────────────────────────── */}
+      {activeTab === 'images' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          
+          {loadingPlan ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={24} sx={{ color: G }} /></Box>
+          ) : (
+            <>
+              {/* 1. Action Required (Today's Post) */}
+              {todaysPost && todaysPost.status === 'ready_to_post' && (
+                <Box sx={cardSx}>
+                  <Typography sx={{...sectionLabelSx, color: G, display: 'flex', alignItems: 'center', gap: 0.5}}>🔥 Today's Post is Ready</Typography>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ width: '100px', height: '100px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, bgcolor: '#f0f0ee' }}>
+                      {todaysPost.imageUrl && <img src={todaysPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </Box>
-                }
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.5, mb: 1 }}>
+                        {todaysPost.caption?.length > 80 ? todaysPost.caption.substring(0, 80) + '...' : todaysPost.caption}
+                      </Typography>
+                      <Button
+                        fullWidth
+                        onClick={() => handlePost(todaysPost)}
+                        startIcon={<Share sx={{ fontSize: '16px' }} />}
+                        sx={{ bgcolor: shared ? '#2e7d5a' : G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 0.8, boxShadow: 'none' }}
+                      >
+                        {shared ? 'Copied & Saved' : 'Post This'}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+
+              {/* 2. Review Tomorrow's Post */}
+              {tomorrowsPost && tomorrowsPost.status === 'pending_review' && (
+                <Box sx={{ ...cardSx, border: \`2px solid \${P}40\` }}>
+                  <Typography sx={{...sectionLabelSx, color: P}}>👀 Review Tomorrow's Post</Typography>
+                  <Box sx={{ aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee', mb: 1.5 }}>
+                    {tomorrowsPost.imageUrl && <img src={tomorrowsPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </Box>
+                  <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.6, mb: 0.5 }}>{tomorrowsPost.caption}</Typography>
+                  <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mb: 2 }}>
+                    {(tomorrowsPost.hashtags || []).map((h: string) => \`#\${h}\`).join(' ')}
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      fullWidth
+                      onClick={() => handleFlag(tomorrowsPost._id)}
+                      disabled={updatingPost}
+                      sx={{ bgcolor: '#fceaea', color: '#c0392b', borderRadius: '10px', textTransform: 'none', fontWeight: 600, fontSize: '12px', py: 1 }}
+                    >
+                      Flag / Reject
+                    </Button>
+                    <Button
+                      fullWidth
+                      onClick={() => handleApprove(tomorrowsPost._id)}
+                      disabled={updatingPost}
+                      sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 1 }}
+                    >
+                      Approve
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {tomorrowsPost && tomorrowsPost.status === 'ready_to_post' && (
+                <Box sx={{ ...cardSx, bgcolor: '#f5fbf7', border: 'none' }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: G, textAlign: 'center' }}>✅ Tomorrow's post is approved and ready.</Typography>
+                </Box>
+              )}
+
+              {/* 3. Monthly Strategy */}
+              <Box sx={cardSx}>
+                <Typography sx={sectionLabelSx}>Monthly Strategy</Typography>
+                {activePlan ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {activePlan.schedule.slice(0, 5).map((item: any, i: number) => (
+                      <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: '#f9f9f7', borderRadius: '10px' }}>
+                        <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: item.type === 'image' ? G : P, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                          {item.type === 'image' ? '📸' : '🎥'}
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#333' }}>{item.category}</Typography>
+                          <Typography sx={{ fontSize: '10px', color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{item.topic}</Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: '10px', fontWeight: 700, color: 'rgba(0,0,0,0.3)' }}>
+                          {new Date(item.date).getDate()} {new Date(item.date).toLocaleString('default', { month: 'short' })}
+                        </Typography>
+                      </Box>
+                    ))}
+                    {activePlan.schedule.length > 5 && (
+                      <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, textAlign: 'center', mt: 1, cursor: 'pointer' }}>View all {activePlan.schedule.length} topics</Typography>
+                    )}
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', textAlign: 'center', py: 3 }}>No active plan. System will generate one shortly.</Typography>
+                )}
               </Box>
 
-              {/* Caption for sharing */}
-              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6 }}>
-                  {generated.caption}
-                </Typography>
-                <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mt: 0.5 }}>
-                  {generated.hashtags.slice(0, 5).map(h => `#${h}`).join(' ')}
-                </Typography>
-              </Box>
+            </>
+          )}
+        </Box>
+      )}
 
-              {/* Post button */}
-              <Box sx={{ px: 2, pb: 2, pt: 1.5 }}>
-                <Button
-                  fullWidth
-                  disabled={!previewUrl}
-                  onClick={handlePost}
-                  startIcon={<Share sx={{ fontSize: '16px' }} />}
-                  sx={{
-                    bgcolor: shared ? '#2e7d5a' : G,
-                    color: '#fff',
-                    borderRadius: '14px',
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    py: 1.4,
-                    boxShadow: 'none',
-                    transition: 'background 0.3s',
-                    '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' },
-                    '&:disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.25)' },
-                  }}
-                >
-                  {shared ? 'Caption copied + image saved' : 'Post this'}
-                </Button>
-              </Box>
+      {/* ── VIDEOS TAB ────────────────────────────────────────────────── */}
+      {activeTab === 'videos' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={cardSx}>
+            <Typography sx={sectionLabelSx}>Generate Video</Typography>
+            <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontSize: '32px' }}>🎬</Typography>
+              <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>AI Video Generation</Typography>
+              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>Coming soon in the next update.</Typography>
             </Box>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </Box>
+          
+          <Box sx={cardSx}>
+            <Typography sx={sectionLabelSx}>Today's Video Idea</Typography>
+            {todaysPost && todaysPost.type === 'video_idea' && todaysPost.videoIdeaText ? (
+              <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {todaysPost.videoIdeaText}
+              </Typography>
+            ) : (
+              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>No video assigned for today. Check back tomorrow!</Typography>
+            )}
+          </Box>
+        </Box>
+      )}
 
     </Box>
   );
