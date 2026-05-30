@@ -28,12 +28,24 @@ interface PremiumLandingProps {
 
 export default function PremiumLanding({ onSearchClick, onPharmacistClick, user, onMyRequestsClick, onAskRxClick }: PremiumLandingProps) {
   const [wordIndex, setWordIndex] = useState(0);
+  const [stats, setStats] = useState<{ dailySearches: number | null; pharmacists: number | null; avgResponseMin: number | null }>({
+    dailySearches: null, pharmacists: null, avgResponseMin: null,
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
       setWordIndex((prev) => (prev + 1) % animatedWords.length);
-    }, 4000); 
+    }, 4000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.error) setStats({ dailySearches: d.dailySearches, pharmacists: d.pharmacists, avgResponseMin: d.avgResponseMin });
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -191,9 +203,9 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
               {/* STATS */}
               <Box sx={{ display: 'flex', bgcolor: '#ffffff', borderRadius: '24px', p: 3, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 12px 48px rgba(0,0,0,0.05)' }}>
                 {[
-                  { n: '180+', l: 'Daily searches' },
-                  { n: '30+', l: 'Pharmacists' },
-                  { n: '4min', l: 'Avg response' }
+                  { n: stats.dailySearches != null ? `${stats.dailySearches}+` : '180+', l: 'Daily searches' },
+                  { n: stats.pharmacists != null ? `${stats.pharmacists}+` : '30+', l: 'Pharmacists' },
+                  { n: stats.avgResponseMin != null ? `${stats.avgResponseMin}min` : '4min', l: 'Avg response' },
                 ].map((stat, i) => (
                   <Box key={stat.l} component={motion.div} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={scaleRevealVariants} sx={{ flex: 1, textAlign: 'center', borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
                     <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: { xs: '28px', md: '36px' }, fontWeight: 900, color: '#0F6E56', letterSpacing: '-1px' }}>{stat.n}</Typography>
