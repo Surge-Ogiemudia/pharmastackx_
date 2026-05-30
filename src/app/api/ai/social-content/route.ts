@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   // ── Generate caption text + post image in parallel ───────────────────────
   const textPromise = (async () => {
-    const model = genAI.getGenerativeModel({ model: 'gemma-4-26b-a4b-it' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
     const prompt = `You are a social media content creator for Nigerian pharmacies.
 Write a social media caption for a pharmacy called "${pharmacyName}"${tagline ? ` with tagline "${tagline}"` : ''}.
 Post category: ${categoryLabel}
