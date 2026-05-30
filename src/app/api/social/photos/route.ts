@@ -23,14 +23,14 @@ export async function POST(req: NextRequest) {
   const userId = await getAuthUserId();
   if (!userId) return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
 
-  const { data, contentType, filename, tag } = await req.json();
+  const { data, contentType, filename, tag, description } = await req.json();
   if (!data || !contentType) return NextResponse.json({ message: 'Missing image data' }, { status: 400 });
 
   const media = await Media.create({ data, contentType, filename: filename || 'photo' });
   const url = `/api/media/${media._id}`;
 
   await User.findByIdAndUpdate(userId, {
-    $push: { socialPhotos: { url, tag: tag || 'other', uploadedAt: new Date() } },
+    $push: { socialPhotos: { url, tag: tag || 'other', uploadedAt: new Date(), description } },
   });
 
   return NextResponse.json({ url }, { status: 201 });

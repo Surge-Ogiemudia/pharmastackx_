@@ -47,6 +47,16 @@ export async function GET(req: NextRequest) {
       if (!process.env.GEMINI_API_KEY) break;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+      const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
+      const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
+      const photosContext = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || 'No photos available';
+      
+      const baseContext = `Pharmacy Profile:
+Name: "${pharmacy.businessName || 'Pharmacy'}"
+Contact Info: ${contactContext}
+${brandKitContext}
+Known physical store context from photos: ${photosContext}`;
+
       // 1. Check if they need a new Content Plan (>20 days old or no active plan)
       const activePlan = await ContentPlan.findOne({ pharmacyId: pharmacy._id, status: 'active' });
       const pendingPlan = await ContentPlan.findOne({ pharmacyId: pharmacy._id, status: 'pending_approval' });
@@ -61,7 +71,8 @@ export async function GET(req: NextRequest) {
       if (needsNewPlan) {
         try {
           const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-          const prompt = `Generate a 30-day social media content plan for a Nigerian pharmacy named "${pharmacy.businessName || 'Pharmacy'}".
+          const prompt = `Generate a 30-day social media content plan.
+${baseContext}
 Return a JSON object with a "schedule" array of exactly 30 items.
 Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
 All 30 posts must be images. Do not include video ideas.
@@ -121,7 +132,7 @@ All 30 posts must be images. Do not include video ideas.
 
               if (tomorrowTopic.type === 'image') {
                 const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-                const txtRes = await txtModel.generateContent(`Write a short, engaging caption for a Nigerian pharmacy named "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
+                const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
                 const txtJsonStr = extractFirstJSON(txtRes.response.text());
                 if (txtJsonStr) {
                   const tData = JSON.parse(txtJsonStr);
@@ -133,7 +144,7 @@ All 30 posts must be images. Do not include video ideas.
                 try {
                   const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
                   const imgRes = await (imgModel as any).generateContent({
-                    contents: [{ role: 'user', parts: [{ text: `Design a stu\n\ning 1:1 social media post for Nigerian pharmacy "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Clean, professional.` }] }],
+                    contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${tomorrowTopic.topic}. Clean, professional.` }] }],
                     generationConfig: { responseModalities: ['image'] },
                   });
                   const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
@@ -147,7 +158,7 @@ All 30 posts must be images. Do not include video ideas.
 
               // Standalone Video Idea (always generated daily)
               const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-              const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel. Keep it very simple and practical. Provide just the idea.`);
+              const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel. Keep it very simple and practical. Provide just the idea.`);
               videoIdeaText = vidRes.response.text().trim();
 
               await DailyPost.create({
