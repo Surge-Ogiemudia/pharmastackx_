@@ -54,6 +54,7 @@ export interface IUser extends Document {
     url: string;
     tag?: string;
     uploadedAt?: Date;
+    description?: string;
   }>;
   hasSetupBrandKit?: boolean;
 }
@@ -119,6 +120,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     url: { type: String, required: true },
     tag: { type: String, enum: ['staff', 'store', 'product', 'event', 'other'], default: 'other' },
     uploadedAt: { type: Date, default: Date.now },
+    description: { type: String }
   }],
   hasSetupBrandKit: { type: Boolean, default: false },
 });

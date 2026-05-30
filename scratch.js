@@ -1,4 +1,6 @@
-'use client';
+const fs = require('fs');
+
+const content = `'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Typography, Button, TextField, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
@@ -89,7 +91,7 @@ export default function SocialContent() {
   const fetchContent = (date: Date) => {
     if (!user?._id) return;
     setLoadingPlan(true);
-    axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${date.toISOString()}`).then(res => {
+    axios.get(\`/api/social/manage?pharmacyId=\${user._id}&date=\${date.toISOString()}\`).then(res => {
       setSelectedPost(res.data.selectedPost);
       setActivePlan(res.data.activePlan || res.data.pendingPlan);
       // We always want today's post just to extract the video idea if it exists.
@@ -99,7 +101,7 @@ export default function SocialContent() {
       if (!res.data.activePlan && !res.data.pendingPlan && isToday(date)) {
         setGeneratingPlan(true);
         axios.post('/api/social/generate-plan', { pharmacyId: user._id })
-          .then(() => axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${date.toISOString()}`))
+          .then(() => axios.get(\`/api/social/manage?pharmacyId=\${user._id}&date=\${date.toISOString()}\`))
           .then(refetchRes => {
             setSelectedPost(refetchRes.data.selectedPost);
             setActivePlan(refetchRes.data.activePlan || refetchRes.data.pendingPlan);
@@ -202,7 +204,7 @@ export default function SocialContent() {
 
   const handlePost = async (post: any) => {
     if (!post || !post.imageUrl) return;
-    const text = `${post.caption}\n\n${(post.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
+    const text = \`\${post.caption}\\n\\n\${(post.hashtags || []).map((h: string) => \`#\${h}\`).join(' ')}\`;
 
     try {
       const res = await fetch(post.imageUrl);
@@ -238,7 +240,7 @@ export default function SocialContent() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
             p: 2.5,
             ...(brandKitOpen ? {} : {
-              background: `radial-gradient(circle at top right, ${brandPrimary}33, transparent 40%), radial-gradient(circle at bottom left, ${brandSecondary}33, transparent 40%), linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4))`,
+              background: \`radial-gradient(circle at top right, \${brandPrimary}33, transparent 40%), radial-gradient(circle at bottom left, \${brandSecondary}33, transparent 40%), linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4))\`,
               backdropFilter: 'blur(10px)',
               borderBottom: '1px solid rgba(255,255,255,0.5)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
@@ -248,7 +250,7 @@ export default function SocialContent() {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {!brandKitOpen && (
-              <Box sx={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${brandPrimary}, ${brandSecondary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', background: \`linear-gradient(135deg, \${brandPrimary}, \${brandSecondary})\`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                 <Typography sx={{ fontSize: '14px', color: '#fff' }}>✨</Typography>
               </Box>
             )}
@@ -431,7 +433,7 @@ export default function SocialContent() {
           ) : (
             <>
               {selectedPost ? (
-                <Box sx={{ ...cardSx, border: selectedPost.status === 'pending_review' ? `2px solid ${P}40` : BORDER }}>
+                <Box sx={{ ...cardSx, border: selectedPost.status === 'pending_review' ? \`2px solid \${P}40\` : BORDER }}>
                   {selectedPost.status === 'ready_to_post' && (
                     <Typography sx={{...sectionLabelSx, color: G, display: 'flex', alignItems: 'center', gap: 0.5}}>✅ Ready to Post</Typography>
                   )}
@@ -449,7 +451,7 @@ export default function SocialContent() {
                       </Typography>
                       
                       <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mb: 2 }}>
-                        {(selectedPost.hashtags || []).map((h: string) => `#${h}`).join(' ')}
+                        {(selectedPost.hashtags || []).map((h: string) => \`#\${h}\`).join(' ')}
                       </Typography>
                       
                       <Box sx={{ mt: 'auto', display: 'flex', gap: 1 }}>
@@ -528,7 +530,7 @@ export default function SocialContent() {
                         onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}
                         sx={{ fontSize: '11px', color: G, fontWeight: 600, textAlign: 'center', mt: 1, cursor: 'pointer', transition: '0.2s', '&:hover': { opacity: 0.7 } }}
                       >
-                        {isStrategyExpanded ? 'Collapse Strategy' : `View all ${activePlan.schedule.length} topics`}
+                        {isStrategyExpanded ? 'Collapse Strategy' : \`View all \${activePlan.schedule.length} topics\`}
                       </Typography>
                     )}
                   </Box>
@@ -620,3 +622,7 @@ export default function SocialContent() {
     </Box>
   );
 }
+`;
+
+fs.writeFileSync('C:/Users/HP/Desktop/zipped pharmastackx/src/app/components/SocialContent.tsx', content);
+console.log('Done');

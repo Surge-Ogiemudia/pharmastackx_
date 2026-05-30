@@ -37,6 +37,7 @@ export interface User {
     url: string;
     tag?: string;
     uploadedAt?: string;
+    description?: string;
   }>;
   hasSetupBrandKit?: boolean;
 }
