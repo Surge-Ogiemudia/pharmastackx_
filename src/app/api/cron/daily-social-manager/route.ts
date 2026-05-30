@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import mongoConnect from '@/lib/mongoConnect';
+import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import ContentPlan from '@/models/ContentPlan';
 import DailyPost from '@/models/DailyPost';
@@ -16,7 +16,7 @@ function extractFirstJSON(text: string): string | null {
   for (let i = start; i < text.length; i++) {
     const ch = text[i];
     if (escape) { escape = false; continue; }
-    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '' && inString) { escape = true; continue; }
     if (ch === '"') { inString = !inString; continue; }
     if (inString) continue;
     if (ch === '{') depth++;
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await mongoConnect();
+    await dbConnect();
     const pharmacies = await User.find({ role: 'pharmacy' });
     
     const today = new Date();
@@ -96,11 +96,11 @@ Make sure to mix in images and video ideas.
               ...mailOptions,
               to: pharmacy.email,
               subject: 'Action Required: Your New 30-Day Social Media Plan is Ready',
-              text: \`Hello \${pharmacy.businessName},\n\nYour next 30-day social media content plan has been generated. Please log in to your dashboard to review and approve it.\n\nBest,\nPharmastackX Team\`
+              text: 'Hello ' + pharmacy.businessName + ',\n\nYour next 30-day social media content plan has been generated. Please log in to your dashboard to review and approve it.\n\nBest,\nPharmastackX Team'
             }).catch(console.error);
           }
         } catch (err) {
-          console.error(\`Failed to generate plan for \${pharmacy._id}\`, err);
+          console.error(`Failed to generate plan for ${pharmacy._id}`, err);
         }
       }
 
@@ -121,7 +121,7 @@ Make sure to mix in images and video ideas.
 
               if (tomorrowTopic.type === 'image') {
                 const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-                const txtRes = await txtModel.generateContent(\`Write a short, engaging caption for a Nigerian pharmacy named "\${pharmacy.businessName}". Topic: \${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.\`);
+                const txtRes = await txtModel.generateContent(`Write a short, engaging caption for a Nigerian pharmacy named "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
                 const txtJsonStr = extractFirstJSON(txtRes.response.text());
                 if (txtJsonStr) {
                   const tData = JSON.parse(txtJsonStr);
@@ -133,19 +133,19 @@ Make sure to mix in images and video ideas.
                 try {
                   const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
                   const imgRes = await (imgModel as any).generateContent({
-                    contents: [{ role: 'user', parts: [{ text: \`Design a stunning 1:1 social media post for Nigerian pharmacy "\${pharmacy.businessName}". Topic: \${tomorrowTopic.topic}. Clean, professional.\` }] }],
+                    contents: [{ role: 'user', parts: [{ text: `Design a stu\n\ning 1:1 social media post for Nigerian pharmacy "${pharmacy.businessName}". Topic: ${tomorrowTopic.topic}. Clean, professional.` }] }],
                     generationConfig: { responseModalities: ['image'] },
                   });
                   const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
                   if (imgPart?.inlineData) {
-                    imageUrl = \`data:\${imgPart.inlineData.mimeType};base64,\${imgPart.inlineData.data}\`;
+                    imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
                   }
                 } catch (imgErr) {
                   console.error('Image gen failed in cron', imgErr);
                 }
               } else {
                 const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-                const vidRes = await vidModel.generateContent(\`Write a short 3-step video script idea for a Nigerian pharmacy ("\${pharmacy.businessName}") TikTok/Reel about "\${tomorrowTopic.topic}". Keep it very simple and practical.\`);
+                const vidRes = await vidModel.generateContent(`Write a short 3-step video script idea for a Nigerian pharmacy ("${pharmacy.businessName}") TikTok/Reel about "${tomorrowTopic.topic}". Keep it very simple and practical.`);
                 videoIdeaText = vidRes.response.text().trim();
               }
 
@@ -164,12 +164,12 @@ Make sure to mix in images and video ideas.
               await transporter.sendMail({
                 ...mailOptions,
                 to: pharmacy.email,
-                subject: 'Review Tomorrow\\'s Social Post',
-                text: \`Hello \${pharmacy.businessName},\n\nTomorrow's social media post has been drafted. Please log in to review, edit, or approve it.\n\nBest,\nPharmastackX Team\`
+                subject: "Review Tomorrow's Social Post",
+                text: 'Hello ' + pharmacy.businessName + ',\n\nTomorrow\'s social media post has been drafted. Please log in to review, edit, or approve it.\n\nBest,\\nPharmastackX Team'
               }).catch(console.error);
 
             } catch (err) {
-              console.error(\`Failed to generate tomorrow's post for \${pharmacy._id}\`, err);
+              console.error(`Failed to generate tomorrow's post for ${pharmacy._id}`, err);
             }
           }
         }
