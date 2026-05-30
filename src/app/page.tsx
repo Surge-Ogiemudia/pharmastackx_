@@ -16,7 +16,6 @@ import ReactiveQuoteOverlay from '@/components/ReactiveQuoteOverlay';
 import WhatsAppButton from "@/components/WhatsAppButton";
 import PremiumLanding from "@/components/PremiumLanding";
 import BottomNav from "@/components/BottomNav";
-import DispatchForm from "@/components/DispatchForm";
 import AskRxChat from "@/components/AskRxChat";
 import Image from 'next/image';
 import { Modal, Fade, Backdrop } from '@mui/material';
@@ -49,6 +48,7 @@ const StoreManagement = dynamic(() => import("./components/StoreManagement"), { 
 const PulseContent = dynamic(() => import("@/components/PulseContent"), { loading: () => <NavSkeleton /> });
 const LearningContent = dynamic(() => import("@/components/LearningContent"), { loading: () => <NavSkeleton /> });
 const ReviewRequestContent = dynamic(() => import("@/components/ReviewRequestContent"), { loading: () => <NavSkeleton /> });
+const DispatchForm = dynamic(() => import("@/components/DispatchForm"), { ssr: false, loading: () => <NavSkeleton /> });
 
 import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
