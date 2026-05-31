@@ -202,37 +202,6 @@ async function checkSynkkInventoryAndAlert(
                     patientPhone = platformReq.phoneNumber;
                 }
             } catch (err) { /* ignore */ }
-        }
-
-        // 3. For each Synkk user in the state, check stock and fire Pusher
-        for (const user of synkkUsers) {
-            let matches: any[] = [];
-            if (orConditions.length > 0) {
-                matches = await Product.find({
-                    slug: user.slug,
-                    source: 'synkk',
-                    $or: orConditions
-                }).lean() as any[];
-            }
-
-            const hasStock = matches.length > 0;
-
-            // Trigger Pusher notification to the Synkk desktop client
-            if (user.slug) {
-                try {
-                    console.log(`[whatsapp-notifier] 🔔 Firing Pusher 'synkk-drug-request' to ${user.slug} (hasStock: ${hasStock})`);
-                    pusherServer.trigger(`pharmacy-${user.slug}`, 'synkk-drug-request', {
-                        platformRequestId: platformRequestId || requestId,
-                        medicines: requestedMedicines,
-                        location,
-                        patientPhone: patientPhone || '',
-                        hasStock,
-                        matches: matches.map(m => ({ name: m.itemName, price: m.amount, quantity: m.quantity }))
-                    });
-                } catch (pushErr: any) {
-                    console.error(`[whatsapp-notifier] ❌ Failed to fire Pusher to ${user.slug}:`, pushErr?.message);
-                }
-            }
 
             // If they have stock, also send the traditional Admin Match Email
             if (hasStock) {
