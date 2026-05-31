@@ -170,28 +170,352 @@ async function checkSynkkInventoryAndAlert(
         await dbConnect();
         const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
         
+        // 1. Identify all users who have Synkk products synced
+        const synkkSlugs = await Product.distinct('slug', { source: 'synkk' });
+        
+        // 2. Filter these users by the requested location
+        const userQuery: any = { slug: { $in: synkkSlugs } };
+        if (location && location.toLowerCase() !== 'national') {
+            userQuery.$or = [
+                { stateOfPractice: new RegExp(`^${location}import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import axios from 'axios';
+import User from '@/models/User';
+import RequestModel from '@/models/Request';
+import TopContact from '@/models/TopContact';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import { sendWhatsAppMessage } from '@/lib/whapi';
+import { dbConnect } from '@/lib/mongoConnect';
+import GlobalSettings from '@/models/GlobalSettings';
+import { transporter } from '@/lib/nodemailer';
+import Product from '@/models/Product';
+
+const ALERT_EMAIL = 'pharmastackxsales@gmail.com';
+
+const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
+const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. "2348157788101"
+
+/**
+ * Shared logic to find recipient tokens - Mirrored from /api/notify-pharmacists
+ */
+async function getRecipientTokens(requestState?: string): Promise<string[]> {
+    await dbConnect();
+    const recipientTokens = new Set<string>();
+
+    // Check Global Settings for disabled states
+    if (requestState) {
+        const settings = await GlobalSettings.findOne();
+        if (settings && settings.disabledWhatsAppStates && settings.disabledWhatsAppStates.includes(requestState)) {
+            console.log(`[whatsapp-notifier] 🚫 Notifications DISABLED for state: ${requestState}. Only notifying admins.`);
+            // Only return admin tokens if the state is disabled
+            const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
+            admins.forEach(admin => {
+                if (admin.fcmTokens) {
+                    admin.fcmTokens.forEach(token => recipientTokens.add(token));
+                }
+            });
+            return Array.from(recipientTokens);
+        }
+    }
+
+    // 1. Get all admin tokens
+    const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
+    admins.forEach(admin => {
+        if (admin.fcmTokens) {
+            admin.fcmTokens.forEach(token => recipientTokens.add(token));
+        }
+    });
+
+    // 2. If a state is provided, get all providers in that state
+    if (requestState) {
+        const providersInState = await User.find({
+            role: { $in: ['pharmacist', 'pharmacy', 'clinic'] },
+            $or: [
+                { stateOfPractice: requestState },
+                { state: requestState }
+            ],
+            fcmTokens: { $exists: true, $ne: [] }
+        }).lean();
+
+        providersInState.forEach(provider => {
+            if (provider.fcmTokens) {
+                provider.fcmTokens.forEach(token => recipientTokens.add(token));
+            }
+        });
+    }
+
+    const tokens = Array.from(recipientTokens);
+    console.log(`[getRecipientTokens] Total unique tokens found: ${tokens.length}`);
+    return tokens;
+}
+
+/**
+ * Shared dynamic title logic - Mirrored from /api/notify-pharmacists
+ */
+function createDynamicTitle(drugNames: string[]): string {
+    if (!drugNames || drugNames.length === 0) return 'New Medicine Request';
+    const count = drugNames.length;
+    if (count === 1) return `Request for ${drugNames[0]}`;
+    if (count === 2) return `Request for ${drugNames[0]} and ${drugNames[1]}`;
+    if (count === 3) return `Request for ${drugNames[0]}, ${drugNames[1]}, and ${drugNames[2]}`;
+    return `Request for ${drugNames[0]}, ${drugNames[1]}, ${drugNames[2]}, and ${count - 3} other items`;
+}
+
+async function checkInventoryAndAlert(
+    activeContacts: any[],
+    requestedMedicines: { name: string }[],
+    location: string,
+    requestId: string
+) {
+    const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
+
+    const alertPromises = activeContacts
+        .filter(c => c.inventory?.length)
+        .map(async contact => {
+            const matches = contact.inventory.filter((item: any) => {
+                const inv = item.medicineName.toLowerCase().trim();
+                return requestedNames.some(req => inv.includes(req) || req.includes(inv));
+            });
+
+            if (matches.length === 0) return;
+
+            const matchRows = matches.map((m: any) =>
+                `<tr>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.medicineName}</td>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.price != null ? '#0F6E56' : '#999'}">
+                        ${m.price != null ? `₦${m.price.toLocaleString()}` : 'Price not listed'}
+                    </td>
+                </tr>`
+            ).join('');
+
+            const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+
+            const html = `
+<div style="font-family:sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden">
+    <div style="background:#0F6E56;padding:18px 24px">
+        <h2 style="margin:0;color:#fff;font-size:18px">🚨 Inventory Match Alert</h2>
+    </div>
+    <div style="padding:20px 24px">
+        <p style="margin:0 0 16px;font-size:14px;color:#333">
+            A medicine request in <strong>${location}</strong> matches an inventory on file.
+        </p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 4px">Requested</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#111">${requestedRow}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Supplier</p>
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111">${contact.name}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#555">+${contact.phone} &nbsp;·&nbsp; ${contact._state || location}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Items</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="background:#f5f5f5">
+                    <th style="padding:6px 12px;text-align:left;color:#555">Medicine</th>
+                    <th style="padding:6px 12px;text-align:left;color:#555">Price</th>
+                </tr>
+            </thead>
+            <tbody>${matchRows}</tbody>
+        </table>
+
+        <div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:6px;font-size:12px;color:#888">
+            Request ID: ${requestId}
+        </div>
+    </div>
+</div>`;
+
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: ALERT_EMAIL,
+                    subject: `🚨 Inventory Match — ${requestedRow} in ${location}`,
+                    html
+                });
+                console.log(`[whatsapp-notifier] 📧 Inventory match email sent for ${contact.name} (${matches.length} match(es))`);
+            } catch (emailErr: any) {
+                console.error(`[whatsapp-notifier] ❌ Failed to send match email:`, emailErr?.message);
+            }
+        });
+
+    await Promise.allSettled(alertPromises);
+}
+
+, 'i') },
+                { state: new RegExp(`^${location}import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import axios from 'axios';
+import User from '@/models/User';
+import RequestModel from '@/models/Request';
+import TopContact from '@/models/TopContact';
+import WhatsAppSession from '@/models/WhatsAppSession';
+import { sendWhatsAppMessage } from '@/lib/whapi';
+import { dbConnect } from '@/lib/mongoConnect';
+import GlobalSettings from '@/models/GlobalSettings';
+import { transporter } from '@/lib/nodemailer';
+import Product from '@/models/Product';
+
+const ALERT_EMAIL = 'pharmastackxsales@gmail.com';
+
+const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
+const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER; // e.g. "2348157788101"
+
+/**
+ * Shared logic to find recipient tokens - Mirrored from /api/notify-pharmacists
+ */
+async function getRecipientTokens(requestState?: string): Promise<string[]> {
+    await dbConnect();
+    const recipientTokens = new Set<string>();
+
+    // Check Global Settings for disabled states
+    if (requestState) {
+        const settings = await GlobalSettings.findOne();
+        if (settings && settings.disabledWhatsAppStates && settings.disabledWhatsAppStates.includes(requestState)) {
+            console.log(`[whatsapp-notifier] 🚫 Notifications DISABLED for state: ${requestState}. Only notifying admins.`);
+            // Only return admin tokens if the state is disabled
+            const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
+            admins.forEach(admin => {
+                if (admin.fcmTokens) {
+                    admin.fcmTokens.forEach(token => recipientTokens.add(token));
+                }
+            });
+            return Array.from(recipientTokens);
+        }
+    }
+
+    // 1. Get all admin tokens
+    const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
+    admins.forEach(admin => {
+        if (admin.fcmTokens) {
+            admin.fcmTokens.forEach(token => recipientTokens.add(token));
+        }
+    });
+
+    // 2. If a state is provided, get all providers in that state
+    if (requestState) {
+        const providersInState = await User.find({
+            role: { $in: ['pharmacist', 'pharmacy', 'clinic'] },
+            $or: [
+                { stateOfPractice: requestState },
+                { state: requestState }
+            ],
+            fcmTokens: { $exists: true, $ne: [] }
+        }).lean();
+
+        providersInState.forEach(provider => {
+            if (provider.fcmTokens) {
+                provider.fcmTokens.forEach(token => recipientTokens.add(token));
+            }
+        });
+    }
+
+    const tokens = Array.from(recipientTokens);
+    console.log(`[getRecipientTokens] Total unique tokens found: ${tokens.length}`);
+    return tokens;
+}
+
+/**
+ * Shared dynamic title logic - Mirrored from /api/notify-pharmacists
+ */
+function createDynamicTitle(drugNames: string[]): string {
+    if (!drugNames || drugNames.length === 0) return 'New Medicine Request';
+    const count = drugNames.length;
+    if (count === 1) return `Request for ${drugNames[0]}`;
+    if (count === 2) return `Request for ${drugNames[0]} and ${drugNames[1]}`;
+    if (count === 3) return `Request for ${drugNames[0]}, ${drugNames[1]}, and ${drugNames[2]}`;
+    return `Request for ${drugNames[0]}, ${drugNames[1]}, ${drugNames[2]}, and ${count - 3} other items`;
+}
+
+async function checkInventoryAndAlert(
+    activeContacts: any[],
+    requestedMedicines: { name: string }[],
+    location: string,
+    requestId: string
+) {
+    const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
+
+    const alertPromises = activeContacts
+        .filter(c => c.inventory?.length)
+        .map(async contact => {
+            const matches = contact.inventory.filter((item: any) => {
+                const inv = item.medicineName.toLowerCase().trim();
+                return requestedNames.some(req => inv.includes(req) || req.includes(inv));
+            });
+
+            if (matches.length === 0) return;
+
+            const matchRows = matches.map((m: any) =>
+                `<tr>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.medicineName}</td>
+                    <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.price != null ? '#0F6E56' : '#999'}">
+                        ${m.price != null ? `₦${m.price.toLocaleString()}` : 'Price not listed'}
+                    </td>
+                </tr>`
+            ).join('');
+
+            const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+
+            const html = `
+<div style="font-family:sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden">
+    <div style="background:#0F6E56;padding:18px 24px">
+        <h2 style="margin:0;color:#fff;font-size:18px">🚨 Inventory Match Alert</h2>
+    </div>
+    <div style="padding:20px 24px">
+        <p style="margin:0 0 16px;font-size:14px;color:#333">
+            A medicine request in <strong>${location}</strong> matches an inventory on file.
+        </p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 4px">Requested</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#111">${requestedRow}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Supplier</p>
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111">${contact.name}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#555">+${contact.phone} &nbsp;·&nbsp; ${contact._state || location}</p>
+
+        <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#888;margin:0 0 6px">Matched Items</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="background:#f5f5f5">
+                    <th style="padding:6px 12px;text-align:left;color:#555">Medicine</th>
+                    <th style="padding:6px 12px;text-align:left;color:#555">Price</th>
+                </tr>
+            </thead>
+            <tbody>${matchRows}</tbody>
+        </table>
+
+        <div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:6px;font-size:12px;color:#888">
+            Request ID: ${requestId}
+        </div>
+    </div>
+</div>`;
+
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: ALERT_EMAIL,
+                    subject: `🚨 Inventory Match — ${requestedRow} in ${location}`,
+                    html
+                });
+                console.log(`[whatsapp-notifier] 📧 Inventory match email sent for ${contact.name} (${matches.length} match(es))`);
+            } catch (emailErr: any) {
+                console.error(`[whatsapp-notifier] ❌ Failed to send match email:`, emailErr?.message);
+            }
+        });
+
+    await Promise.allSettled(alertPromises);
+}
+
+, 'i') }
+            ];
+        }
+        
+        const synkkUsers = await User.find(userQuery).select('slug businessName').lean() as any[];
+        
+        if (synkkUsers.length === 0) return;
+
         // Build regex conditions for each requested medicine name to search itemName
         const orConditions = requestedNames.map(req => ({
             itemName: { $regex: req, $options: 'i' }
         }));
 
-        if (orConditions.length === 0) return;
-
-        // Query Product collection nationwide for Synkk inventory matches
-        const matches = await Product.find({
-            source: 'synkk',
-            $or: orConditions
-        }).lean() as any[];
-
-        if (matches.length === 0) return;
-
-        // Group matches by pharmacy (businessName)
-        const matchesByPharmacy = matches.reduce((acc: any, item: any) => {
-            const biz = item.businessName || 'Unknown Pharmacy';
-            if (!acc[biz]) acc[biz] = [];
-            acc[biz].push(item);
-            return acc;
-        }, {});
+        const { pusherServer } = require('@/lib/pusher');
 
         // Try to get patient phone if platformRequestId is provided
         let patientPhone = '';
@@ -204,23 +528,53 @@ async function checkSynkkInventoryAndAlert(
             } catch (err) { /* ignore */ }
         }
 
-        // Send an email alert for each pharmacy that has matches
-        for (const [pharmacyName, items] of Object.entries(matchesByPharmacy)) {
-            const matchRows = (items as any[]).map((m: any) =>
-                `<tr>
-                    <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.itemName}</td>
-                    <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.amount != null ? '#0F6E56' : '#999'}">
-                        ${m.amount != null ? `₦${m.amount.toLocaleString()}` : 'Price not listed'}
-                    </td>
-                    <td style="padding:6px 12px;border-bottom:1px solid #eee">
-                        ${m.quantity != null ? m.quantity : 'N/A'}
-                    </td>
-                </tr>`
-            ).join('');
+        // 3. For each Synkk user in the state, check stock and fire Pusher
+        for (const user of synkkUsers) {
+            let matches: any[] = [];
+            if (orConditions.length > 0) {
+                matches = await Product.find({
+                    slug: user.slug,
+                    source: 'synkk',
+                    $or: orConditions
+                }).lean() as any[];
+            }
 
-            const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+            const hasStock = matches.length > 0;
 
-            const html = `
+            // Trigger Pusher notification to the Synkk desktop client
+            if (user.slug) {
+                try {
+                    console.log(`[whatsapp-notifier] 🔔 Firing Pusher 'synkk-drug-request' to ${user.slug} (hasStock: ${hasStock})`);
+                    pusherServer.trigger(`pharmacy-${user.slug}`, 'synkk-drug-request', {
+                        platformRequestId: platformRequestId || requestId,
+                        medicines: requestedMedicines,
+                        location,
+                        hasStock,
+                        matches: matches.map(m => ({ name: m.itemName, price: m.amount, quantity: m.quantity }))
+                    });
+                } catch (pushErr: any) {
+                    console.error(`[whatsapp-notifier] ❌ Failed to fire Pusher to ${user.slug}:`, pushErr?.message);
+                }
+            }
+
+            // If they have stock, also send the traditional Admin Match Email
+            if (hasStock) {
+                const matchRows = matches.map((m: any) =>
+                    `<tr>
+                        <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.itemName}</td>
+                        <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.amount != null ? '#0F6E56' : '#999'}">
+                            ${m.amount != null ? `₦${m.amount.toLocaleString()}` : 'Price not listed'}
+                        </td>
+                        <td style="padding:6px 12px;border-bottom:1px solid #eee">
+                            ${m.quantity != null ? m.quantity : 'N/A'}
+                        </td>
+                    </tr>`
+                ).join('');
+
+                const requestedRow = requestedMedicines.map(m => m.name).join(', ');
+                const pharmacyName = user.businessName || user.slug;
+
+                const html = `
 <div style="font-family:sans-serif;max-width:520px;margin:auto;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden">
     <div style="background:#1e3a8a;padding:18px 24px">
         <h2 style="margin:0;color:#fff;font-size:18px">🔄 Synkk Desktop App Match!</h2>
@@ -254,44 +608,18 @@ async function checkSynkkInventoryAndAlert(
     </div>
 </div>`;
 
-            try {
-                await transporter.sendMail({
-                    from: process.env.EMAIL_USER,
-                    to: ALERT_EMAIL,
-                    subject: `🔄 SYNKK MATCH — ${requestedRow} (${pharmacyName})`,
-                    html
-                });
-                console.log(`[whatsapp-notifier] 📧 Synkk match email sent for ${pharmacyName}`);
-            } catch (emailErr: any) {
-                console.error(`[whatsapp-notifier] ❌ Failed to send Synkk match email:`, emailErr?.message);
-            }
-
-            // =======================================================================
-            // FUTURE IMPLEMENTATION: Auto-reply to patient via WhatsApp with +20% markup
-            // =======================================================================
-            /*
-            if (patientPhone) {
                 try {
-                    // Calculate total price of matched items + 20% markup
-                    const totalPrice = (items as any[]).reduce((sum, item) => sum + (item.amount || 0), 0);
-                    const markupPrice = Math.ceil(totalPrice * 1.20);
-                    
-                    const matchedItemNames = (items as any[]).map(i => i.itemName).join(', ');
-                    const replyJid = patientPhone.includes('@') ? patientPhone : \`\${patientPhone.replace(/[\\+\\s]/g, '')}@s.whatsapp.net\`;
-
-                    const dmMessage = 
-                        \`✅ *Good news!*\n\nWe found *${matchedItemNames}* available right now.\n\n\` +
-                        \`💰 *Total Price:* ₦\${markupPrice.toLocaleString()}\n\n\` +
-                        \`Reply with *BUY* if you'd like to proceed with payment and delivery. 🙏\`;
-
-                    // Uncomment to send the message via Whapi
-                    // await sendWhatsAppMessage(replyJid, dmMessage);
-                    console.log(\`[whatsapp-notifier] (Disabled) Would have sent DM to \${patientPhone} for ₦\${markupPrice}\`);
-                } catch (waErr: any) {
-                    console.error(\`[whatsapp-notifier] Failed to send Synkk auto-reply DM:\`, waErr?.message);
+                    await transporter.sendMail({
+                        from: process.env.EMAIL_USER,
+                        to: ALERT_EMAIL,
+                        subject: `🔄 SYNKK MATCH — ${requestedRow} (${pharmacyName})`,
+                        html
+                    });
+                    console.log(`[whatsapp-notifier] 📧 Synkk match email sent for ${pharmacyName}`);
+                } catch (emailErr: any) {
+                    console.error(`[whatsapp-notifier] ❌ Failed to send Synkk match email:`, emailErr?.message);
                 }
             }
-            */
         }
     } catch (err: any) {
         console.error('[whatsapp-notifier] Synkk check error:', err?.message);
