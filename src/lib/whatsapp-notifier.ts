@@ -237,7 +237,7 @@ async function checkSynkkInventoryAndAlert(
                     `<tr>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.itemName}</td>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.amount != null ? '#0F6E56' : '#999'}">
-                            ${m.amount != null ? \`₦${m.amount.toLocaleString()}\` : 'Price not listed'}
+                            ${m.amount != null ? `₦${m.amount.toLocaleString()}` : 'Price not listed'}
                         </td>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee">
                             ${m.quantity != null ? m.quantity : 'N/A'}
