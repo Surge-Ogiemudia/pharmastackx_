@@ -1213,7 +1213,7 @@ export default function AuthPage() {
         
         <Box sx={{ width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', flex: 1 }}>
         
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="wait">
                 {step === 'role' && renderRoleSelection()}
                 {step === 'patient-signup' && renderPatientSignup()}
                 {step === 'pharmacist-signup' && renderPharmacistSignup()}
