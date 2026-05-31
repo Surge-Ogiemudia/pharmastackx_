@@ -170,10 +170,8 @@ async function checkSynkkInventoryAndAlert(
         await dbConnect();
         const requestedNames = requestedMedicines.map(m => m.name.toLowerCase().trim());
         
-        // 1. Identify all users who have Synkk products synced
         const synkkSlugs = await Product.distinct('slug', { source: 'synkk' });
         
-        // 2. Filter these users by the requested location
         const userQuery: any = { slug: { $in: synkkSlugs } };
         if (location && location.toLowerCase() !== 'national') {
             userQuery.$or = [
@@ -183,17 +181,14 @@ async function checkSynkkInventoryAndAlert(
         }
         
         const synkkUsers = await User.find(userQuery).select('slug businessName').lean() as any[];
-        
         if (synkkUsers.length === 0) return;
 
-        // Build regex conditions for each requested medicine name to search itemName
         const orConditions = requestedNames.map(req => ({
             itemName: { $regex: req, $options: 'i' }
         }));
 
         const { pusherServer } = require('@/lib/pusher');
 
-        // Try to get patient phone if platformRequestId is provided
         let patientPhone = '';
         if (platformRequestId) {
             try {
@@ -202,14 +197,47 @@ async function checkSynkkInventoryAndAlert(
                     patientPhone = platformReq.phoneNumber;
                 }
             } catch (err) { /* ignore */ }
+        }
 
-            // If they have stock, also send the traditional Admin Match Email
+        for (const user of synkkUsers) {
+            let matches: any[] = [];
+            if (orConditions.length > 0) {
+                const rawMatches = await Product.find({
+                    slug: user.slug,
+                    source: 'synkk',
+                    $or: orConditions
+                }).lean() as any[];
+                
+                matches = rawMatches.filter(m => {
+                    const qty = parseInt(m.quantity, 10);
+                    return !isNaN(qty) && qty > 0;
+                });
+            }
+
+            const hasStock = matches.length > 0;
+
+            if (user.slug) {
+                try {
+                    console.log(`[whatsapp-notifier] 🔔 Firing Pusher 'synkk-drug-request' to ${user.slug} (hasStock: ${hasStock})`);
+                    await pusherServer.trigger(`pharmacy-${user.slug}`, 'synkk-drug-request', {
+                        platformRequestId: platformRequestId || requestId,
+                        medicines: requestedMedicines,
+                        location,
+                        patientPhone: patientPhone || '',
+                        hasStock,
+                        matches: matches.map(m => ({ name: m.itemName, price: m.amount, quantity: m.quantity }))
+                    });
+                } catch (pushErr: any) {
+                    console.error(`[whatsapp-notifier] ❌ Failed to fire Pusher to ${user.slug}:`, pushErr?.message);
+                }
+            }
+
             if (hasStock) {
                 const matchRows = matches.map((m: any) =>
                     `<tr>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee">${m.itemName}</td>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${m.amount != null ? '#0F6E56' : '#999'}">
-                            ${m.amount != null ? `₦${m.amount.toLocaleString()}` : 'Price not listed'}
+                            ${m.amount != null ? \`₦${m.amount.toLocaleString()}\` : 'Price not listed'}
                         </td>
                         <td style="padding:6px 12px;border-bottom:1px solid #eee">
                             ${m.quantity != null ? m.quantity : 'N/A'}
