@@ -549,6 +549,7 @@ async function checkInventoryAndAlert(
                         platformRequestId: platformRequestId || requestId,
                         medicines: requestedMedicines,
                         location,
+                        patientPhone: patientPhone || '',
                         hasStock,
                         matches: matches.map(m => ({ name: m.itemName, price: m.amount, quantity: m.quantity }))
                     });
