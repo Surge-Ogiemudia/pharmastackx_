@@ -244,7 +244,7 @@ async function getRecipientTokens(requestState?: string): Promise<string[]> {
     }
 
     const tokens = Array.from(recipientTokens);
-    console.log(`[getRecipientTokens] Total unique tokens found: ${tokens.length}`);
+    console.log("[getRecipientTokens] Total unique tokens found: " + tokens.length);
     return tokens;
 }
 
