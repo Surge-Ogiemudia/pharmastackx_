@@ -205,7 +205,7 @@ async function getRecipientTokens(requestState?: string): Promise<string[]> {
     if (requestState) {
         const settings = await GlobalSettings.findOne();
         if (settings && settings.disabledWhatsAppStates && settings.disabledWhatsAppStates.includes(requestState)) {
-            console.log(`[whatsapp-notifier] [DISABLED] Notifications DISABLED for state: ${requestState}. Only notifying admins.`);
+            console.log("[whatsapp-notifier] [DISABLED] Notifications DISABLED for state: " + requestState + ". Only notifying admins.");
             // Only return admin tokens if the state is disabled
             const admins = await User.find({ role: 'admin', fcmTokens: { $exists: true, $ne: [] } }).lean();
             admins.forEach(admin => {
