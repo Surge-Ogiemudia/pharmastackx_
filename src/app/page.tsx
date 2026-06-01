@@ -91,6 +91,7 @@ export default function HomePage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
+  const [isSubdomain, setIsSubdomain] = useState(false);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(() => searchParams?.get('requestId') || null);
   const [showNotification, setShowNotification] = useState(false);
   const [permission, setPermission] = useState<'default' | 'granted' | 'denied'>('default');
@@ -326,8 +327,9 @@ useEffect(() => {
   let slug = searchParams?.get('slug');
   if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
-      const isSubdomain = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
-      if (isSubdomain && !slug) {
+      const checkSubdomain = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+      setIsSubdomain(checkSubdomain);
+      if (checkSubdomain && !slug) {
          slug = hostname.split('.')[0];
          setView('findMedicines');
       }
@@ -1316,14 +1318,16 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
 
 
 
-       <BottomNav currentView={view === 'requestsList' || view === 'medicineRestock' || view === 'reviewRequest' || view === 'findMedicines' ? 'orderMedicines' : view} onTabClick={(v) => {
-         if (v === 'orderMedicines') setActiveRequestId(null);
-         if (v === 'requests-list') setActiveRequestId(null);
-         setOrdersInitialViewMode('dashboard');
-         setOrdersViewMode('dashboard');
-         setOrdersBackView(undefined);
-         setViewWithPrev(v);
-       }} />
+       {!isSubdomain && (
+         <BottomNav currentView={view === 'requestsList' || view === 'medicineRestock' || view === 'reviewRequest' || view === 'findMedicines' ? 'orderMedicines' : view} onTabClick={(v) => {
+           if (v === 'orderMedicines') setActiveRequestId(null);
+           if (v === 'requests-list') setActiveRequestId(null);
+           setOrdersInitialViewMode('dashboard');
+           setOrdersViewMode('dashboard');
+           setOrdersBackView(undefined);
+           setViewWithPrev(v);
+         }} />
+       )}
 
        {activeRequest && showOverlay && view !== 'reviewRequest' && view !== 'readPulse' && !showAskRxChat && !(view === 'requestsList' && activeRequestId === activeRequest._id) && (
           <ReactiveQuoteOverlay 
