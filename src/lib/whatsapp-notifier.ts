@@ -1,3 +1,4 @@
+import { pusherServer } from '@/lib/pusher';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import axios from 'axios';
 import User from '@/models/User';
@@ -187,7 +188,7 @@ async function checkSynkkInventoryAndAlert(
             itemName: { $regex: req, $options: 'i' }
         }));
 
-        const { pusherServer } = require('@/lib/pusher');
+        
 
         let patientPhone = '';
         if (platformRequestId) {
