@@ -404,12 +404,12 @@ export async function notifyPharmacists(request: any) {
                         .map((c: any) => ({ ...c, _state: doc.state }))
                 );
             }
-            checkInventoryAndAlert(inventoryContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
+            await checkInventoryAndAlert(inventoryContacts, medicines, normalizedLocation, String(targetId)).catch(err =>
                 console.error('[whatsapp-notifier] Inventory check error:', err?.message)
             );
 
             // --- NEW CODE: Check Synkk Database non-blocking (Nationwide) ---
-            checkSynkkInventoryAndAlert(medicines, normalizedLocation, String(targetId), String(platform_request_id)).catch(err =>
+            await checkSynkkInventoryAndAlert(medicines, normalizedLocation, String(targetId), String(platform_request_id)).catch(err =>
                 console.error('[whatsapp-notifier] Synkk DB check error:', err?.message)
             );
             // ----------------------------------------------------------------
