@@ -26,7 +26,7 @@ function extractFirstJSON(text: string): string | null {
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { pharmacyId } = await req.json();
+    const { pharmacyId, date } = await req.json();
 
     if (!pharmacyId) return NextResponse.json({ message: 'Missing pharmacyId' }, { status: 400 });
     
@@ -39,8 +39,13 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    let planStart = new Date();
+    if (date) {
+      const [y, m, d] = date.split('-');
+      planStart = new Date(Date.UTC(Number(y), Number(m)-1, Number(d)));
+    } else {
+      planStart = new Date(Date.UTC(planStart.getUTCFullYear(), planStart.getUTCMonth(), planStart.getUTCDate()));
+    }
 
     const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
     const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
@@ -68,7 +73,6 @@ All 30 posts must be images. Do not include video ideas.
     let createdPlan = null;
     if (jsonStr) {
       const data = JSON.parse(jsonStr);
-      const planStart = new Date(today); // Start today
       const planEnd = new Date(planStart);
       planEnd.setDate(planEnd.getDate() + 30);
 
@@ -91,50 +95,51 @@ All 30 posts must be images. Do not include video ideas.
       return NextResponse.json({ message: 'Failed to generate plan' }, { status: 500 });
     }
 
-    // 2. Generate today's post (dayOffset 0)
-    const todayTopic = createdPlan.schedule[0];
-    
-    let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
+    // 2. Generate today's and tomorrow's posts (dayOffset 0 and 1)
+    for (let i = 0; i <= 1; i++) {
+      const topicItem = createdPlan.schedule[i];
+      let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-    if (todayTopic.type === 'image') {
-      const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${todayTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
-      const txtJsonStr = extractFirstJSON(txtRes.response.text());
-      if (txtJsonStr) {
-        const tData = JSON.parse(txtJsonStr);
-        caption = tData.caption;
-        hashtags = tData.hashtags;
-      }
-
-      try {
-        const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
-        const imgRes = await (imgModel as any).generateContent({
-          contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${todayTopic.topic}. Clean, professional.` }] }],
-          generationConfig: { responseModalities: ['image'] },
-        });
-        const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-        if (imgPart?.inlineData) {
-          imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+      if (topicItem.type === 'image') {
+        const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
+        const txtJsonStr = extractFirstJSON(txtRes.response.text());
+        if (txtJsonStr) {
+          const tData = JSON.parse(txtJsonStr);
+          caption = tData.caption;
+          hashtags = tData.hashtags;
         }
-      } catch (imgErr) {
-        console.error('Image gen failed', imgErr);
-      }
-    } else {
-      const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-      const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${todayTopic.topic}". Keep it very simple and practical.`);
-      videoIdeaText = vidRes.response.text().trim();
-    }
 
-    await DailyPost.create({
-      pharmacyId: pharmacy._id,
-      scheduledDate: today,
-      type: todayTopic.type,
-      status: 'ready_to_post', // Instantly ready since it's today
-      caption,
-      hashtags,
-      imageUrl,
-      videoIdeaText
-    });
+        try {
+          const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
+          const imgRes = await (imgModel as any).generateContent({
+            contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
+            generationConfig: { responseModalities: ['image'] },
+          });
+          const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+          if (imgPart?.inlineData) {
+            imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+          }
+        } catch (imgErr) {
+          console.error('Image gen failed for day ' + i, imgErr);
+        }
+      } else {
+        const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
+        videoIdeaText = vidRes.response.text().trim();
+      }
+
+      await DailyPost.create({
+        pharmacyId: pharmacy._id,
+        scheduledDate: topicItem.date,
+        type: topicItem.type,
+        status: i === 0 ? 'ready_to_post' : 'pending_review',
+        caption,
+        hashtags,
+        imageUrl,
+        videoIdeaText
+      });
+    }
 
     return NextResponse.json({ success: true, plan: createdPlan });
   } catch (error) {
