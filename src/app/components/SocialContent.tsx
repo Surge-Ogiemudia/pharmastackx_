@@ -69,6 +69,7 @@ export default function SocialContent() {
   
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [todaysVideoIdea, setTodaysVideoIdea] = useState<any>(null);
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<any>(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [updatingPost, setUpdatingPost] = useState(false);
@@ -452,9 +453,25 @@ export default function SocialContent() {
                       {selectedPost.imageUrl && <img src={selectedPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </Box>
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.5, mb: 1 }}>
-                        {selectedPost.status === 'pending_review' ? selectedPost.caption : (selectedPost.caption?.length > 80 ? selectedPost.caption.substring(0, 80) + '...' : selectedPost.caption)}
-                      </Typography>
+                      <Box sx={{ mb: 1 }}>
+                        <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.5 }}>
+                          {selectedPost.status === 'pending_review' 
+                            ? selectedPost.caption 
+                            : (isCaptionExpanded || selectedPost.caption?.length <= 80 
+                                ? selectedPost.caption 
+                                : `${selectedPost.caption?.substring(0, 80)}...`)}
+                          
+                          {selectedPost.status !== 'pending_review' && selectedPost.caption?.length > 80 && (
+                            <Typography 
+                              component="span" 
+                              onClick={() => setIsCaptionExpanded(!isCaptionExpanded)}
+                              sx={{ color: G, fontWeight: 700, cursor: 'pointer', ml: 0.5 }}
+                            >
+                              {isCaptionExpanded ? 'Show less' : 'Read more'}
+                            </Typography>
+                          )}
+                        </Typography>
+                      </Box>
                       
                       <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mb: 2 }}>
                         {(selectedPost.hashtags || []).map((h: string) => `#${h}`).join(' ')}
