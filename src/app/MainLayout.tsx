@@ -3,12 +3,22 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { track } from '@/lib/track';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const showNavbar = pathname !== '/find-medicines' && pathname !== '/product-demo' && pathname !== '/pulse' && !pathname?.startsWith('/pulse/');
+  const [isSubdomain, setIsSubdomain] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const sub = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+      setIsSubdomain(sub);
+    }
+  }, []);
+
+  const showNavbar = !isSubdomain && pathname !== '/find-medicines' && pathname !== '/product-demo' && pathname !== '/pulse' && !pathname?.startsWith('/pulse/');
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change
