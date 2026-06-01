@@ -88,43 +88,41 @@ export async function GET(req: NextRequest) {
 
       let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-      if (topicItem.type === 'image') {
-        try {
-          const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-          const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
-          const txtJsonStr = extractFirstJSON(txtRes.response.text());
-          if (txtJsonStr) {
-            const tData = JSON.parse(txtJsonStr);
-            caption = tData.caption;
-            hashtags = tData.hashtags;
-          }
+      try {
+        const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
+        const txtJsonStr = extractFirstJSON(txtRes.response.text());
+        if (txtJsonStr) {
+          const tData = JSON.parse(txtJsonStr);
+          caption = tData.caption;
+          hashtags = tData.hashtags;
+        }
 
-          const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
-          const imgRes = await (imgModel as any).generateContent({
-            contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
-            generationConfig: { responseModalities: ['image'] },
-          });
-          const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-          if (imgPart?.inlineData) {
-            imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-          }
-        } catch (err) {
-          console.error(`Generation failed for plan ${plan._id}`, err);
+        const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
+        const imgRes = await (imgModel as any).generateContent({
+          contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
+          generationConfig: { responseModalities: ['image'] },
+        });
+        const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+        if (imgPart?.inlineData) {
+          imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
         }
-      } else {
-        try {
-          const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-          const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
-          videoIdeaText = vidRes.response.text().trim();
-        } catch (err) {
-          console.error(`Video generation failed for plan ${plan._id}`, err);
-        }
+      } catch (err) {
+        console.error(`Generation failed for plan ${plan._id}`, err);
+      }
+
+      try {
+        const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
+        videoIdeaText = vidRes.response.text().trim();
+      } catch (err) {
+        console.error(`Video generation failed for plan ${plan._id}`, err);
       }
 
       await DailyPost.create({
         pharmacyId: pharmacy._id,
         scheduledDate: tomorrow,
-        type: topicItem.type,
+        type: 'both',
         status: 'pending_review',
         caption,
         hashtags,
