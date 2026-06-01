@@ -181,9 +181,14 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
         const res = await fetch(`/api/pharmacies/${slug}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.success) {
+          if (data.success && data.pharmacy) {
             setPharmacyDetails(data.pharmacy);
+          } else {
+             // Subdomain does not match a valid pharmacy
+             window.location.href = 'https://psx.ng';
           }
+        } else {
+             window.location.href = 'https://psx.ng';
         }
       } catch (err) {
         console.error('Error fetching pharmacy', err);
