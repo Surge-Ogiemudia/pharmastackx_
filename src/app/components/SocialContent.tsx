@@ -418,20 +418,21 @@ export default function SocialContent() {
         </Button>
       </Box>
 
+      {/* ── DATE CAROUSEL ─────────────────────────────────────────────── */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#fff', p: 1.5, borderRadius: '16px', border: BORDER, mb: 2 }}>
+        <IconButton onClick={() => changeDate(-1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronLeft sx={{ color: '#333' }} /></IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CalendarMonth sx={{ fontSize: '16px', color: G }} />
+          <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#333' }}>
+            {isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </Typography>
+        </Box>
+        <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronRight sx={{ color: '#333' }} /></IconButton>
+      </Box>
+
       {/* ── IMAGES TAB ────────────────────────────────────────────────── */}
       {activeTab === 'images' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#fff', p: 1.5, borderRadius: '16px', border: BORDER }}>
-            <IconButton onClick={() => changeDate(-1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronLeft sx={{ color: '#333' }} /></IconButton>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarMonth sx={{ fontSize: '16px', color: G }} />
-              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#333' }}>
-                {isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </Typography>
-            </Box>
-            <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronRight sx={{ color: '#333' }} /></IconButton>
-          </Box>
 
           {loadingPlan ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={24} sx={{ color: G }} /></Box>
@@ -551,16 +552,20 @@ export default function SocialContent() {
       {/* ── VIDEOS TAB ────────────────────────────────────────────────── */}
       {activeTab === 'videos' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={cardSx}>
-            <Typography sx={sectionLabelSx}>Today's Video Idea</Typography>
-            {todaysVideoIdea ? (
-              <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {todaysVideoIdea}
-              </Typography>
-            ) : (
-              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>No video assigned for today. Check back tomorrow!</Typography>
-            )}
-          </Box>
+          {loadingPlan ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={24} sx={{ color: G }} /></Box>
+          ) : (
+            <Box sx={cardSx}>
+              <Typography sx={sectionLabelSx}>Video Script for {isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
+              {selectedPost?.videoIdeaText ? (
+                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {selectedPost.videoIdeaText}
+                </Typography>
+              ) : (
+                <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>No video assigned for this date.</Typography>
+              )}
+            </Box>
+          )}
           
           <Box sx={cardSx}>
             <Typography sx={sectionLabelSx}>Generate Video</Typography>

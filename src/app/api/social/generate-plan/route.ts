@@ -100,7 +100,8 @@ All 30 posts must be images. Do not include video ideas.
       const topicItem = createdPlan.schedule[i];
       let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-      if (topicItem.type === 'image') {
+      // Generate Image & Caption
+      try {
         const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
         const txtJsonStr = extractFirstJSON(txtRes.response.text());
@@ -110,29 +111,32 @@ All 30 posts must be images. Do not include video ideas.
           hashtags = tData.hashtags;
         }
 
-        try {
-          const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
-          const imgRes = await (imgModel as any).generateContent({
-            contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
-            generationConfig: { responseModalities: ['image'] },
-          });
-          const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-          if (imgPart?.inlineData) {
-            imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-          }
-        } catch (imgErr) {
-          console.error('Image gen failed for day ' + i, imgErr);
+        const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
+        const imgRes = await (imgModel as any).generateContent({
+          contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
+          generationConfig: { responseModalities: ['image'] },
+        });
+        const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+        if (imgPart?.inlineData) {
+          imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
         }
-      } else {
+      } catch (imgErr) {
+        console.error('Image gen failed for day ' + i, imgErr);
+      }
+
+      // Generate Video Idea
+      try {
         const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
         videoIdeaText = vidRes.response.text().trim();
+      } catch (vidErr) {
+        console.error('Video gen failed for day ' + i, vidErr);
       }
 
       await DailyPost.create({
         pharmacyId: pharmacy._id,
         scheduledDate: topicItem.date,
-        type: topicItem.type,
+        type: 'both', // Both image and video are available
         status: i === 0 ? 'ready_to_post' : 'pending_review',
         caption,
         hashtags,
