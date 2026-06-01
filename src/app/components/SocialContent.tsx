@@ -89,7 +89,14 @@ export default function SocialContent() {
   const fetchContent = (date: Date) => {
     if (!user?._id) return;
     setLoadingPlan(true);
-    axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${date.toISOString()}`).then(res => {
+    
+    // Format local date exactly as YYYY-MM-DD
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const dateString = `${yyyy}-${mm}-${dd}`;
+    
+    axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${dateString}`).then(res => {
       setSelectedPost(res.data.selectedPost);
       setActivePlan(res.data.activePlan || res.data.pendingPlan);
       // We always want today's post just to extract the video idea if it exists.
@@ -98,8 +105,8 @@ export default function SocialContent() {
 
       if (!res.data.activePlan && !res.data.pendingPlan && isToday(date)) {
         setGeneratingPlan(true);
-        axios.post('/api/social/generate-plan', { pharmacyId: user._id })
-          .then(() => axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${date.toISOString()}`))
+        axios.post('/api/social/generate-plan', { pharmacyId: user._id, date: dateString })
+          .then(() => axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${dateString}`))
           .then(refetchRes => {
             setSelectedPost(refetchRes.data.selectedPost);
             setActivePlan(refetchRes.data.activePlan || refetchRes.data.pendingPlan);

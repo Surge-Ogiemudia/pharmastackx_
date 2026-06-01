@@ -18,27 +18,34 @@ export async function GET(req: NextRequest) {
     const activePlan = await ContentPlan.findOne({ pharmacyId, status: 'active' }).sort({ createdAt: -1 });
     const pendingPlan = await ContentPlan.findOne({ pharmacyId, status: 'pending_approval' }).sort({ createdAt: -1 });
 
-    // Fetch posts for today and tomorrow
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dayAfter = new Date(tomorrow);
-    dayAfter.setDate(dayAfter.getDate() + 1);
+    // Parse today using YYYY-MM-DD matching the server's current UTC date
+    // Note: The client's 'today' might differ slightly from server's UTC 'today', 
+    // but the client explicitly passes the 'date' param which we use for selectedPost.
+    // For todaysPost and tomorrowsPost, if dateParam is passed, we can calculate based on it,
+    // or just use server's UTC today. Let's use the dateParam as the source of truth if provided.
+    const dateParam = url.searchParams.get('date');
+    let baseDateStr = dateParam;
+    if (!baseDateStr) {
+      const now = new Date();
+      baseDateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+    }
 
-    const todaysPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: today, $lt: tomorrow } });
+    const [y, m, d] = baseDateStr.split('-');
+    const clientToday = new Date(Date.UTC(Number(y), Number(m)-1, Number(d)));
+
+    const tomorrow = new Date(clientToday);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setUTCDate(dayAfter.getUTCDate() + 1);
+
+    // We consider 'todaysPost' to be the post matching the date the client is looking at
+    // if dateParam is today's date for them.
+    const todaysPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: clientToday, $lt: tomorrow } });
     const tomorrowsPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: tomorrow, $lt: dayAfter } });
 
-    const dateParam = url.searchParams.get('date');
-    let selectedPost = null;
-
-    if (dateParam) {
-      const selectedDate = new Date(dateParam);
-      selectedDate.setHours(0, 0, 0, 0);
-      const nextDate = new Date(selectedDate);
-      nextDate.setDate(nextDate.getDate() + 1);
-      selectedPost = await DailyPost.findOne({ pharmacyId, scheduledDate: { $gte: selectedDate, $lt: nextDate } });
-    }
+    // selectedPost is technically just todaysPost since we use the requested date as clientToday
+    let selectedPost = todaysPost;
 
     return NextResponse.json({
       activePlan,
