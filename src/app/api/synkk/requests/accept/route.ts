@@ -19,7 +19,10 @@ export async function POST(req: Request) {
         const newResponse = await DesktopRequestResponse.create({
             pharmacySlug,
             platformRequestId,
-            items: items || [],
+            items: (items || []).map((i: any) => ({
+                name: i.name,
+                quantity: i.quantity || 1
+            })),
             status: 'accepted'
         });
 
