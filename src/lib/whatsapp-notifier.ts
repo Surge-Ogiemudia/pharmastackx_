@@ -200,7 +200,7 @@ async function checkSynkkInventoryAndAlert(
             } catch (err) { /* ignore */ }
         }
 
-        for (const user of synkkUsers) {
+        const alertPromises = synkkUsers.map(async (user) => {
             let matches: any[] = [];
             if (orConditions.length > 0) {
                 const rawMatches = await Product.find({
@@ -295,7 +295,8 @@ async function checkSynkkInventoryAndAlert(
                     console.error(`[whatsapp-notifier] ❌ Failed to send Synkk match email:`, emailErr?.message);
                 }
             }
-        }
+        });
+        await Promise.allSettled(alertPromises);
     } catch (err: any) {
         console.error('[whatsapp-notifier] Synkk check error:', err?.message);
     }
