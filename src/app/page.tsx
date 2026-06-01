@@ -323,7 +323,16 @@ useEffect(() => {
 }, [searchParams]);
 
 useEffect(() => {
-  const slug = searchParams?.get('slug');
+  let slug = searchParams?.get('slug');
+  if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const isSubdomain = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+      if (isSubdomain && !slug) {
+         slug = hostname.split('.')[0];
+         setView('findMedicines');
+      }
+  }
+
   if (slug) {
     fetch('/api/store-visit', {
       method: 'POST',

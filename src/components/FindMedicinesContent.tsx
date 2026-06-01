@@ -41,7 +41,18 @@ const haversineDistance = (coords1: { lat: number; lon: number }, coords2: { lat
 
 export default function FindMedicinesContent({ setView, initialQuery }: { setView?: (view: string) => void; initialQuery?: string }) {
   const searchParams = useSearchParams();
-  const slug = searchParams?.get('slug') || '';
+  const urlSlug = searchParams?.get('slug') || '';
+  const [slug, setSlug] = useState(urlSlug);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !slug) {
+      const hostname = window.location.hostname;
+      const isSubdomain = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+      if (isSubdomain) {
+        setSlug(hostname.split('.')[0]);
+      }
+    }
+  }, [slug]);
 
   const [medicines, setMedicines] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
