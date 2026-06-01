@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import mongoConnect from '@/lib/mongoConnect';
+import { dbConnect } from '@/lib/mongoConnect';
 import Product from '@/models/Product';
 import User from '@/models/User';
 
 export async function POST() {
-    await mongoConnect();
+    await dbConnect();
 
     // Find the pharmacy user by slug to get their exact businessName
     const user = await User.findOne({ slug: 'mantlee' }).select('businessName slug').lean();
