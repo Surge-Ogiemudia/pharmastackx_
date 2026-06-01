@@ -448,8 +448,8 @@ export default function SocialContent() {
                     <Typography sx={{...sectionLabelSx, color: P, display: 'flex', alignItems: 'center', gap: 0.5}}>👀 Needs Review</Typography>
                   )}
 
-                  <Box sx={{ display: 'flex', gap: 2, flexDirection: selectedPost.status === 'pending_review' ? 'column' : 'row' }}>
-                    <Box sx={{ width: selectedPost.status === 'pending_review' ? '100%' : '100px', height: selectedPost.status === 'pending_review' ? 'auto' : '100px', aspectRatio: selectedPost.status === 'pending_review' ? '1/1' : 'auto', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, bgcolor: '#f0f0ee' }}>
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
+                    <Box sx={{ width: '100%', height: 'auto', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, bgcolor: '#f0f0ee' }}>
                       {selectedPost.imageUrl && <img src={selectedPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </Box>
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
