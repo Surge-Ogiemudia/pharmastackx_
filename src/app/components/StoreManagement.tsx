@@ -100,6 +100,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
 
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tileImageInputRef = useRef<HTMLInputElement>(null);
   const flyerRef = useRef<HTMLDivElement>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [flyerLoading, setFlyerLoading] = useState(false);
@@ -298,6 +299,16 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     const reader = new FileReader();
     reader.onloadend = () => {
       setFormValues(prev => ({ ...prev, imageUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleTileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !tileEditData) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setTileEditData({ ...tileEditData, imageUrl: reader.result as string });
     };
     reader.readAsDataURL(file);
   };
@@ -1483,18 +1494,30 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '320px 1fr' }, gap: '50px' }}>
                   <Box>
-                    <Box sx={{ 
-                      width: '100%', 
-                      aspectRatio: '1/1', 
-                      background: '#f9f9f9', 
-                      borderRadius: '30px', 
-                      overflow: 'hidden', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      border: `1.5px solid ${COLORS.border}`
-                    }}>
+                    <input type="file" ref={tileImageInputRef} accept="image/*" onChange={handleTileImageChange} hidden />
+                    <Box
+                      onClick={() => isEditingTile && tileImageInputRef.current?.click()}
+                      sx={{
+                        width: '100%',
+                        aspectRatio: '1/1',
+                        background: '#f9f9f9',
+                        borderRadius: '30px',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `1.5px solid ${COLORS.border}`,
+                        position: 'relative',
+                        cursor: isEditingTile ? 'pointer' : 'default',
+                        '&:hover': isEditingTile ? { borderColor: '#0F6E56', bgcolor: '#f0f7f4' } : {}
+                      }}
+                    >
                       <img src={tileEditData.imageUrl || '/placeholder.png'} style={{ width: '85%', height: '85%', objectFit: 'contain' }} />
+                      {isEditingTile && (
+                        <Box sx={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', bgcolor: 'rgba(0,0,0,0.55)', borderRadius: '100px', px: 2, py: 0.5 }}>
+                          <Typography sx={{ fontSize: '11px', fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>Tap to change image</Typography>
+                        </Box>
+                      )}
                     </Box>
                     <Button 
                       fullWidth 
