@@ -263,6 +263,8 @@ export default function SocialContent() {
   const slotIdx      = slotForDate(selectedDate);
   const weekCount    = weekPostCount(allPosts, selectedDate);
   const weekLimitHit = weekCount >= 4;
+  const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+  const isPastDate   = selectedDate.getTime() < todayMidnight.getTime();
 
   const saveTone = (v: string) => { setTone(v); localStorage.setItem('social_tone', v); };
   const saveShowPrices = (v: string) => { setShowPrices(v); localStorage.setItem('social_show_prices', v); };
@@ -385,7 +387,7 @@ export default function SocialContent() {
     <Box sx={{ bgcolor: BG, minHeight: '100vh' }}>
       {/* Date carousel */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 2 }}>
-        <IconButton onClick={() => changeDate(-1)} size="small" sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
+        <IconButton onClick={() => changeDate(-1)} disabled={isPastDate} size="small" sx={{ bgcolor: CARD, color: isPastDate ? 'rgba(255,255,255,0.15)' : TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
         <Box sx={{ textAlign: 'center' }}>
           <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>{selectedDate.toLocaleDateString('default', { weekday: 'long' })}</Typography>
           <Typography sx={{ fontFamily: FONT, fontSize: '17px', fontWeight: 700, color: TEXT }}>{fmtDate(selectedDate)}</Typography>
@@ -518,11 +520,16 @@ export default function SocialContent() {
                     <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, mb: 2.5 }}>
                       {weekLimitHit ? "You've used all 4 posts this week." : "No post generated for this day yet."}
                     </Typography>
-                    {!weekLimitHit && (
+                    {!weekLimitHit && !isPastDate && (
                       <Button onClick={() => handleGenerate(selectedDate)}
                         sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', px: 3, py: 1.3, boxShadow: `0 4px 18px ${GREEN}44` }}>
                         Generate post ✦
                       </Button>
+                    )}
+                    {isPastDate && (
+                      <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: MUTED }}>
+                        Posts can only be generated from today onwards.
+                      </Typography>
                     )}
                   </Box>
                 )}
