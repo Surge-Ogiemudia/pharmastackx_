@@ -71,8 +71,9 @@ export async function POST(req: NextRequest) {
       console.error('Caption gen failed:', e);
     }
 
-    // 2. Generate image
-    let imageUrl = '';
+    // 2. Generate image — capture exact failure reason for frontend display
+    let imageUrl  = '';
+    let imageError = '';
     try {
       const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
       const imgRes   = await (imgModel as any).generateContent({
@@ -83,9 +84,14 @@ export async function POST(req: NextRequest) {
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
       });
 
-      const parts   = imgRes.response.candidates?.[0]?.content?.parts ?? [];
-      const imgPart = parts.find((p: any) => p.inlineData);
-      console.log(`[generate-post] category="${category}" parts=${parts.length} hasImage=${!!imgPart}`);
+      const candidates = imgRes.response.candidates ?? [];
+      const parts      = candidates[0]?.content?.parts ?? [];
+      const imgPart    = parts.find((p: any) => p.inlineData);
+      const textPart   = parts.find((p: any) => p.text);
+      const finishReason = candidates[0]?.finishReason ?? '';
+      const safetyRatings = candidates[0]?.safetyRatings ?? [];
+
+      console.log(`[generate-image] category="${category}" candidates=${candidates.length} parts=${parts.length} hasImage=${!!imgPart} finishReason=${finishReason}`);
 
       if (imgPart?.inlineData) {
         const uploaded = await uploadBase64ToBlob(
@@ -93,10 +99,32 @@ export async function POST(req: NextRequest) {
           imgPart.inlineData.mimeType,
           `social/${pharmacyId}/${Date.now()}.jpg`
         );
-        imageUrl = uploaded ?? '';
+        if (uploaded) {
+          imageUrl = uploaded;
+        } else {
+          imageError = 'Image generated but Blob upload failed. Check BLOB_READ_WRITE_TOKEN.';
+        }
+      } else {
+        // Build a human-readable reason
+        if (finishReason && finishReason !== 'STOP') {
+          imageError = `Model stopped: ${finishReason}`;
+        } else if (textPart?.text) {
+          imageError = `Model returned text instead of image: "${textPart.text.slice(0, 120)}"`;
+        } else if (candidates.length === 0) {
+          imageError = 'Model returned no candidates — likely a quota or billing issue.';
+        } else {
+          imageError = `Model returned ${parts.length} part(s) but none contained image data.`;
+        }
+
+        const blocked = safetyRatings.filter((r: any) => r.blocked);
+        if (blocked.length) {
+          imageError += ` Blocked by safety filter: ${blocked.map((r: any) => r.category).join(', ')}.`;
+        }
+        console.error('[generate-image] No image data:', imageError);
       }
-    } catch (e) {
-      console.error('Image gen failed:', e);
+    } catch (e: any) {
+      imageError = e?.message ?? String(e);
+      console.error('Image gen threw:', imageError);
     }
 
     // 3. Delete any existing post for this date (clean re-generate)
@@ -118,7 +146,7 @@ export async function POST(req: NextRequest) {
       regenCount:    0,
     });
 
-    return NextResponse.json({ success: true, post });
+    return NextResponse.json({ success: true, post, imageError: imageError || null });
   } catch (error) {
     console.error('generate-post error:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

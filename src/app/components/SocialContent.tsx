@@ -214,6 +214,7 @@ export default function SocialContent() {
   const [allPosts,    setAllPosts]   = useState<DailyPost[]>([]); // all posts this week
   const [generating,  setGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState(0);
+  const [imageError,  setImageError]  = useState<string | null>(null);
 
   // Regen modal state
   const [regenModalOpen, setRegenModal]   = useState(false);
@@ -257,6 +258,7 @@ export default function SocialContent() {
     const nd = new Date(selectedDate);
     nd.setDate(nd.getDate() + days);
     setCaptionExp(false);
+    setImageError(null);
     const oldMon = getMondayLocal(selectedDate).getTime();
     const newMon = getMondayLocal(nd).getTime();
     setSelectedDate(nd);
@@ -272,6 +274,7 @@ export default function SocialContent() {
 
     // Animate progress bar while waiting
     const interval = setInterval(() => setGenProgress(p => Math.min(p + 4, 88)), 800);
+    setImageError(null);
 
     try {
       const res = await axios.post('/api/social/generate-post', {
@@ -283,7 +286,6 @@ export default function SocialContent() {
       });
       if (res.data.post) {
         setAllPosts(prev => {
-          // Replace post for that date if it exists, otherwise append
           const filtered = prev.filter(p => {
             const pd = new Date(p.scheduledDate); pd.setHours(0,0,0,0);
             const td = new Date(targetDate);      td.setHours(0,0,0,0);
@@ -291,10 +293,12 @@ export default function SocialContent() {
           });
           return [...filtered, res.data.post];
         });
+        if (res.data.imageError) setImageError(res.data.imageError);
         setAppState('active');
       }
-    } catch (e) {
-      console.error('Generate failed:', e);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Unknown error';
+      setImageError(`Request failed: ${msg}`);
     } finally {
       clearInterval(interval);
       setGenProgress(100);
@@ -388,6 +392,18 @@ export default function SocialContent() {
               </Box>
 
               <Box sx={{ p: 2 }}>
+                {/* Image error log — shown whenever image generation failed */}
+                {!generating && imageError && !todaysPost?.imageUrl && (
+                  <Box sx={{ mb: 2, p: 1.5, borderRadius: '10px', bgcolor: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)' }}>
+                    <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: '#FF6B6B', mb: 0.5, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                      ⚠ Image generation failed
+                    </Typography>
+                    <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: 'rgba(255,140,140,0.85)', lineHeight: 1.6, wordBreak: 'break-word' }}>
+                      {imageError}
+                    </Typography>
+                  </Box>
+                )}
+
                 {generating ? (
                   /* Loading state */
                   <Box sx={{ py: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
