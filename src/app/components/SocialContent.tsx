@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Button, IconButton, CircularProgress,
          Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
@@ -208,8 +208,9 @@ export default function SocialContent() {
   const { user } = useSession();
 
   const [appState,    setAppState]   = useState<AppState>('loading');
-  const [tone,        setTone]       = useState('warm');
-  const [showPrices,  setShowPrices] = useState('yes');
+  const [tone,        setTone]       = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_tone') || 'warm' : 'warm'));
+  const [showPrices,  setShowPrices] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_show_prices') || 'yes' : 'yes'));
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
   const [allPosts,    setAllPosts]   = useState<DailyPost[]>([]); // all posts this week
   const [generating,  setGenerating] = useState(false);
@@ -237,6 +238,9 @@ export default function SocialContent() {
   const slotIdx      = slotForDate(selectedDate);
   const weekCount    = weekPostCount(allPosts, selectedDate);
   const weekLimitHit = weekCount >= 4;
+
+  const saveTone = (v: string) => { setTone(v); localStorage.setItem('social_tone', v); };
+  const saveShowPrices = (v: string) => { setShowPrices(v); localStorage.setItem('social_show_prices', v); };
 
   const fetchWeekPosts = useCallback(async (refDate: Date) => {
     if (!user?._id) return;
@@ -343,7 +347,7 @@ export default function SocialContent() {
   if (appState === 'onboarding') {
     return (
       <AnimatePresence mode="wait">
-        <OnboardingScreen key="ob" tone={tone} setTone={setTone} showPrices={showPrices} setShowPrices={setShowPrices} onStart={() => handleGenerate(selectedDate)} />
+        <OnboardingScreen key="ob" tone={tone} setTone={saveTone} showPrices={showPrices} setShowPrices={saveShowPrices} onStart={() => handleGenerate(selectedDate)} />
       </AnimatePresence>
     );
   }
@@ -362,6 +366,14 @@ export default function SocialContent() {
           <Typography sx={{ fontFamily: FONT, fontSize: '17px', fontWeight: 700, color: TEXT }}>{fmtDate(selectedDate)}</Typography>
         </Box>
         <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronRight sx={{ fontSize: 20 }} /></IconButton>
+      </Box>
+
+      {/* Settings gear — top right */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, mb: 0.5, mt: -1 }}>
+        <Box onClick={() => setSettingsOpen(true)} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', px: 1.2, py: 0.5, borderRadius: '8px', border: `1px solid ${BORD}`, bgcolor: CARD }}>
+          <Settings sx={{ fontSize: 13, color: MUTED }} />
+          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>Post settings</Typography>
+        </Box>
       </Box>
 
       {/* Week usage pill */}
@@ -525,6 +537,46 @@ export default function SocialContent() {
               sx={{ bgcolor: '#c0392b', color: '#fff', textTransform: 'none', fontFamily: FONT, fontWeight: 700, borderRadius: '10px', px: 2.5, '&:disabled': { opacity: 0.5 } }}>
               {regenerating ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Regenerate'}
             </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <Dialog open onClose={() => setSettingsOpen(false)}
+          PaperProps={{ sx: { borderRadius: '20px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2, width: '100%' } }}>
+          <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>Post Settings</DialogTitle>
+          <DialogContent sx={{ pb: 1 }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>Preferred tone</Typography>
+            {[
+              { val: 'warm',         label: 'Warm and friendly'        },
+              { val: 'professional', label: 'Professional and clinical' },
+              { val: 'bold',         label: 'Bold and energetic'        },
+            ].map(opt => (
+              <Box key={opt.val} onClick={() => saveTone(opt.val)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${tone === opt.val ? GREEN : BORD}`, bgcolor: tone === opt.val ? `${GREEN}1A` : 'transparent', transition: 'all 0.15s' }}>
+                <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${tone === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {tone === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
+                </Box>
+                <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: tone === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
+              </Box>
+            ))}
+
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5, mt: 2.5 }}>Show prices on posts?</Typography>
+            {[
+              { val: 'yes', label: 'Yes, include pricing' },
+              { val: 'no',  label: 'No, keep it general'  },
+            ].map(opt => (
+              <Box key={opt.val} onClick={() => saveShowPrices(opt.val)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${showPrices === opt.val ? GREEN : BORD}`, bgcolor: showPrices === opt.val ? `${GREEN}1A` : 'transparent', transition: 'all 0.15s' }}>
+                <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${showPrices === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {showPrices === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
+                </Box>
+                <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: showPrices === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
+              </Box>
+            ))}
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED, mt: 2, lineHeight: 1.5 }}>Changes apply to the next post you generate.</Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <Button fullWidth onClick={() => setSettingsOpen(false)} sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', py: 1.3 }}>Done</Button>
           </DialogActions>
         </Dialog>
       )}
