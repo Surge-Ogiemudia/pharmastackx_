@@ -1,39 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Button, IconButton, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import {
-  ChevronLeft, ChevronRight, FileDownload, IosShare,
-  Lock, CheckCircle,
-} from '@mui/icons-material';
+import { Box, Typography, Button, IconButton, CircularProgress,
+         Dialog, DialogTitle, DialogContent, DialogActions, TextField, LinearProgress } from '@mui/material';
+import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw     = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
-
-async function requestAndSavePush(pharmacyId: string): Promise<void> {
-  try {
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-    const reg = await navigator.serviceWorker.ready;
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!vapidKey) return;
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
-    });
-    await axios.post('/api/notifications/subscribe', { pharmacyId, subscription: subscription.toJSON() });
-  } catch (err) {
-    console.warn('Push subscription failed (non-fatal):', err);
-  }
-}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const BG    = '#080D0B';
@@ -52,22 +25,23 @@ const GRADIENTS = [
   'linear-gradient(135deg, #B45309 0%, #431407 100%)',
   'linear-gradient(135deg, #0E7490 0%, #042933 100%)',
 ];
-const ACCENTS = ['#1DB88A', '#A78BFA', '#FCD34D', '#22D3EE'];
-const LABELS  = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'];
-const ICONS   = ['💊', '🌿', '⚠️', '🤝'];
+const ACCENTS  = ['#1DB88A', '#A78BFA', '#FCD34D', '#22D3EE'];
+const LABELS   = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'];
+const ICONS    = ['💊', '🌿', '⚠️', '🤝'];
 const SPARKLES = ['✨', '⭐', '💫', '✦', '✧'];
-const GEN_STEPS = [
-  'Reading inventory from POS',
-  'Checking health awareness calendar',
-  'Generating branded graphics',
-  'Writing captions in your tone',
-  'Scheduling your weekly plan',
-];
 const PRO_FEATURES = [
-  { icon: '🎥', name: 'Video Reels',     desc: 'Auto-scripted reels'   },
-  { icon: '🎠', name: 'Carousel Posts',  desc: 'Multi-slide posts'      },
-  { icon: '⚡', name: 'Auto-posting',    desc: 'Schedule & publish'     },
-  { icon: '📊', name: 'Analytics',       desc: 'Reach & engagement'     },
+  { icon: '🎥', name: 'Video Reels',    desc: 'Auto-scripted reels'  },
+  { icon: '🎠', name: 'Carousel Posts', desc: 'Multi-slide posts'     },
+  { icon: '⚡', name: 'Auto-posting',   desc: 'Schedule & publish'    },
+  { icon: '📊', name: 'Analytics',      desc: 'Reach & engagement'    },
+];
+
+// Mon / Wed / Fri / Sat of the current week
+const WEEK_CATEGORIES = [
+  { label: 'Medicine Spotlight', offset: 0  },
+  { label: 'Health Awareness',   offset: 2  },
+  { label: 'Low Stock Alert',    offset: 4  },
+  { label: 'Human Moment',       offset: 5  },
 ];
 
 type AppState = 'loading' | 'onboarding' | 'generating' | 'active' | 'complete';
@@ -90,18 +64,14 @@ function getMondayLocal(date: Date): Date {
   d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
   return d;
 }
-
 function toYMD(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-
 function fmtRange(mon: Date): string {
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
   const o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   return `${mon.toLocaleDateString('default', o)} – ${sun.toLocaleDateString('default', o)}`;
 }
-
 function fmtDay(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('default', { weekday: 'short', month: 'short', day: 'numeric' });
 }
@@ -112,49 +82,26 @@ function PostGraphic({ post, idx, name, url }: {
 }) {
   const NOISE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E\")";
   const GRID  = `repeating-linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px,transparent 44px),repeating-linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px,transparent 44px)`;
-
   return (
-    <Box sx={{
-      position: 'relative', width: '100%', aspectRatio: '1/1',
-      borderRadius: '16px', overflow: 'hidden', background: GRADIENTS[idx % 4], flexShrink: 0,
-    }}>
+    <Box sx={{ position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', background: GRADIENTS[idx % 4], flexShrink: 0 }}>
       <Box sx={{ position: 'absolute', inset: 0, zIndex: 1, backgroundImage: GRID }} />
       <Box sx={{ position: 'absolute', inset: 0, zIndex: 1, backgroundImage: NOISE }} />
-
       {post?.imageUrl ? (
-        <Box component="img" src={post.imageUrl}
-          sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2 }} />
+        <Box component="img" src={post.imageUrl} sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2 }} />
       ) : (
         <Box sx={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
           <Typography sx={{ fontSize: '52px' }}>{ICONS[idx % 4]}</Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textAlign: 'center', px: 3, lineHeight: 1.4 }}>
-            {post ? 'Image generation failed — tap to retry' : LABELS[idx % 4]}
+          <Typography sx={{ fontFamily: FONT, fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', textAlign: 'center', px: 3 }}>
+            {post ? 'Image generation failed — tap Regenerate to retry' : LABELS[idx % 4]}
           </Typography>
         </Box>
       )}
-
-      {/* Vignette */}
-      <Box sx={{
-        position: 'absolute', inset: 0, zIndex: 3,
-        background: 'linear-gradient(to bottom,rgba(0,0,0,0.42) 0%,transparent 30%,transparent 62%,rgba(0,0,0,0.62) 100%)',
-      }} />
-
-      {/* Pharmacy name top-left */}
-      <Typography sx={{ position: 'absolute', top: 14, left: 14, zIndex: 4, fontFamily: MONO, fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-        {name}
-      </Typography>
-
-      {/* URL bottom-right */}
-      <Typography sx={{ position: 'absolute', bottom: 14, right: 14, zIndex: 4, fontFamily: MONO, fontSize: '8px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3px' }}>
-        {url}
-      </Typography>
-
-      {/* Date badge top-right */}
+      <Box sx={{ position: 'absolute', inset: 0, zIndex: 3, background: 'linear-gradient(to bottom,rgba(0,0,0,0.42) 0%,transparent 30%,transparent 62%,rgba(0,0,0,0.62) 100%)' }} />
+      <Typography sx={{ position: 'absolute', top: 14, left: 14, zIndex: 4, fontFamily: MONO, fontSize: '9px', color: 'rgba(255,255,255,0.65)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>{name}</Typography>
+      <Typography sx={{ position: 'absolute', bottom: 14, right: 14, zIndex: 4, fontFamily: MONO, fontSize: '8px', color: 'rgba(255,255,255,0.4)' }}>{url}</Typography>
       {post?.scheduledDate && (
         <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 4, bgcolor: 'rgba(0,0,0,0.52)', backdropFilter: 'blur(8px)', borderRadius: '8px', px: 1, py: 0.4, border: '1px solid rgba(255,255,255,0.14)' }}>
-          <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: '#fff', fontWeight: 500 }}>
-            {fmtDay(post.scheduledDate)}
-          </Typography>
+          <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: '#fff', fontWeight: 500 }}>{fmtDay(post.scheduledDate)}</Typography>
         </Box>
       )}
     </Box>
@@ -167,52 +114,35 @@ function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }:
   showPrices: string; setShowPrices: (v: string) => void;
   onStart: () => void;
 }) {
-  const toneOpts = [
-    { val: 'warm',         label: 'Warm and friendly'       },
-    { val: 'professional', label: 'Professional and clinical' },
-    { val: 'bold',         label: 'Bold and energetic'       },
-  ];
-  const priceOpts = [
-    { val: 'yes', label: 'Yes, include pricing'  },
-    { val: 'no',  label: 'No, keep it general'   },
-  ];
+  const toneOpts  = [{ val: 'warm', label: 'Warm and friendly' }, { val: 'professional', label: 'Professional and clinical' }, { val: 'bold', label: 'Bold and energetic' }];
+  const priceOpts = [{ val: 'yes', label: 'Yes, include pricing' }, { val: 'no', label: 'No, keep it general' }];
+
+  const RadioRow = ({ val, label, selected, onSelect }: { val: string; label: string; selected: string; onSelect: (v: string) => void }) => (
+    <Box onClick={() => onSelect(val)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${selected === val ? GREEN : BORD}`, bgcolor: selected === val ? `${GREEN}1A` : 'transparent', transition: 'all 0.15s' }}>
+      <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${selected === val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {selected === val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
+      </Box>
+      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: selected === val ? TEXT : MUTED }}>{label}</Typography>
+    </Box>
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.35 }}
-      style={{ padding: '24px 20px 48px', minHeight: '100vh', background: BG }}
-    >
-      {/* Floating sparkles */}
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35 }}
+      style={{ padding: '24px 20px 48px', minHeight: '100vh', background: BG }}>
       <Box sx={{ position: 'relative', height: 72, mb: 0.5, overflow: 'hidden' }}>
         {SPARKLES.map((s, i) => (
-          <motion.div key={i}
-            style={{ position: 'absolute', left: `${10 + i * 19}%`, top: `${8 + (i % 2) * 32}%`, fontSize: 22, userSelect: 'none' }}
-            animate={{ y: [0, -10, 0], opacity: [0.55, 1, 0.55] }}
-            transition={{ duration: 2 + i * 0.35, repeat: Infinity, delay: i * 0.28 }}
-          >{s}</motion.div>
+          <motion.div key={i} style={{ position: 'absolute', left: `${10 + i * 19}%`, top: `${8 + (i % 2) * 32}%`, fontSize: 22, userSelect: 'none' }}
+            animate={{ y: [0, -10, 0], opacity: [0.55, 1, 0.55] }} transition={{ duration: 2 + i * 0.35, repeat: Infinity, delay: i * 0.28 }}>{s}</motion.div>
         ))}
       </Box>
-
-      <Typography sx={{ fontFamily: FONT, fontSize: '28px', fontWeight: 800, color: TEXT, lineHeight: 1.15, mb: 1.5 }}>
-        Your pharmacy,<br />on social media.
-      </Typography>
+      <Typography sx={{ fontFamily: FONT, fontSize: '28px', fontWeight: 800, color: TEXT, lineHeight: 1.15, mb: 1.5 }}>Your pharmacy,<br />on social media.</Typography>
       <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: MUTED, lineHeight: 1.65, mb: 3 }}>
-        We generate 4 posts a week — Mon, Wed, Fri, Sat — pulling directly from your inventory. Health tips, product spotlights, and more. All branded, ready to share.
+        We generate 4 posts a week — Mon, Wed, Fri, Sat — from your inventory. Health tips, product spotlights, and more. All branded, ready to share.
       </Typography>
-
-      {/* Post type horizontal scroll */}
       <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', pb: 1.5, mb: 3.5, mx: -2.5, px: 2.5, '&::-webkit-scrollbar': { display: 'none' } }}>
         {LABELS.map((label, i) => (
-          <Box key={i} sx={{
-            minWidth: 98, height: 114, borderRadius: '14px', flexShrink: 0,
-            background: GRADIENTS[i], position: 'relative', overflow: 'hidden',
-            border: `1px solid rgba(255,255,255,0.08)`,
-          }}>
-            <Box sx={{
-              position: 'absolute', inset: 0,
-              backgroundImage: `repeating-linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px)`,
-            }} />
+          <Box key={i} sx={{ minWidth: 98, height: 114, borderRadius: '14px', flexShrink: 0, background: GRADIENTS[i], position: 'relative', overflow: 'hidden', border: `1px solid rgba(255,255,255,0.08)` }}>
+            <Box sx={{ position: 'absolute', inset: 0, backgroundImage: `repeating-linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px)` }} />
             <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', p: 1.5, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)' }}>
               <Typography sx={{ fontSize: '20px', mb: 0.5 }}>{ICONS[i]}</Typography>
               <Typography sx={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{label}</Typography>
@@ -220,56 +150,15 @@ function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }:
           </Box>
         ))}
       </Box>
-
-      {/* Tone */}
       <Box sx={{ mb: 2.5 }}>
-        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
-          Preferred tone
-        </Typography>
-        {toneOpts.map(opt => (
-          <Box key={opt.val} onClick={() => setTone(opt.val)} sx={{
-            display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
-            p: '10px 14px', borderRadius: '12px', cursor: 'pointer',
-            border: `1px solid ${tone === opt.val ? GREEN : BORD}`,
-            bgcolor: tone === opt.val ? `${GREEN}1A` : 'transparent',
-            transition: 'all 0.15s',
-          }}>
-            <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${tone === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {tone === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
-            </Box>
-            <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: tone === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
-          </Box>
-        ))}
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>Preferred tone</Typography>
+        {toneOpts.map(o => <RadioRow key={o.val} val={o.val} label={o.label} selected={tone} onSelect={setTone} />)}
       </Box>
-
-      {/* Show prices */}
       <Box sx={{ mb: 4 }}>
-        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
-          Show prices on posts?
-        </Typography>
-        {priceOpts.map(opt => (
-          <Box key={opt.val} onClick={() => setShowPrices(opt.val)} sx={{
-            display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
-            p: '10px 14px', borderRadius: '12px', cursor: 'pointer',
-            border: `1px solid ${showPrices === opt.val ? GREEN : BORD}`,
-            bgcolor: showPrices === opt.val ? `${GREEN}1A` : 'transparent',
-            transition: 'all 0.15s',
-          }}>
-            <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${showPrices === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {showPrices === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
-            </Box>
-            <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: showPrices === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
-          </Box>
-        ))}
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>Show prices on posts?</Typography>
+        {priceOpts.map(o => <RadioRow key={o.val} val={o.val} label={o.label} selected={showPrices} onSelect={setShowPrices} />)}
       </Box>
-
-      <Button fullWidth onClick={onStart} sx={{
-        bgcolor: GREEN, color: '#fff', borderRadius: '14px',
-        textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '16px', py: 1.9,
-        boxShadow: `0 0 32px ${GREEN}55`,
-        '&:hover': { bgcolor: '#0a5a45', boxShadow: `0 0 44px ${GREEN}77` },
-        transition: 'all 0.2s',
-      }}>
+      <Button fullWidth onClick={onStart} sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '14px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '16px', py: 1.9, boxShadow: `0 0 32px ${GREEN}55`, '&:hover': { bgcolor: '#0a5a45' } }}>
         Generate my first week's content ✦
       </Button>
     </motion.div>
@@ -277,75 +166,38 @@ function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }:
 }
 
 // ── State 2 — Generating ──────────────────────────────────────────────────────
-function GeneratingScreen({ currentStep }: { currentStep: number }) {
+function GeneratingScreen({ progress, currentLabel }: { progress: number; currentLabel: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}
-    >
-      {/* Pulsing icon */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
       <Box sx={{ position: 'relative', mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <motion.div
-          animate={{ scale: [1, 1.6, 1], opacity: [0.35, 0.12, 0.35] }}
-          transition={{ duration: 2.2, repeat: Infinity }}
-          style={{ position: 'absolute', width: 96, height: 96, borderRadius: '50%', background: `radial-gradient(circle, ${GREEN}80, transparent 70%)` }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.07, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-          style={{ width: 64, height: 64, borderRadius: '50%', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', position: 'relative' }}
-        >
+        <motion.div animate={{ scale: [1, 1.6, 1], opacity: [0.35, 0.12, 0.35] }} transition={{ duration: 2.2, repeat: Infinity }}
+          style={{ position: 'absolute', width: 96, height: 96, borderRadius: '50%', background: `radial-gradient(circle, ${GREEN}80, transparent 70%)` }} />
+        <motion.div animate={{ scale: [1, 1.07, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
+          style={{ width: 64, height: 64, borderRadius: '50%', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', position: 'relative' }}>
           ✦
         </motion.div>
       </Box>
 
-      <Typography sx={{ fontFamily: FONT, fontSize: '24px', fontWeight: 800, color: TEXT, mb: 0.5, textAlign: 'center' }}>
+      <Typography sx={{ fontFamily: FONT, fontSize: '22px', fontWeight: 800, color: TEXT, mb: 0.5, textAlign: 'center' }}>
         Building your content plan.
       </Typography>
-      <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 4.5, textAlign: 'center' }}>
-        This takes about 20–30 seconds
+      <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 4, textAlign: 'center' }}>
+        {currentLabel}
       </Typography>
 
-      <Box sx={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {GEN_STEPS.map((step, i) => {
-          const isDone   = currentStep > i;
-          const isActive = currentStep === i;
-          return (
-            <motion.div key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: isDone || isActive ? 1 : 0.3, x: 0 }}
-              transition={{ delay: i * 0.06, duration: 0.3 }}
-            >
-              <Box sx={{
-                display: 'flex', alignItems: 'center', gap: 1.5,
-                p: 1.5, borderRadius: '12px',
-                bgcolor: isActive ? `${GREEN}18` : 'transparent',
-                border: `1px solid ${isActive ? `${GREEN}40` : 'transparent'}`,
-                transition: 'all 0.3s',
-              }}>
-                <Box sx={{ width: 22, height: 22, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isDone ? (
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 320 }}>
-                      <CheckCircle sx={{ color: GBRI, fontSize: 20 }} />
-                    </motion.div>
-                  ) : isActive ? (
-                    <CircularProgress size={16} sx={{ color: GREEN }} />
-                  ) : (
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.15)', mx: 'auto' }} />
-                  )}
-                </Box>
-                <Typography sx={{
-                  fontFamily: FONT, fontSize: '14px',
-                  color: isDone ? GBRI : isActive ? TEXT : MUTED,
-                  fontWeight: isDone || isActive ? 600 : 400,
-                  transition: 'color 0.3s',
-                }}>
-                  {step}
-                </Typography>
-              </Box>
-            </motion.div>
-          );
-        })}
+      <Box sx={{ width: '100%', maxWidth: 320 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: MUTED }}>Progress</Typography>
+          <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: GREEN }}>{progress}%</Typography>
+        </Box>
+        <Box sx={{ height: 6, bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+          <motion.div
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{ height: '100%', background: `linear-gradient(90deg, ${GREEN}, ${GBRI})`, borderRadius: 3 }}
+          />
+        </Box>
       </Box>
     </motion.div>
   );
@@ -357,11 +209,8 @@ function LockedSection() {
     <Box sx={{ px: 2, pt: 1, pb: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
         <Lock sx={{ fontSize: 13, color: MUTED }} />
-        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>
-          Pro features
-        </Typography>
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>Pro features</Typography>
       </Box>
-
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1.5 }}>
         {PRO_FEATURES.map((f, i) => (
           <Box key={i} sx={{ bgcolor: CARD, borderRadius: '14px', p: 1.5, border: `1px solid ${BORD}`, opacity: 0.65 }}>
@@ -374,54 +223,33 @@ function LockedSection() {
           </Box>
         ))}
       </Box>
-
-      <Box sx={{
-        borderRadius: '14px', p: 2,
-        background: 'linear-gradient(135deg, #1E3A5F 0%, #0F1F3A 100%)',
-        border: '1px solid rgba(59,130,246,0.22)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
-      }}>
+      <Box sx={{ borderRadius: '14px', p: 2, background: 'linear-gradient(135deg, #1E3A5F 0%, #0F1F3A 100%)', border: '1px solid rgba(59,130,246,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
         <Box>
-          <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#93C5FD' }}>
-            Upgrade to Social Pro
-          </Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: 'rgba(147,197,253,0.55)' }}>
-            Unlock all 4 premium features
-          </Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#93C5FD' }}>Upgrade to Social Pro</Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: 'rgba(147,197,253,0.55)' }}>Unlock all 4 premium features</Typography>
         </Box>
-        <Button sx={{
-          bgcolor: '#2563EB', color: '#fff', borderRadius: '10px',
-          textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '12px',
-          px: 2, py: 0.8, flexShrink: 0, '&:hover': { bgcolor: '#1D4ED8' },
-        }}>
-          Upgrade
-        </Button>
+        <Button sx={{ bgcolor: '#2563EB', color: '#fff', borderRadius: '10px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '12px', px: 2, py: 0.8, flexShrink: 0, '&:hover': { bgcolor: '#1D4ED8' } }}>Upgrade</Button>
       </Box>
     </Box>
   );
 }
 
 // ── State 3 — Active Week View ────────────────────────────────────────────────
-function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDownload, onShare, onRegenerate, pharmacyName, pharmacyUrl }: {
-  posts: DailyPost[];
-  weekOffset: number;
-  onWeekChange: (n: number) => void;
-  onMarkAsPosted: (id: string) => void;
-  onDownload: (p: DailyPost) => void;
-  onShare: (p: DailyPost) => void;
-  onRegenerate: (postId: string, reason: string) => Promise<void>;
-  pharmacyName: string;
-  pharmacyUrl: string;
+function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDownload, onShare, onRegenerate, pharmacyName, pharmacyUrl, onGenerateMore }: {
+  posts: DailyPost[]; weekOffset: number; onWeekChange: (n: number) => void;
+  onMarkAsPosted: (id: string) => void; onDownload: (p: DailyPost) => void;
+  onShare: (p: DailyPost) => void; onRegenerate: (postId: string, reason: string) => Promise<void>;
+  pharmacyName: string; pharmacyUrl: string;
+  onGenerateMore: () => void;
 }) {
-  const [activeIdx, setActiveIdx]         = useState(0);
-  const [captionExpanded, setCaptionExp]  = useState(false);
-  const [marking, setMarking]             = useState(false);
-  const [regenerating, setRegenerating]   = useState(false);
-  const [regenError, setRegenError]       = useState('');
-  const [regenReason, setRegenReason]     = useState('');
-  const [regenModalOpen, setRegenModal]   = useState(false);
+  const [activeIdx, setActiveIdx]       = useState(0);
+  const [captionExpanded, setCaptionExp] = useState(false);
+  const [marking, setMarking]           = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError]     = useState('');
+  const [regenReason, setRegenReason]   = useState('');
+  const [regenModalOpen, setRegenModal] = useState(false);
 
-  // Jump to first non-posted on posts change
   useEffect(() => {
     const first = posts.findIndex(p => p.status !== 'posted');
     setActiveIdx(first >= 0 ? first : 0);
@@ -429,12 +257,12 @@ function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDow
   }, [posts]);
 
   const navigateTo = (idx: number) => { setActiveIdx(idx); setCaptionExp(false); };
-
-  const monday    = getMondayLocal(new Date());
+  const monday     = getMondayLocal(new Date());
   monday.setDate(monday.getDate() + weekOffset * 7);
-  const weekRange = fmtRange(monday);
-  const post      = posts[activeIdx] ?? null;
-  const isPosted  = post?.status === 'posted';
+  const weekRange  = fmtRange(monday);
+  const post       = posts[activeIdx] ?? null;
+  const isPosted   = post?.status === 'posted';
+  const regenLeft  = Math.max(0, 2 - (post?.regenCount ?? 0));
 
   const handleMark = async () => {
     if (!post || marking || isPosted) return;
@@ -444,210 +272,153 @@ function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDow
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ background: BG, minHeight: '100vh' }}
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: BG, minHeight: '100vh' }}>
       {/* Week navigator */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 2 }}>
-        <IconButton onClick={() => onWeekChange(weekOffset - 1)} size="small"
-          sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}>
-          <ChevronLeft sx={{ fontSize: 20 }} />
-        </IconButton>
+        <IconButton onClick={() => onWeekChange(weekOffset - 1)} size="small" sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
         <Box sx={{ textAlign: 'center' }}>
           <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>Week</Typography>
           <Typography sx={{ fontFamily: FONT, fontSize: '15px', fontWeight: 700, color: TEXT }}>{weekRange}</Typography>
         </Box>
-        <IconButton onClick={() => onWeekChange(weekOffset + 1)} size="small"
-          sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}>
-          <ChevronRight sx={{ fontSize: 20 }} />
-        </IconButton>
+        <IconButton onClick={() => onWeekChange(weekOffset + 1)} size="small" sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronRight sx={{ fontSize: 20 }} /></IconButton>
       </Box>
 
       {/* Progress dots */}
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.75, mb: 2.5 }}>
         {[0, 1, 2, 3].map(i => {
-          const p = posts[i];
-          const isA = i === activeIdx;
-          const done = p?.status === 'posted';
-          return (
-            <motion.div key={i} onClick={() => navigateTo(i)}
-              animate={{ width: isA ? 24 : 8 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              style={{ height: 8, borderRadius: 4, cursor: 'pointer', backgroundColor: done ? GBRI : isA ? GREEN : 'rgba(255,255,255,0.18)' }}
-            />
-          );
+          const p = posts[i]; const isA = i === activeIdx; const done = p?.status === 'posted';
+          return <motion.div key={i} onClick={() => navigateTo(i)} animate={{ width: isA ? 24 : 8 }} transition={{ type: 'spring', stiffness: 450, damping: 30 }} style={{ height: 8, borderRadius: 4, cursor: 'pointer', backgroundColor: done ? GBRI : isA ? GREEN : 'rgba(255,255,255,0.18)' }} />;
         })}
       </Box>
 
       {/* Post card */}
       <Box sx={{ px: 2, mb: 2 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={activeIdx}
-            initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.18 }}
-          >
+          <motion.div key={activeIdx} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.18 }}>
             <Box sx={{ bgcolor: CARD, borderRadius: '20px', overflow: 'hidden', border: `1px solid ${BORD}` }}>
-              {/* Graphic */}
               <Box sx={{ p: 1.5, pb: 0 }}>
                 <PostGraphic post={post} idx={activeIdx} name={pharmacyName} url={pharmacyUrl} />
               </Box>
-
               <Box sx={{ p: 2 }}>
                 {/* Status + platform badges */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
                   <Box sx={{ px: 1.2, py: 0.3, borderRadius: '6px', bgcolor: isPosted ? `${GBRI}22` : `${GREEN}22`, border: `1px solid ${isPosted ? `${GBRI}40` : `${GREEN}40`}` }}>
-                    <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: isPosted ? GBRI : GREEN, letterSpacing: '0.4px' }}>
-                      {isPosted ? '✓ Posted' : post?.status === 'ready_to_post' ? 'Ready' : post ? 'Needs Review' : 'Pending'}
+                    <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: isPosted ? GBRI : GREEN }}>
+                      {isPosted ? '✓ Posted' : post ? 'Ready' : 'Not generated'}
                     </Typography>
                   </Box>
-                  {['Instagram', 'Facebook'].map(pl => (
+                  {post && ['Instagram', 'Facebook'].map(pl => (
                     <Box key={pl} sx={{ px: 1, py: 0.3, borderRadius: '6px', border: `1px solid ${BORD}` }}>
                       <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>{pl}</Typography>
                     </Box>
                   ))}
                 </Box>
 
-                {/* Caption */}
                 {post?.caption ? (
                   <Box sx={{ mb: 1.5 }}>
                     <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: TEXT, lineHeight: 1.65 }}>
                       {captionExpanded || post.caption.length <= 110 ? post.caption : `${post.caption.slice(0, 110)}...`}
                     </Typography>
                     {post.caption.length > 110 && (
-                      <Typography onClick={() => setCaptionExp(v => !v)}
-                        sx={{ fontFamily: FONT, fontSize: '12px', color: GREEN, fontWeight: 600, cursor: 'pointer', mt: 0.5, display: 'inline-block' }}>
+                      <Typography onClick={() => setCaptionExp(v => !v)} sx={{ fontFamily: FONT, fontSize: '12px', color: GREEN, fontWeight: 600, cursor: 'pointer', mt: 0.5, display: 'inline-block' }}>
                         {captionExpanded ? 'Show less' : 'Read more'}
                       </Typography>
                     )}
                   </Box>
                 ) : (
-                  <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, py: 2, textAlign: 'center' }}>
-                    Post not yet generated for this day.
-                  </Typography>
+                  <Box sx={{ py: 2, textAlign: 'center' }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 1.5 }}>
+                      No post generated yet for this day.
+                    </Typography>
+                    <Button onClick={onGenerateMore} sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '10px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '13px', px: 2.5, py: 1, boxShadow: `0 4px 18px ${GREEN}44` }}>
+                      Generate posts ✦
+                    </Button>
+                  </Box>
                 )}
 
-                {/* Hashtags */}
                 {(post?.hashtags?.length ?? 0) > 0 && (
                   <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: ACCENTS[activeIdx % 4], mb: 2, wordBreak: 'break-word' }}>
                     {post!.hashtags.map(h => `#${h}`).join(' ')}
                   </Typography>
                 )}
 
-                {/* Download / Share */}
-                <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
-                  <Button disabled={!post} onClick={() => post && onDownload(post)}
-                    startIcon={<FileDownload sx={{ fontSize: 16 }} />}
-                    sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.06)', color: TEXT, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: `1px solid ${BORD}`, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
-                    Download
-                  </Button>
-                  <Button disabled={!post} onClick={() => post && onShare(post)}
-                    startIcon={<IosShare sx={{ fontSize: 16 }} />}
-                    sx={{ flex: 1, bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1, boxShadow: `0 4px 18px ${GREEN}44`, '&:hover': { bgcolor: '#0a5a45' } }}>
-                    Share
-                  </Button>
-                </Box>
-
-                {/* Regenerate */}
-                {post && !isPosted && (
-                  (post.regenCount ?? 0) >= 2 ? (
-                    <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, textAlign: 'center' }}>
-                      <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED }}>
-                        Regeneration limit reached for today.
-                      </Typography>
+                {post && (
+                  <>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                      <Button disabled={!post.imageUrl} onClick={() => onDownload(post)} startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+                        sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.06)', color: TEXT, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: `1px solid ${BORD}`, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                        Download
+                      </Button>
+                      <Button onClick={() => onShare(post)} startIcon={<IosShare sx={{ fontSize: 16 }} />}
+                        sx={{ flex: 1, bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1, boxShadow: `0 4px 18px ${GREEN}44` }}>
+                        Share
+                      </Button>
                     </Box>
-                  ) : (
-                    <Button fullWidth onClick={() => { setRegenError(''); setRegenModal(true); }} sx={{
-                      mb: 1.5, bgcolor: 'rgba(255,80,80,0.08)', color: '#FF6B6B',
-                      border: '1px solid rgba(255,80,80,0.2)', borderRadius: '12px',
-                      textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1,
-                      '&:hover': { bgcolor: 'rgba(255,80,80,0.14)' },
-                    }}>
-                      Regenerate ({2 - (post.regenCount ?? 0)} left)
-                    </Button>
-                  )
-                )}
 
-                {/* Mark as posted */}
-                <Button fullWidth disabled={!post || isPosted || marking} onClick={handleMark} sx={{
-                  bgcolor: isPosted ? `${GBRI}18` : 'rgba(255,255,255,0.04)',
-                  color: isPosted ? GBRI : MUTED,
-                  border: `1px solid ${isPosted ? `${GBRI}40` : BORD}`,
-                  borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3,
-                  transition: 'all 0.2s',
-                  '&:hover:not(:disabled)': { bgcolor: `${GREEN}18`, color: GREEN, borderColor: `${GREEN}45` },
-                }}>
-                  {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Marked as posted' : 'Mark as posted'}
-                </Button>
-
-                {/* Regen modal — only mounted when open to prevent scroll side-effects */}
-                {regenModalOpen && <Dialog open={regenModalOpen} onClose={() => !regenerating && setRegenModal(false)}
-                  PaperProps={{ sx: { borderRadius: '18px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2 } }}>
-                  <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>
-                    Why regenerate this post?
-                  </DialogTitle>
-                  <DialogContent>
-                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 2 }}>
-                      Your feedback helps the AI improve the next version. {2 - (post?.regenCount ?? 0)} regeneration{2 - (post?.regenCount ?? 0) === 1 ? '' : 's'} remaining today.
-                    </Typography>
-                    <TextField autoFocus fullWidth multiline rows={3} size="small"
-                      placeholder="e.g. Too much text, wrong colour, mention malaria instead..."
-                      value={regenReason}
-                      onChange={e => { setRegenReason(e.target.value); setRegenError(''); }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#0F1C17', color: TEXT, '& fieldset': { borderColor: BORD }, '&:hover fieldset': { borderColor: GREEN }, '&.Mui-focused fieldset': { borderColor: GREEN } }, '& .MuiInputBase-input': { color: TEXT } }}
-                    />
-                    {regenError && (
-                      <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: '#FF6B6B', mt: 1 }}>{regenError}</Typography>
+                    {/* Regenerate */}
+                    {!isPosted && (
+                      regenLeft === 0 ? (
+                        <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, textAlign: 'center' }}>
+                          <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED }}>Regeneration limit reached for today.</Typography>
+                        </Box>
+                      ) : (
+                        <Button fullWidth onClick={() => { setRegenError(''); setRegenModal(true); }} sx={{ mb: 1.5, bgcolor: 'rgba(255,80,80,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,80,80,0.2)', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, '&:hover': { bgcolor: 'rgba(255,80,80,0.14)' } }}>
+                          Regenerate ({regenLeft} left)
+                        </Button>
+                      )
                     )}
-                  </DialogContent>
-                  <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-                    <Button onClick={() => { setRegenModal(false); setRegenReason(''); setRegenError(''); }}
-                      disabled={regenerating}
-                      sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontWeight: 600 }}>
-                      Cancel
+
+                    <Button fullWidth disabled={isPosted || marking} onClick={handleMark} sx={{ bgcolor: isPosted ? `${GBRI}18` : 'rgba(255,255,255,0.04)', color: isPosted ? GBRI : MUTED, border: `1px solid ${isPosted ? `${GBRI}40` : BORD}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3, '&:hover:not(:disabled)': { bgcolor: `${GREEN}18`, color: GREEN, borderColor: `${GREEN}45` } }}>
+                      {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Marked as posted' : 'Mark as posted'}
                     </Button>
-                    <Button
-                      disabled={!regenReason.trim() || regenerating}
-                      onClick={async () => {
-                        if (!post || !regenReason.trim()) return;
-                        setRegenerating(true);
-                        try {
-                          await onRegenerate(post._id, regenReason);
-                          setRegenModal(false);
-                          setRegenReason('');
-                        } catch (err: any) {
-                          setRegenError(err?.response?.data?.message || 'Regeneration failed. Please try again.');
-                        } finally {
-                          setRegenerating(false);
-                        }
-                      }}
-                      sx={{ bgcolor: '#c0392b', color: '#fff', textTransform: 'none', fontFamily: FONT, fontWeight: 700, borderRadius: '10px', px: 2.5, '&:hover': { bgcolor: '#922b21' }, '&:disabled': { opacity: 0.5 } }}>
-                      {regenerating ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Regenerate Post'}
-                    </Button>
-                  </DialogActions>
-                </Dialog>}
+                  </>
+                )}
               </Box>
             </Box>
           </motion.div>
         </AnimatePresence>
       </Box>
 
-      {/* Post navigation arrows */}
+      {/* Post navigation */}
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1.5, mb: 3.5 }}>
-        <IconButton disabled={activeIdx === 0} onClick={() => navigateTo(activeIdx - 1)}
-          sx={{ bgcolor: CARD, color: activeIdx === 0 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}>
-          <ChevronLeft />
-        </IconButton>
-        <Typography sx={{ fontFamily: MONO, fontSize: '12px', color: MUTED, minWidth: 40, textAlign: 'center' }}>
-          {activeIdx + 1} / {Math.max(posts.length, 4)}
-        </Typography>
-        <IconButton disabled={activeIdx >= 3} onClick={() => navigateTo(activeIdx + 1)}
-          sx={{ bgcolor: CARD, color: activeIdx >= 3 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}>
-          <ChevronRight />
-        </IconButton>
+        <IconButton disabled={activeIdx === 0} onClick={() => navigateTo(activeIdx - 1)} sx={{ bgcolor: CARD, color: activeIdx === 0 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}><ChevronLeft /></IconButton>
+        <Typography sx={{ fontFamily: MONO, fontSize: '12px', color: MUTED, minWidth: 40, textAlign: 'center' }}>{activeIdx + 1} / 4</Typography>
+        <IconButton disabled={activeIdx >= 3} onClick={() => navigateTo(activeIdx + 1)} sx={{ bgcolor: CARD, color: activeIdx >= 3 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}><ChevronRight /></IconButton>
       </Box>
 
       <LockedSection />
+
+      {/* Regen modal */}
+      {regenModalOpen && (
+        <Dialog open onClose={() => !regenerating && setRegenModal(false)}
+          PaperProps={{ sx: { borderRadius: '18px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2 } }}>
+          <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>Why regenerate this post?</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 2 }}>
+              Your feedback helps improve the next version. {regenLeft} regeneration{regenLeft === 1 ? '' : 's'} remaining today.
+            </Typography>
+            <TextField autoFocus fullWidth multiline rows={3} size="small"
+              placeholder="e.g. Too much text, wrong colour, mention malaria instead..."
+              value={regenReason} onChange={e => { setRegenReason(e.target.value); setRegenError(''); }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#0F1C17', color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: GREEN } }, '& .MuiInputBase-input': { color: TEXT } }} />
+            {regenError && <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: '#FF6B6B', mt: 1 }}>{regenError}</Typography>}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button onClick={() => { setRegenModal(false); setRegenReason(''); }} disabled={regenerating} sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontWeight: 600 }}>Cancel</Button>
+            <Button disabled={!regenReason.trim() || regenerating}
+              onClick={async () => {
+                if (!post || !regenReason.trim()) return;
+                setRegenerating(true);
+                try { await onRegenerate(post._id, regenReason); setRegenModal(false); setRegenReason(''); }
+                catch (err: any) { setRegenError(err?.response?.data?.message || 'Regeneration failed.'); }
+                finally { setRegenerating(false); }
+              }}
+              sx={{ bgcolor: '#c0392b', color: '#fff', textTransform: 'none', fontFamily: FONT, fontWeight: 700, borderRadius: '10px', px: 2.5, '&:disabled': { opacity: 0.5 } }}>
+              {regenerating ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Regenerate Post'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </motion.div>
   );
 }
@@ -655,30 +426,16 @@ function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDow
 // ── State 4 — Complete ────────────────────────────────────────────────────────
 function CompleteScreen({ posts, onBack }: { posts: DailyPost[]; onBack: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-      style={{ minHeight: '100vh', background: BG, padding: '52px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-    >
-      <motion.div
-        animate={{ y: [0, -14, 0] }}
-        transition={{ duration: 1.1, repeat: Infinity, type: 'spring', stiffness: 110 }}
-        style={{ fontSize: 68, marginBottom: 20 }}
-      >🏆</motion.div>
-
+    <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+      style={{ minHeight: '100vh', background: BG, padding: '52px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <motion.div animate={{ y: [0, -14, 0] }} transition={{ duration: 1.1, repeat: Infinity, type: 'spring', stiffness: 110 }} style={{ fontSize: 68, marginBottom: 20 }}>🏆</motion.div>
       <Typography sx={{ fontFamily: FONT, fontSize: '34px', fontWeight: 800, color: TEXT, mb: 0.5, textAlign: 'center', lineHeight: 1.1 }}>
         Perfect <span style={{ color: GREEN }}>week.</span>
       </Typography>
-      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: MUTED, mb: 4, textAlign: 'center' }}>
-        All 4 posts published this week
-      </Typography>
-
-      {/* Summary card */}
+      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: MUTED, mb: 4, textAlign: 'center' }}>All 4 posts published this week</Typography>
       <Box sx={{ width: '100%', bgcolor: CARD, borderRadius: '20px', border: `1px solid ${BORD}`, overflow: 'hidden', mb: 3 }}>
         {posts.slice(0, 4).map((p, i) => (
-          <Box key={p._id} sx={{
-            display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5,
-            borderBottom: i < Math.min(posts.length, 4) - 1 ? `1px solid ${BORD}` : 'none',
-          }}>
+          <Box key={p._id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderBottom: i < 3 ? `1px solid ${BORD}` : 'none' }}>
             <Box sx={{ width: 38, height: 38, borderRadius: '10px', flexShrink: 0, background: GRADIENTS[i % 4], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Typography sx={{ fontSize: '18px' }}>{ICONS[i % 4]}</Typography>
             </Box>
@@ -690,22 +447,11 @@ function CompleteScreen({ posts, onBack }: { posts: DailyPost[]; onBack: () => v
           </Box>
         ))}
       </Box>
-
-      {/* Notice */}
       <Box sx={{ width: '100%', p: 1.5, borderRadius: '12px', mb: 3, bgcolor: `${GREEN}18`, border: `1px solid ${GREEN}35`, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography sx={{ fontSize: '16px' }}>🗓️</Typography>
-        <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: GREEN }}>
-          Next week's posts arrive Monday
-        </Typography>
+        <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: GREEN }}>Generate next week's posts anytime</Typography>
       </Box>
-
-      <Button fullWidth onClick={onBack} sx={{
-        bgcolor: CARD, color: TEXT, borderRadius: '14px',
-        textTransform: 'none', fontFamily: FONT, fontWeight: 600, fontSize: '14px',
-        py: 1.6, border: `1px solid ${BORD}`, '&:hover': { bgcolor: '#1e2f28' },
-      }}>
-        Back to dashboard
-      </Button>
+      <Button fullWidth onClick={onBack} sx={{ bgcolor: CARD, color: TEXT, borderRadius: '14px', textTransform: 'none', fontFamily: FONT, fontWeight: 600, fontSize: '14px', py: 1.6, border: `1px solid ${BORD}` }}>Back to dashboard</Button>
     </motion.div>
   );
 }
@@ -715,12 +461,13 @@ export default function SocialContent() {
   const { user } = useSession();
 
   const [appState,   setAppState]   = useState<AppState>('loading');
-  const [activePlan, setActivePlan] = useState<any>(null);
   const [tone,       setTone]       = useState('warm');
   const [showPrices, setShowPrices] = useState('yes');
-  const [genStep,    setGenStep]    = useState(0);
+  const [progress,   setProgress]   = useState(0);
+  const [progLabel,  setProgLabel]  = useState('');
   const [weekOffset, setWeekOffset] = useState(0);
   const [posts,      setPosts]      = useState<DailyPost[]>([]);
+  const [activePlan, setActivePlan] = useState<any>(null);
 
   const pharmacyName = user?.businessName || 'Pharmacy';
   const pharmacyUrl  = user?.username ? `pharmastackx.com/${user.username}` : 'pharmastackx.com';
@@ -741,7 +488,7 @@ export default function SocialContent() {
       const wp: DailyPost[] = data.weekPosts || [];
       setPosts(wp);
       setActivePlan(data.activePlan);
-      if (!data.activePlan) {
+      if (!wp.length) {
         setAppState('onboarding');
       } else if (wp.length >= 4 && wp.every(p => p.status === 'posted')) {
         setAppState('complete');
@@ -756,54 +503,43 @@ export default function SocialContent() {
   useEffect(() => {
     if (appState !== 'active' || weekOffset === prevOffset) return;
     setPrevOffset(weekOffset);
-    fetchWeek(weekOffset).then(data => {
-      if (data) setPosts(data.weekPosts || []);
-    });
+    fetchWeek(weekOffset).then(data => { if (data) setPosts(data.weekPosts || []); });
   }, [weekOffset, appState]);
 
-  const handleGeneratePlan = async () => {
+  const handleGenerateWeek = async () => {
+    if (!user?._id) return;
     setAppState('generating');
-    setGenStep(0);
-    // Request push permission in background — does not block the UI
-    if (user?._id) requestAndSavePush(user._id).catch(console.warn);
+    setProgress(0);
 
-    // Steps 1,2,4,5 animate on a timer; step 3 (images) waits for real API progress
-    const stepDelays = [700, 1100, 0, 1400, 700]; // step 3 duration is real
-    setTimeout(() => setGenStep(1), 700);
-    setTimeout(() => setGenStep(2), 1800);
+    const monday = getMondayLocal(new Date());
+    monday.setDate(monday.getDate() + weekOffset * 7);
+    const newPosts: DailyPost[] = [];
 
-    try {
-      const monday = getMondayLocal(new Date());
+    for (let i = 0; i < WEEK_CATEGORIES.length; i++) {
+      const { label, offset } = WEEK_CATEGORIES[i];
+      const postDate = new Date(monday);
+      postDate.setDate(monday.getDate() + offset);
 
-      // Step 1+2: generate plan + captions (fast, ~10s)
-      const planRes = await axios.post('/api/social/generate-plan', {
-        pharmacyId: user!._id,
-        date:       toYMD(monday),
-        tone,
-        showPrices: showPrices === 'yes',
-      });
+      setProgLabel(`Generating ${label}… (${i + 1} of 4)`);
 
-      const postIds: string[] = planRes.data.postIds || [];
+      try {
+        const res = await axios.post('/api/social/generate-post', {
+          pharmacyId:    user._id,
+          scheduledDate: toYMD(postDate),
+          category:      label,
+          tone,
+          showPrices:    showPrices === 'yes',
+        });
+        if (res.data.post) newPosts.push(res.data.post);
+      } catch (e) {
+        console.error(`Failed to generate post ${i + 1}:`, e);
+      }
 
-      // Step 3: generate images in parallel (one serverless call per post)
-      setGenStep(3);
-      await Promise.allSettled(
-        postIds.map(id => axios.post('/api/social/generate-image', { postId: id }))
-      );
-
-      // Step 4+5: wrap up
-      setGenStep(4);
-      await new Promise(r => setTimeout(r, 800));
-      setGenStep(5);
-      await new Promise(r => setTimeout(r, 600));
-
-      const data = await fetchWeek(0);
-      if (data) { setPosts(data.weekPosts || []); setActivePlan(data.activePlan); }
-    } catch (e) {
-      console.error(e);
+      setProgress(Math.round(((i + 1) / 4) * 100));
     }
 
-    setAppState('active');
+    setPosts(newPosts);
+    setAppState(newPosts.length >= 4 && newPosts.every(p => p.status === 'posted') ? 'complete' : 'active');
   };
 
   const handleMarkAsPosted = async (postId: string) => {
@@ -823,16 +559,14 @@ export default function SocialContent() {
 
   const handleDownload = (post: DailyPost) => {
     if (!post.imageUrl) return;
-    const a = document.createElement('a');
-    a.href = post.imageUrl; a.download = 'social-post.jpg'; a.click();
+    const a = document.createElement('a'); a.href = post.imageUrl; a.download = 'social-post.jpg'; a.click();
   };
 
   const handleShare = async (post: DailyPost) => {
     const text = `${post.caption}\n\n${(post.hashtags || []).map(h => `#${h}`).join(' ')}`;
     try {
       if (post.imageUrl && navigator.canShare) {
-        const r = await fetch(post.imageUrl);
-        const blob = await r.blob();
+        const r = await fetch(post.imageUrl); const blob = await r.blob();
         const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
         if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
       }
@@ -841,44 +575,29 @@ export default function SocialContent() {
   };
 
   if (appState === 'loading') {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress sx={{ color: GREEN }} />
-      </Box>
-    );
+    return <Box sx={{ minHeight: '100vh', bgcolor: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress sx={{ color: GREEN }} /></Box>;
   }
 
   return (
     <Box sx={{ bgcolor: BG, minHeight: '100vh' }}>
       <AnimatePresence mode="wait">
         {appState === 'onboarding' && (
-          <OnboardingScreen key="ob"
-            tone={tone} setTone={setTone}
-            showPrices={showPrices} setShowPrices={setShowPrices}
-            onStart={handleGeneratePlan}
-          />
+          <OnboardingScreen key="ob" tone={tone} setTone={setTone} showPrices={showPrices} setShowPrices={setShowPrices} onStart={handleGenerateWeek} />
         )}
         {appState === 'generating' && (
-          <GeneratingScreen key="gen" currentStep={genStep} />
+          <GeneratingScreen key="gen" progress={progress} currentLabel={progLabel} />
         )}
         {appState === 'active' && (
           <ActiveWeekView key="active"
-            posts={posts}
-            weekOffset={weekOffset}
-            onWeekChange={setWeekOffset}
-            onMarkAsPosted={handleMarkAsPosted}
-            onDownload={handleDownload}
-            onShare={handleShare}
-            onRegenerate={handleRegenerate}
-            pharmacyName={pharmacyName}
-            pharmacyUrl={pharmacyUrl}
+            posts={posts} weekOffset={weekOffset} onWeekChange={setWeekOffset}
+            onMarkAsPosted={handleMarkAsPosted} onDownload={handleDownload}
+            onShare={handleShare} onRegenerate={handleRegenerate}
+            onGenerateMore={handleGenerateWeek}
+            pharmacyName={pharmacyName} pharmacyUrl={pharmacyUrl}
           />
         )}
         {appState === 'complete' && (
-          <CompleteScreen key="complete"
-            posts={posts}
-            onBack={() => { setWeekOffset(1); setAppState('active'); }}
-          />
+          <CompleteScreen key="complete" posts={posts} onBack={() => { setWeekOffset(0); setAppState('active'); }} />
         )}
       </AnimatePresence>
     </Box>
