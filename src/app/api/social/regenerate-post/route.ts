@@ -85,7 +85,7 @@ The user rejected the previous image because: "${reason}". Address this reason c
       
       const imgRes = await (imgModel as any).generateContent({
         contents: [{ role: 'user', parts: [{ text: imgPrompt }] }],
-        generationConfig: { responseModalities: ['image'] },
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
       });
       const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
       if (imgPart?.inlineData) {
