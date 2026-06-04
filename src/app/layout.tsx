@@ -1,6 +1,6 @@
 
 import type { Metadata, Viewport } from "next";
-import { Poppins, Sora, DM_Sans, Fraunces } from "next/font/google";
+import { Poppins, Sora, DM_Sans, Fraunces, Bricolage_Grotesque, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/context/SessionProvider";
 import { CartProvider } from "@/contexts/CartContext";
@@ -14,7 +14,9 @@ import MainLayout from "./MainLayout";
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const sora = Sora({ subsets: ["latin"], weight: ["300", "400", "600", "700", "800"], variable: '--font-sora' });
 const dmSans = DM_Sans({ subsets: ["latin"], weight: ["300", "400", "500"], variable: '--font-dm-sans' });
-const fraunces = Fraunces({ subsets: ["latin"], style: ['normal', 'italic'], variable: '--font-fraunces' });
+const fraunces   = Fraunces({ subsets: ["latin"], style: ['normal', 'italic'], variable: '--font-fraunces' });
+const bricolage  = Bricolage_Grotesque({ subsets: ["latin"], weight: ["400","500","600","700","800"], variable: '--font-bricolage', display: 'swap' });
+const dmMono     = DM_Mono({ subsets: ["latin"], weight: ["400","500"], variable: '--font-dm-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: "Pharmastackx",
@@ -56,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className={`${poppins.className} ${sora.variable} ${dmSans.variable} ${fraunces.variable}`}>
+      <body className={`${poppins.className} ${sora.variable} ${dmSans.variable} ${fraunces.variable} ${bricolage.variable} ${dmMono.variable}`}>
         <Suspense fallback={null}>
           <SessionProvider>
             {/* Wrap with AuthModalProvider */}

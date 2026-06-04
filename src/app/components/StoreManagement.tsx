@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Box, Typography, Button, TextField, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Paper, Checkbox, FormControlLabel,
@@ -51,7 +51,14 @@ interface StockItem {
 
 export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const { user, isLoading: sessionLoading, refreshSession } = useSession();
-  const [selectedTab, setSelectedTab] = useState(0); // 0: Storefront, 1: Social, 2: Orders
+  const [selectedTab, setSelectedTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get('tab');
+      if (t === '1' || t === 'social') return 1;
+    }
+    return 0;
+  }); // 0: Storefront, 1: Social, 2: Orders
   const [storefrontView, setStorefrontView] = useState<'share' | 'upload' | 'stock'>('share');
   const [userBusinessName, setUserBusinessName] = useState('');
   const [userSlug, setUserSlug] = useState('');

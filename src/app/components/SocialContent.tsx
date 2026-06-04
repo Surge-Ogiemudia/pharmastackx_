@@ -1,651 +1,868 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Button, TextField, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
-import { Add, Delete, Share, ExpandMore, ExpandLess, ChevronLeft, ChevronRight, CalendarMonth } from '@mui/icons-material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Button, IconButton, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import {
+  ChevronLeft, ChevronRight, FileDownload, IosShare,
+  Lock, CheckCircle,
+} from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
 
-const PHOTO_TAGS = ['staff', 'store', 'product', 'event', 'other'] as const;
-type PhotoTag = typeof PHOTO_TAGS[number];
-
-const G = '#0F6E56';
-const P = '#C84B8F';
-const BORDER = '1px solid rgba(0,0,0,0.06)';
-
-interface SocialPhoto { url: string; tag: PhotoTag; uploadedAt?: string; description?: string; }
-
-async function encodeImage(file: File): Promise<{ data: string; contentType: string; filename: string }> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 1200;
-        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const data = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-        resolve({ data, contentType: 'image/jpeg', filename: file.name });
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw     = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
-export default function SocialContent() {
-  const { user, refreshSession } = useSession();
+async function requestAndSavePush(pharmacyId: string): Promise<void> {
+  try {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) return;
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as ArrayBuffer,
+    });
+    await axios.post('/api/notifications/subscribe', { pharmacyId, subscription: subscription.toJSON() });
+  } catch (err) {
+    console.warn('Push subscription failed (non-fatal):', err);
+  }
+}
 
-  // Brand kit
-  const [brandPrimary, setBrandPrimary] = useState<string>(user?.brandKit?.primaryColor || G);
-  const [brandSecondary, setBrandSecondary] = useState<string>(user?.brandKit?.secondaryColor || P);
-  const [tagline, setTagline] = useState<string>(user?.brandKit?.tagline || '');
-  const [logoUrl, setLogoUrl] = useState<string>(user?.brandKit?.logoUrl || '');
-  const [savingBrand, setSavingBrand] = useState(false);
-  const [brandKitOpen, setBrandKitOpen] = useState(!user?.hasSetupBrandKit);
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const BG    = '#080D0B';
+const CARD  = '#141F1A';
+const GREEN = '#0F6E56';
+const GBRI  = '#1DB88A';
+const TEXT  = '#E8F0EC';
+const MUTED = 'rgba(232,240,236,0.45)';
+const BORD  = 'rgba(255,255,255,0.07)';
+const FONT  = "var(--font-bricolage), 'Poppins', sans-serif";
+const MONO  = "var(--font-dm-mono), 'Courier New', monospace";
 
-  // Photo library
-  const [photos, setPhotos] = useState<SocialPhoto[]>((user?.socialPhotos as SocialPhoto[]) || []);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  
-  // Photo upload context modal
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [photoDescription, setPhotoDescription] = useState('');
+const GRADIENTS = [
+  'linear-gradient(135deg, #0F6E56 0%, #052418 100%)',
+  'linear-gradient(135deg, #5B21B6 0%, #1E0845 100%)',
+  'linear-gradient(135deg, #B45309 0%, #431407 100%)',
+  'linear-gradient(135deg, #0E7490 0%, #042933 100%)',
+];
+const ACCENTS = ['#1DB88A', '#A78BFA', '#FCD34D', '#22D3EE'];
+const LABELS  = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'];
+const ICONS   = ['💊', '🌿', '⚠️', '🤝'];
+const SPARKLES = ['✨', '⭐', '💫', '✦', '✧'];
+const GEN_STEPS = [
+  'Reading inventory from POS',
+  'Checking health awareness calendar',
+  'Generating branded graphics',
+  'Writing captions in your tone',
+  'Scheduling your weekly plan',
+];
+const PRO_FEATURES = [
+  { icon: '🎥', name: 'Video Reels',     desc: 'Auto-scripted reels'   },
+  { icon: '🎠', name: 'Carousel Posts',  desc: 'Multi-slide posts'      },
+  { icon: '⚡', name: 'Auto-posting',    desc: 'Schedule & publish'     },
+  { icon: '📊', name: 'Analytics',       desc: 'Reach & engagement'     },
+];
 
-  // Content Plan & Review
-  const [activeTab, setActiveTab] = useState<'images' | 'videos'>('images');
-  
-  // Date Carousel state
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    return d;
-  });
-  
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [todaysVideoIdea, setTodaysVideoIdea] = useState<any>(null);
-  const [isCaptionExpanded, setIsCaptionExpanded] = useState<boolean>(false);
-  const [activePlan, setActivePlan] = useState<any>(null);
-  const [loadingPlan, setLoadingPlan] = useState(true);
-  const [updatingPost, setUpdatingPost] = useState(false);
-  const [shared, setShared] = useState(false);
-  const [generatingPlan, setGeneratingPlan] = useState(false);
-  const [isStrategyExpanded, setIsStrategyExpanded] = useState(false);
-  
-  // Reject/Regenerate Modal
-  const [reasonModalOpen, setReasonModalOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [regeneratingPost, setRegeneratingPost] = useState(false);
+type AppState = 'loading' | 'onboarding' | 'generating' | 'active' | 'complete';
 
-  const isToday = (d: Date) => {
-    const t = new Date();
-    return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
-  };
+interface DailyPost {
+  _id: string;
+  scheduledDate: string;
+  caption: string;
+  hashtags: string[];
+  imageUrl: string;
+  status: 'pending_review' | 'ready_to_post' | 'posted' | 'flagged';
+  regenCount: number;
+}
 
-  const fetchContent = (date: Date) => {
-    if (!user?._id) return;
-    setLoadingPlan(true);
-    
-    // Format local date exactly as YYYY-MM-DD
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const dateString = `${yyyy}-${mm}-${dd}`;
-    
-    axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${dateString}`).then(res => {
-      setSelectedPost(res.data.selectedPost);
-      setActivePlan(res.data.activePlan || res.data.pendingPlan);
-      // We always want today's post just to extract the video idea if it exists.
-      // But actually DailyPost contains videoIdeaText.
-      setTodaysVideoIdea(res.data.todaysPost?.videoIdeaText || res.data.selectedPost?.videoIdeaText);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getMondayLocal(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return d;
+}
 
-      if (!res.data.activePlan && !res.data.pendingPlan && isToday(date)) {
-        setGeneratingPlan(true);
-        axios.post('/api/social/generate-plan', { pharmacyId: user._id, date: dateString })
-          .then(() => axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${dateString}`))
-          .then(refetchRes => {
-            setSelectedPost(refetchRes.data.selectedPost);
-            setActivePlan(refetchRes.data.activePlan || refetchRes.data.pendingPlan);
-            setTodaysVideoIdea(refetchRes.data.todaysPost?.videoIdeaText || refetchRes.data.selectedPost?.videoIdeaText);
-          })
-          .catch(console.error)
-          .finally(() => setGeneratingPlan(false));
-      }
-    }).catch(console.error).finally(() => setLoadingPlan(false));
-  };
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
-  useEffect(() => {
-    fetchContent(selectedDate);
-  }, [user?._id, selectedDate]);
+function fmtRange(mon: Date): string {
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  return `${mon.toLocaleDateString('default', o)} – ${sun.toLocaleDateString('default', o)}`;
+}
 
-  const changeDate = (days: number) => {
-    const nd = new Date(selectedDate);
-    nd.setDate(nd.getDate() + days);
-    setSelectedDate(nd);
-  };
+function fmtDay(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('default', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
-  const handleApprove = async (postId: string) => {
-    setUpdatingPost(true);
-    try {
-      const res = await axios.put('/api/social/manage', { postId, status: 'ready_to_post' });
-      setSelectedPost(res.data.post);
-    } catch(e) { console.error(e); }
-    finally { setUpdatingPost(false); }
-  };
-
-  const handleRegenerateSubmit = async () => {
-    if (!selectedPost || !rejectionReason.trim()) return;
-    setRegeneratingPost(true);
-    try {
-      const res = await axios.post('/api/social/regenerate-post', { 
-        postId: selectedPost._id, 
-        reason: rejectionReason 
-      });
-      setSelectedPost(res.data.post);
-      setReasonModalOpen(false);
-      setRejectionReason('');
-    } catch(e) { console.error(e); }
-    finally { setRegeneratingPost(false); }
-  };
-
-  const saveBrandKit = async () => {
-    setSavingBrand(true);
-    try {
-      await axios.put('/api/account', {
-        brandKit: { primaryColor: brandPrimary, secondaryColor: brandSecondary, tagline, logoUrl },
-      });
-      if (refreshSession) await refreshSession();
-    } catch (e) { console.error(e); }
-    finally { setSavingBrand(false); }
-  };
-
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const { data, contentType, filename } = await encodeImage(file);
-    const res = await axios.post('/api/social/photos', { data, contentType, filename, tag: 'other' });
-    setLogoUrl(res.data.url);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []) as File[];
-    if (files.length) {
-      setPendingFiles(files);
-    }
-  };
-
-  const confirmPhotoUpload = async () => {
-    if (!pendingFiles.length || !photoDescription.trim()) return;
-    setUploadingPhoto(true);
-    try {
-      for (const file of pendingFiles) {
-        const { data, contentType, filename } = await encodeImage(file);
-        const res = await axios.post('/api/social/photos', { 
-          data, contentType, filename, tag: 'other', description: photoDescription 
-        });
-        setPhotos(prev => [{ url: res.data.url, tag: 'other', uploadedAt: new Date().toISOString(), description: photoDescription }, ...prev]);
-      }
-    } finally { 
-      setUploadingPhoto(false); 
-      setPendingFiles([]);
-      setPhotoDescription('');
-      if (photoInputRef.current) photoInputRef.current.value = ''; 
-    }
-  };
-
-  const handleDeletePhoto = async (url: string) => {
-    await axios.delete('/api/social/photos', { data: { url } });
-    setPhotos(prev => prev.filter(p => p.url !== url));
-  };
-
-  const updatePhotoTag = (url: string, tag: PhotoTag) => {
-    setPhotos(prev => prev.map(p => p.url === url ? { ...p, tag } : p));
-  };
-
-  const handlePost = async (post: any) => {
-    if (!post || !post.imageUrl) return;
-    const text = `${post.caption}\n\n${(post.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
-
-    try {
-      const res = await fetch(post.imageUrl);
-      const blob = await res.blob();
-      const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], text });
-        return;
-      }
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return;
-    }
-
-    try { navigator.clipboard.writeText(text); } catch {}
-    const a = document.createElement('a');
-    a.href = post.imageUrl;
-    a.download = 'social-post.jpg';
-    a.click();
-    setShared(true);
-    setTimeout(() => setShared(false), 3000);
-  };
-
-  const cardSx = { bgcolor: '#fff', borderRadius: '20px', p: 2.5, border: BORDER, mb: 2 };
-  const sectionLabelSx = { fontSize: '9px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 };
+// ── PostGraphic ───────────────────────────────────────────────────────────────
+function PostGraphic({ post, idx, name, url }: {
+  post: DailyPost | null; idx: number; name: string; url: string;
+}) {
+  const NOISE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E\")";
+  const GRID  = `repeating-linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px,transparent 44px),repeating-linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px,transparent 44px)`;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <Box sx={{
+      position: 'relative', width: '100%', aspectRatio: '1/1',
+      borderRadius: '16px', overflow: 'hidden', background: GRADIENTS[idx % 4], flexShrink: 0,
+    }}>
+      <Box sx={{ position: 'absolute', inset: 0, zIndex: 1, backgroundImage: GRID }} />
+      <Box sx={{ position: 'absolute', inset: 0, zIndex: 1, backgroundImage: NOISE }} />
 
-      <Box sx={{ ...cardSx, p: brandKitOpen ? 2.5 : 0, overflow: 'hidden' }}>
-        <Box
-          onClick={() => setBrandKitOpen(o => !o)}
-          sx={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
-            p: 2.5,
-            ...(brandKitOpen ? {} : {
-              background: `radial-gradient(circle at top right, ${brandPrimary}33, transparent 40%), radial-gradient(circle at bottom left, ${brandSecondary}33, transparent 40%), linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4))`,
-              backdropFilter: 'blur(10px)',
-              borderBottom: '1px solid rgba(255,255,255,0.5)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
-              color: '#333',
-            })
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {!brandKitOpen && (
-              <Box sx={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${brandPrimary}, ${brandSecondary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                <Typography sx={{ fontSize: '14px', color: '#fff' }}>✨</Typography>
-              </Box>
-            )}
-            <Typography sx={{ ...sectionLabelSx, mb: 0, color: brandKitOpen ? 'rgba(0,0,0,0.3)' : '#111', fontWeight: brandKitOpen ? 600 : 700, letterSpacing: brandKitOpen ? '1px' : '-0.2px' }}>
-              {brandKitOpen ? 'Brand Kit' : 'Your Brand Identity'}
-            </Typography>
-          </Box>
-          {brandKitOpen ? <ExpandLess sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.3)' }} /> : <ExpandMore sx={{ fontSize: '20px', color: '#666' }} />}
+      {post?.imageUrl ? (
+        <Box component="img" src={post.imageUrl}
+          sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2 }} />
+      ) : (
+        <Box sx={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+          <Typography sx={{ fontSize: '52px' }}>{ICONS[idx % 4]}</Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', textAlign: 'center', px: 3, lineHeight: 1.4 }}>
+            {post ? 'Image generation failed — tap to retry' : LABELS[idx % 4]}
+          </Typography>
         </Box>
+      )}
 
-        <AnimatePresence initial={false}>
-          {brandKitOpen && (
-            <motion.div
-              key="brand-kit-body"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              style={{ overflow: 'hidden' }}
+      {/* Vignette */}
+      <Box sx={{
+        position: 'absolute', inset: 0, zIndex: 3,
+        background: 'linear-gradient(to bottom,rgba(0,0,0,0.42) 0%,transparent 30%,transparent 62%,rgba(0,0,0,0.62) 100%)',
+      }} />
+
+      {/* Pharmacy name top-left */}
+      <Typography sx={{ position: 'absolute', top: 14, left: 14, zIndex: 4, fontFamily: MONO, fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+        {name}
+      </Typography>
+
+      {/* URL bottom-right */}
+      <Typography sx={{ position: 'absolute', bottom: 14, right: 14, zIndex: 4, fontFamily: MONO, fontSize: '8px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3px' }}>
+        {url}
+      </Typography>
+
+      {/* Date badge top-right */}
+      {post?.scheduledDate && (
+        <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 4, bgcolor: 'rgba(0,0,0,0.52)', backdropFilter: 'blur(8px)', borderRadius: '8px', px: 1, py: 0.4, border: '1px solid rgba(255,255,255,0.14)' }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: '#fff', fontWeight: 500 }}>
+            {fmtDay(post.scheduledDate)}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// ── State 1 — Onboarding ──────────────────────────────────────────────────────
+function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }: {
+  tone: string; setTone: (v: string) => void;
+  showPrices: string; setShowPrices: (v: string) => void;
+  onStart: () => void;
+}) {
+  const toneOpts = [
+    { val: 'warm',         label: 'Warm and friendly'       },
+    { val: 'professional', label: 'Professional and clinical' },
+    { val: 'bold',         label: 'Bold and energetic'       },
+  ];
+  const priceOpts = [
+    { val: 'yes', label: 'Yes, include pricing'  },
+    { val: 'no',  label: 'No, keep it general'   },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.35 }}
+      style={{ padding: '24px 20px 48px', minHeight: '100vh', background: BG }}
+    >
+      {/* Floating sparkles */}
+      <Box sx={{ position: 'relative', height: 72, mb: 0.5, overflow: 'hidden' }}>
+        {SPARKLES.map((s, i) => (
+          <motion.div key={i}
+            style={{ position: 'absolute', left: `${10 + i * 19}%`, top: `${8 + (i % 2) * 32}%`, fontSize: 22, userSelect: 'none' }}
+            animate={{ y: [0, -10, 0], opacity: [0.55, 1, 0.55] }}
+            transition={{ duration: 2 + i * 0.35, repeat: Infinity, delay: i * 0.28 }}
+          >{s}</motion.div>
+        ))}
+      </Box>
+
+      <Typography sx={{ fontFamily: FONT, fontSize: '28px', fontWeight: 800, color: TEXT, lineHeight: 1.15, mb: 1.5 }}>
+        Your pharmacy,<br />on social media.
+      </Typography>
+      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: MUTED, lineHeight: 1.65, mb: 3 }}>
+        We generate 4 posts a week — Mon, Wed, Fri, Sat — pulling directly from your inventory. Health tips, product spotlights, and more. All branded, ready to share.
+      </Typography>
+
+      {/* Post type horizontal scroll */}
+      <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', pb: 1.5, mb: 3.5, mx: -2.5, px: 2.5, '&::-webkit-scrollbar': { display: 'none' } }}>
+        {LABELS.map((label, i) => (
+          <Box key={i} sx={{
+            minWidth: 98, height: 114, borderRadius: '14px', flexShrink: 0,
+            background: GRADIENTS[i], position: 'relative', overflow: 'hidden',
+            border: `1px solid rgba(255,255,255,0.08)`,
+          }}>
+            <Box sx={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `repeating-linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px)`,
+            }} />
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', p: 1.5, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)' }}>
+              <Typography sx={{ fontSize: '20px', mb: 0.5 }}>{ICONS[i]}</Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{label}</Typography>
+            </Box>
+          </Box>
+        ))}
+      </Box>
+
+      {/* Tone */}
+      <Box sx={{ mb: 2.5 }}>
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
+          Preferred tone
+        </Typography>
+        {toneOpts.map(opt => (
+          <Box key={opt.val} onClick={() => setTone(opt.val)} sx={{
+            display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
+            p: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+            border: `1px solid ${tone === opt.val ? GREEN : BORD}`,
+            bgcolor: tone === opt.val ? `${GREEN}1A` : 'transparent',
+            transition: 'all 0.15s',
+          }}>
+            <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${tone === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {tone === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
+            </Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: tone === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {/* Show prices */}
+      <Box sx={{ mb: 4 }}>
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
+          Show prices on posts?
+        </Typography>
+        {priceOpts.map(opt => (
+          <Box key={opt.val} onClick={() => setShowPrices(opt.val)} sx={{
+            display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
+            p: '10px 14px', borderRadius: '12px', cursor: 'pointer',
+            border: `1px solid ${showPrices === opt.val ? GREEN : BORD}`,
+            bgcolor: showPrices === opt.val ? `${GREEN}1A` : 'transparent',
+            transition: 'all 0.15s',
+          }}>
+            <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${showPrices === opt.val ? GREEN : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {showPrices === opt.val && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: GREEN }} />}
+            </Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: showPrices === opt.val ? TEXT : MUTED }}>{opt.label}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      <Button fullWidth onClick={onStart} sx={{
+        bgcolor: GREEN, color: '#fff', borderRadius: '14px',
+        textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '16px', py: 1.9,
+        boxShadow: `0 0 32px ${GREEN}55`,
+        '&:hover': { bgcolor: '#0a5a45', boxShadow: `0 0 44px ${GREEN}77` },
+        transition: 'all 0.2s',
+      }}>
+        Generate my first week's content ✦
+      </Button>
+    </motion.div>
+  );
+}
+
+// ── State 2 — Generating ──────────────────────────────────────────────────────
+function GeneratingScreen({ currentStep }: { currentStep: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ minHeight: '100vh', background: BG, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}
+    >
+      {/* Pulsing icon */}
+      <Box sx={{ position: 'relative', mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <motion.div
+          animate={{ scale: [1, 1.6, 1], opacity: [0.35, 0.12, 0.35] }}
+          transition={{ duration: 2.2, repeat: Infinity }}
+          style={{ position: 'absolute', width: 96, height: 96, borderRadius: '50%', background: `radial-gradient(circle, ${GREEN}80, transparent 70%)` }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.07, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+          style={{ width: 64, height: 64, borderRadius: '50%', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', position: 'relative' }}
+        >
+          ✦
+        </motion.div>
+      </Box>
+
+      <Typography sx={{ fontFamily: FONT, fontSize: '24px', fontWeight: 800, color: TEXT, mb: 0.5, textAlign: 'center' }}>
+        Building your content plan.
+      </Typography>
+      <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 4.5, textAlign: 'center' }}>
+        This takes about 20–30 seconds
+      </Typography>
+
+      <Box sx={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {GEN_STEPS.map((step, i) => {
+          const isDone   = currentStep > i;
+          const isActive = currentStep === i;
+          return (
+            <motion.div key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: isDone || isActive ? 1 : 0.3, x: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.3 }}
             >
-              <Box sx={{ pt: 2 }}>
+              <Box sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5,
+                p: 1.5, borderRadius: '12px',
+                bgcolor: isActive ? `${GREEN}18` : 'transparent',
+                border: `1px solid ${isActive ? `${GREEN}40` : 'transparent'}`,
+                transition: 'all 0.3s',
+              }}>
+                <Box sx={{ width: 22, height: 22, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isDone ? (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 320 }}>
+                      <CheckCircle sx={{ color: GBRI, fontSize: 20 }} />
+                    </motion.div>
+                  ) : isActive ? (
+                    <CircularProgress size={16} sx={{ color: GREEN }} />
+                  ) : (
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.15)', mx: 'auto' }} />
+                  )}
+                </Box>
+                <Typography sx={{
+                  fontFamily: FONT, fontSize: '14px',
+                  color: isDone ? GBRI : isActive ? TEXT : MUTED,
+                  fontWeight: isDone || isActive ? 600 : 400,
+                  transition: 'color 0.3s',
+                }}>
+                  {step}
+                </Typography>
+              </Box>
+            </motion.div>
+          );
+        })}
+      </Box>
+    </motion.div>
+  );
+}
 
-                <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
-                  {[
-                    { label: 'Primary', value: brandPrimary, set: setBrandPrimary },
-                    { label: 'Secondary', value: brandSecondary, set: setBrandSecondary },
-                  ].map(({ label, value, set }) => (
-                    <Box key={label} sx={{ flex: 1 }}>
-                      <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>{label}</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f9f9f7', borderRadius: '12px', p: 1, border: BORDER }}>
-                        <Box
-                          component="label"
-                          sx={{ width: 28, height: 28, borderRadius: '8px', bgcolor: value, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-                        >
-                          <input type="color" value={value} onChange={e => set(e.target.value)} style={{ opacity: 0, width: 0, height: 0 }} />
-                        </Box>
-                        <Typography sx={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', color: '#333' }}>{value}</Typography>
-                      </Box>
+// ── Locked Section ────────────────────────────────────────────────────────────
+function LockedSection() {
+  return (
+    <Box sx={{ px: 2, pt: 1, pb: 4 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <Lock sx={{ fontSize: 13, color: MUTED }} />
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>
+          Pro features
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1.5 }}>
+        {PRO_FEATURES.map((f, i) => (
+          <Box key={i} sx={{ bgcolor: CARD, borderRadius: '14px', p: 1.5, border: `1px solid ${BORD}`, opacity: 0.65 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+              <Typography sx={{ fontSize: '22px' }}>{f.icon}</Typography>
+              <Lock sx={{ fontSize: 13, color: 'rgba(255,255,255,0.18)' }} />
+            </Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 700, color: TEXT }}>{f.name}</Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED }}>{f.desc}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      <Box sx={{
+        borderRadius: '14px', p: 2,
+        background: 'linear-gradient(135deg, #1E3A5F 0%, #0F1F3A 100%)',
+        border: '1px solid rgba(59,130,246,0.22)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+      }}>
+        <Box>
+          <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#93C5FD' }}>
+            Upgrade to Social Pro
+          </Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: 'rgba(147,197,253,0.55)' }}>
+            Unlock all 4 premium features
+          </Typography>
+        </Box>
+        <Button sx={{
+          bgcolor: '#2563EB', color: '#fff', borderRadius: '10px',
+          textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '12px',
+          px: 2, py: 0.8, flexShrink: 0, '&:hover': { bgcolor: '#1D4ED8' },
+        }}>
+          Upgrade
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+// ── State 3 — Active Week View ────────────────────────────────────────────────
+function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDownload, onShare, onRegenerate, pharmacyName, pharmacyUrl }: {
+  posts: DailyPost[];
+  weekOffset: number;
+  onWeekChange: (n: number) => void;
+  onMarkAsPosted: (id: string) => void;
+  onDownload: (p: DailyPost) => void;
+  onShare: (p: DailyPost) => void;
+  onRegenerate: (postId: string, reason: string) => Promise<void>;
+  pharmacyName: string;
+  pharmacyUrl: string;
+}) {
+  const [activeIdx, setActiveIdx]         = useState(0);
+  const [captionExpanded, setCaptionExp]  = useState(false);
+  const [marking, setMarking]             = useState(false);
+  const [regenerating, setRegenerating]   = useState(false);
+  const [regenError, setRegenError]       = useState('');
+  const [regenReason, setRegenReason]     = useState('');
+  const [regenModalOpen, setRegenModal]   = useState(false);
+
+  // Jump to first non-posted on posts change
+  useEffect(() => {
+    const first = posts.findIndex(p => p.status !== 'posted');
+    setActiveIdx(first >= 0 ? first : 0);
+    setCaptionExp(false);
+  }, [posts]);
+
+  const navigateTo = (idx: number) => { setActiveIdx(idx); setCaptionExp(false); };
+
+  const monday    = getMondayLocal(new Date());
+  monday.setDate(monday.getDate() + weekOffset * 7);
+  const weekRange = fmtRange(monday);
+  const post      = posts[activeIdx] ?? null;
+  const isPosted  = post?.status === 'posted';
+
+  const handleMark = async () => {
+    if (!post || marking || isPosted) return;
+    setMarking(true);
+    await onMarkAsPosted(post._id);
+    setMarking(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ background: BG, minHeight: '100vh' }}
+    >
+      {/* Week navigator */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 2 }}>
+        <IconButton onClick={() => onWeekChange(weekOffset - 1)} size="small"
+          sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}>
+          <ChevronLeft sx={{ fontSize: 20 }} />
+        </IconButton>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>Week</Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: '15px', fontWeight: 700, color: TEXT }}>{weekRange}</Typography>
+        </Box>
+        <IconButton onClick={() => onWeekChange(weekOffset + 1)} size="small"
+          sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}>
+          <ChevronRight sx={{ fontSize: 20 }} />
+        </IconButton>
+      </Box>
+
+      {/* Progress dots */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.75, mb: 2.5 }}>
+        {[0, 1, 2, 3].map(i => {
+          const p = posts[i];
+          const isA = i === activeIdx;
+          const done = p?.status === 'posted';
+          return (
+            <motion.div key={i} onClick={() => navigateTo(i)}
+              animate={{ width: isA ? 24 : 8 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              style={{ height: 8, borderRadius: 4, cursor: 'pointer', backgroundColor: done ? GBRI : isA ? GREEN : 'rgba(255,255,255,0.18)' }}
+            />
+          );
+        })}
+      </Box>
+
+      {/* Post card */}
+      <Box sx={{ px: 2, mb: 2 }}>
+        <AnimatePresence mode="wait">
+          <motion.div key={activeIdx}
+            initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Box sx={{ bgcolor: CARD, borderRadius: '20px', overflow: 'hidden', border: `1px solid ${BORD}` }}>
+              {/* Graphic */}
+              <Box sx={{ p: 1.5, pb: 0 }}>
+                <PostGraphic post={post} idx={activeIdx} name={pharmacyName} url={pharmacyUrl} />
+              </Box>
+
+              <Box sx={{ p: 2 }}>
+                {/* Status + platform badges */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+                  <Box sx={{ px: 1.2, py: 0.3, borderRadius: '6px', bgcolor: isPosted ? `${GBRI}22` : `${GREEN}22`, border: `1px solid ${isPosted ? `${GBRI}40` : `${GREEN}40`}` }}>
+                    <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: isPosted ? GBRI : GREEN, letterSpacing: '0.4px' }}>
+                      {isPosted ? '✓ Posted' : post?.status === 'ready_to_post' ? 'Ready' : post ? 'Needs Review' : 'Pending'}
+                    </Typography>
+                  </Box>
+                  {['Instagram', 'Facebook'].map(pl => (
+                    <Box key={pl} sx={{ px: 1, py: 0.3, borderRadius: '6px', border: `1px solid ${BORD}` }}>
+                      <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>{pl}</Typography>
                     </Box>
                   ))}
                 </Box>
 
-                <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Logo</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                  {logoUrl ? (
-                    <Box sx={{ width: 56, height: 56, borderRadius: '12px', overflow: 'hidden', border: BORDER, flexShrink: 0 }}>
-                      <img src={logoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </Box>
-                  ) : (
-                    <Box sx={{ width: 56, height: 56, borderRadius: '12px', bgcolor: brandPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '16px', fontFamily: 'Poppins, sans-serif' }}>
-                        {(user?.businessName || user?.username || 'P').charAt(0).toUpperCase()}
-                      </Typography>
-                    </Box>
-                  )}
-                  <Button
-                    component="label"
-                    size="small"
-                    sx={{ bgcolor: '#f4f4f2', color: '#333', borderRadius: '10px', textTransform: 'none', fontSize: '12px', fontWeight: 600, px: 1.5, py: 0.8, boxShadow: 'none' }}
-                  >
-                    {logoUrl ? 'Change logo' : 'Upload logo'}
-                    <input ref={logoInputRef} type="file" accept="image/*" hidden onChange={handleLogoUpload} />
-                  </Button>
-                  {logoUrl && (
-                    <Button size="small" onClick={() => setLogoUrl('')} sx={{ color: '#999', textTransform: 'none', fontSize: '12px', minWidth: 0, p: 0.5 }}>
-                      Remove
-                    </Button>
-                  )}
-                </Box>
-
-                <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', mb: 0.5 }}>Tagline</Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="e.g. Your health, our priority"
-                  value={tagline}
-                  onChange={e => setTagline(e.target.value)}
-                  sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#f9f9f7' } }}
-                />
-
-                <Button
-                  fullWidth
-                  onClick={saveBrandKit}
-                  disabled={savingBrand}
-                  sx={{ bgcolor: G, color: '#fff', borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', py: 1.2, boxShadow: 'none', '&:hover': { bgcolor: '#0a5a45', boxShadow: 'none' } }}
-                >
-                  {savingBrand ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save brand kit'}
-                </Button>
-
-                <Box sx={{ mt: 2.5, pt: 2, borderTop: BORDER }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                    <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Photo Library ({photos.length})</Typography>
-                    <Button
-                      component="label"
-                      size="small"
-                      disabled={uploadingPhoto}
-                      startIcon={uploadingPhoto ? <CircularProgress size={12} /> : <Add sx={{ fontSize: '16px' }} />}
-                      sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '11px', px: 1.5, py: 0.7, boxShadow: 'none', minWidth: 0 }}
-                    >
-                      Add photos
-                      <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={handleFileSelect} />
-                    </Button>
-                  </Box>
-
-                  {photos.length === 0 ? (
-                    <Box
-                      component="label"
-                      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '16px', py: 4, cursor: 'pointer' }}
-                    >
-                      <Typography sx={{ fontSize: '28px' }}>📸</Typography>
-                      <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.4)' }}>Add photos to your library</Typography>
-                      <Typography sx={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>Staff, store, products — anything</Typography>
-                      <input type="file" accept="image/*" multiple hidden onChange={handleFileSelect} />
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-                      {photos.map((photo) => (
-                        <Box key={photo.url} sx={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', bgcolor: '#f0f0ee' }}>
-                          <img src={photo.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <Box
-                            sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'rgba(0,0,0,0.6)', borderRadius: '6px', px: 0.8, py: 0.2, cursor: 'pointer' }}
-                            onClick={() => {
-                              const idx = PHOTO_TAGS.indexOf(photo.tag);
-                              updatePhotoTag(photo.url, PHOTO_TAGS[(idx + 1) % PHOTO_TAGS.length]);
-                            }}
-                          >
-                            <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 700, textTransform: 'capitalize' }}>{photo.tag}</Typography>
-                          </Box>
-                          <Box
-                            onClick={() => handleDeletePhoto(photo.url)}
-                            sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                          >
-                            <Delete sx={{ fontSize: '12px', color: '#fff' }} />
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-
-              </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Box>
-
-      {/* ── TABS ──────────────────────────────────────────────────────── */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-        <Button
-          onClick={() => setActiveTab('images')}
-          sx={{ flex: 1, py: 1.2, borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', bgcolor: activeTab === 'images' ? G : '#fff', color: activeTab === 'images' ? '#fff' : 'rgba(0,0,0,0.5)', border: activeTab === 'images' ? 'none' : BORDER }}
-        >
-          Designed Post (Images)
-        </Button>
-        <Button
-          onClick={() => setActiveTab('videos')}
-          sx={{ flex: 1, py: 1.2, borderRadius: '12px', textTransform: 'none', fontWeight: 700, fontSize: '13px', bgcolor: activeTab === 'videos' ? G : '#fff', color: activeTab === 'videos' ? '#fff' : 'rgba(0,0,0,0.5)', border: activeTab === 'videos' ? 'none' : BORDER }}
-        >
-          Video Post
-        </Button>
-      </Box>
-
-      {/* ── DATE CAROUSEL ─────────────────────────────────────────────── */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#fff', p: 1.5, borderRadius: '16px', border: BORDER, mb: 2 }}>
-        <IconButton onClick={() => changeDate(-1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronLeft sx={{ color: '#333' }} /></IconButton>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CalendarMonth sx={{ fontSize: '16px', color: G }} />
-          <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#333' }}>
-            {isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </Typography>
-        </Box>
-        <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: '#f4f4f2' }}><ChevronRight sx={{ color: '#333' }} /></IconButton>
-      </Box>
-
-      {/* ── IMAGES TAB ────────────────────────────────────────────────── */}
-      {activeTab === 'images' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-
-          {loadingPlan ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={24} sx={{ color: G }} /></Box>
-          ) : (
-            <>
-              {selectedPost ? (
-                <Box sx={{ ...cardSx, border: selectedPost.status === 'pending_review' ? `2px solid ${P}40` : BORDER }}>
-                  {selectedPost.status === 'ready_to_post' && (
-                    <Typography sx={{...sectionLabelSx, color: G, display: 'flex', alignItems: 'center', gap: 0.5}}>✅ Ready to Post</Typography>
-                  )}
-                  {selectedPost.status === 'pending_review' && (
-                    <Typography sx={{...sectionLabelSx, color: P, display: 'flex', alignItems: 'center', gap: 0.5}}>👀 Needs Review</Typography>
-                  )}
-
-                  <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
-                    <Box sx={{ width: '100%', height: 'auto', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, bgcolor: '#f0f0ee' }}>
-                      {selectedPost.imageUrl && <img src={selectedPost.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </Box>
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Box sx={{ mb: 1 }}>
-                        <Typography sx={{ fontSize: '12px', color: '#222', lineHeight: 1.5 }}>
-                          {selectedPost.status === 'pending_review' 
-                            ? selectedPost.caption 
-                            : (isCaptionExpanded || selectedPost.caption?.length <= 80 
-                                ? selectedPost.caption 
-                                : `${selectedPost.caption?.substring(0, 80)}...`)}
-                          
-                          {selectedPost.status !== 'pending_review' && selectedPost.caption?.length > 80 && (
-                            <Typography 
-                              component="span" 
-                              onClick={() => setIsCaptionExpanded(!isCaptionExpanded)}
-                              sx={{ color: G, fontWeight: 700, cursor: 'pointer', ml: 0.5 }}
-                            >
-                              {isCaptionExpanded ? 'Show less' : 'Read more'}
-                            </Typography>
-                          )}
-                        </Typography>
-                      </Box>
-                      
-                      <Typography sx={{ fontSize: '11px', color: G, fontWeight: 600, mb: 2 }}>
-                        {(selectedPost.hashtags || []).map((h: string) => `#${h}`).join(' ')}
-                      </Typography>
-                      
-                      <Box sx={{ mt: 'auto', display: 'flex', gap: 1 }}>
-                        {selectedPost.status === 'ready_to_post' && (
-                          <>
-                            {isToday(selectedDate) && (
-                               <Button
-                               onClick={() => setReasonModalOpen(true)}
-                               sx={{ flex: 1, bgcolor: '#fceaea', color: '#c0392b', borderRadius: '10px', textTransform: 'none', fontWeight: 600, fontSize: '12px', py: 0.8, boxShadow: 'none' }}
-                             >
-                               Regenerate
-                             </Button>
-                            )}
-                            <Button
-                              onClick={() => handlePost(selectedPost)}
-                              startIcon={<Share sx={{ fontSize: '16px' }} />}
-                              sx={{ flex: 1, bgcolor: shared ? '#2e7d5a' : G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 0.8, boxShadow: 'none' }}
-                            >
-                              {shared ? 'Copied' : 'Share'}
-                            </Button>
-                          </>
-                        )}
-                        {selectedPost.status === 'pending_review' && (
-                          <>
-                            <Button
-                              fullWidth
-                              onClick={() => setReasonModalOpen(true)}
-                              disabled={updatingPost}
-                              sx={{ bgcolor: '#fceaea', color: '#c0392b', borderRadius: '10px', textTransform: 'none', fontWeight: 600, fontSize: '12px', py: 1 }}
-                            >
-                              Flag / Reject
-                            </Button>
-                            <Button
-                              fullWidth
-                              onClick={() => handleApprove(selectedPost._id)}
-                              disabled={updatingPost}
-                              sx={{ bgcolor: G, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '12px', py: 1 }}
-                            >
-                              Approve
-                            </Button>
-                          </>
-                        )}
-                      </Box>
-                    </Box>
-                  </Box>
-                </Box>
-              ) : (
-                <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', textAlign: 'center', py: 3 }}>No post scheduled for this date.</Typography>
-              )}
-
-              <Box sx={cardSx}>
-                <Typography sx={sectionLabelSx}>Monthly Strategy</Typography>
-                {generatingPlan ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
-                    <CircularProgress size={24} sx={{ color: G }} />
-                    <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)' }}>Generating your personalized 30-day strategy...</Typography>
-                  </Box>
-                ) : activePlan ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {activePlan.schedule.slice(0, isStrategyExpanded ? 30 : 5).map((item: any, i: number) => (
-                      <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: '#f9f9f7', borderRadius: '10px' }}>
-                        <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: item.type === 'image' ? G : P, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                          {item.type === 'image' ? '📸' : '🎥'}
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#333' }}>{item.category}</Typography>
-                          <Typography sx={{ fontSize: '10px', color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{item.topic}</Typography>
-                        </Box>
-                        <Typography sx={{ fontSize: '10px', fontWeight: 700, color: 'rgba(0,0,0,0.3)' }}>
-                          {new Date(item.date).getDate()} {new Date(item.date).toLocaleString('default', { month: 'short' })}
-                        </Typography>
-                      </Box>
-                    ))}
-                    {activePlan.schedule.length > 5 && (
-                      <Typography 
-                        onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}
-                        sx={{ fontSize: '11px', color: G, fontWeight: 600, textAlign: 'center', mt: 1, cursor: 'pointer', transition: '0.2s', '&:hover': { opacity: 0.7 } }}
-                      >
-                        {isStrategyExpanded ? 'Collapse Strategy' : `View all ${activePlan.schedule.length} topics`}
+                {/* Caption */}
+                {post?.caption ? (
+                  <Box sx={{ mb: 1.5 }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: TEXT, lineHeight: 1.65 }}>
+                      {captionExpanded || post.caption.length <= 110 ? post.caption : `${post.caption.slice(0, 110)}...`}
+                    </Typography>
+                    {post.caption.length > 110 && (
+                      <Typography onClick={() => setCaptionExp(v => !v)}
+                        sx={{ fontFamily: FONT, fontSize: '12px', color: GREEN, fontWeight: 600, cursor: 'pointer', mt: 0.5, display: 'inline-block' }}>
+                        {captionExpanded ? 'Show less' : 'Read more'}
                       </Typography>
                     )}
                   </Box>
                 ) : (
-                  <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', textAlign: 'center', py: 3 }}>No active plan. System will generate one shortly.</Typography>
+                  <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, py: 2, textAlign: 'center' }}>
+                    Post not yet generated for this day.
+                  </Typography>
                 )}
+
+                {/* Hashtags */}
+                {(post?.hashtags?.length ?? 0) > 0 && (
+                  <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: ACCENTS[activeIdx % 4], mb: 2, wordBreak: 'break-word' }}>
+                    {post!.hashtags.map(h => `#${h}`).join(' ')}
+                  </Typography>
+                )}
+
+                {/* Download / Share */}
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                  <Button disabled={!post} onClick={() => post && onDownload(post)}
+                    startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+                    sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.06)', color: TEXT, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: `1px solid ${BORD}`, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                    Download
+                  </Button>
+                  <Button disabled={!post} onClick={() => post && onShare(post)}
+                    startIcon={<IosShare sx={{ fontSize: 16 }} />}
+                    sx={{ flex: 1, bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1, boxShadow: `0 4px 18px ${GREEN}44`, '&:hover': { bgcolor: '#0a5a45' } }}>
+                    Share
+                  </Button>
+                </Box>
+
+                {/* Regenerate */}
+                {post && !isPosted && (
+                  (post.regenCount ?? 0) >= 2 ? (
+                    <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, textAlign: 'center' }}>
+                      <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED }}>
+                        Regeneration limit reached for today.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Button fullWidth onClick={() => { setRegenError(''); setRegenModal(true); }} sx={{
+                      mb: 1.5, bgcolor: 'rgba(255,80,80,0.08)', color: '#FF6B6B',
+                      border: '1px solid rgba(255,80,80,0.2)', borderRadius: '12px',
+                      textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1,
+                      '&:hover': { bgcolor: 'rgba(255,80,80,0.14)' },
+                    }}>
+                      Regenerate ({2 - (post.regenCount ?? 0)} left)
+                    </Button>
+                  )
+                )}
+
+                {/* Mark as posted */}
+                <Button fullWidth disabled={!post || isPosted || marking} onClick={handleMark} sx={{
+                  bgcolor: isPosted ? `${GBRI}18` : 'rgba(255,255,255,0.04)',
+                  color: isPosted ? GBRI : MUTED,
+                  border: `1px solid ${isPosted ? `${GBRI}40` : BORD}`,
+                  borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3,
+                  transition: 'all 0.2s',
+                  '&:hover:not(:disabled)': { bgcolor: `${GREEN}18`, color: GREEN, borderColor: `${GREEN}45` },
+                }}>
+                  {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Marked as posted' : 'Mark as posted'}
+                </Button>
+
+                {/* Regen modal */}
+                <Dialog open={regenModalOpen} onClose={() => !regenerating && setRegenModal(false)}
+                  PaperProps={{ sx: { borderRadius: '18px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2 } }}>
+                  <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>
+                    Why regenerate this post?
+                  </DialogTitle>
+                  <DialogContent>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, mb: 2 }}>
+                      Your feedback helps the AI improve the next version. {2 - (post?.regenCount ?? 0)} regeneration{2 - (post?.regenCount ?? 0) === 1 ? '' : 's'} remaining today.
+                    </Typography>
+                    <TextField autoFocus fullWidth multiline rows={3} size="small"
+                      placeholder="e.g. Too much text, wrong colour, mention malaria instead..."
+                      value={regenReason}
+                      onChange={e => { setRegenReason(e.target.value); setRegenError(''); }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#0F1C17', color: TEXT, '& fieldset': { borderColor: BORD }, '&:hover fieldset': { borderColor: GREEN }, '&.Mui-focused fieldset': { borderColor: GREEN } }, '& .MuiInputBase-input': { color: TEXT } }}
+                    />
+                    {regenError && (
+                      <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: '#FF6B6B', mt: 1 }}>{regenError}</Typography>
+                    )}
+                  </DialogContent>
+                  <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+                    <Button onClick={() => { setRegenModal(false); setRegenReason(''); setRegenError(''); }}
+                      disabled={regenerating}
+                      sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontWeight: 600 }}>
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={!regenReason.trim() || regenerating}
+                      onClick={async () => {
+                        if (!post || !regenReason.trim()) return;
+                        setRegenerating(true);
+                        try {
+                          await onRegenerate(post._id, regenReason);
+                          setRegenModal(false);
+                          setRegenReason('');
+                        } catch (err: any) {
+                          setRegenError(err?.response?.data?.message || 'Regeneration failed. Please try again.');
+                        } finally {
+                          setRegenerating(false);
+                        }
+                      }}
+                      sx={{ bgcolor: '#c0392b', color: '#fff', textTransform: 'none', fontFamily: FONT, fontWeight: 700, borderRadius: '10px', px: 2.5, '&:hover': { bgcolor: '#922b21' }, '&:disabled': { opacity: 0.5 } }}>
+                      {regenerating ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Regenerate Post'}
+                    </Button>
+                  </DialogActions>
+                </Dialog>
               </Box>
-            </>
-          )}
-        </Box>
-      )}
+            </Box>
+          </motion.div>
+        </AnimatePresence>
+      </Box>
 
-      {/* ── VIDEOS TAB ────────────────────────────────────────────────── */}
-      {activeTab === 'videos' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {loadingPlan ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={24} sx={{ color: G }} /></Box>
-          ) : (
-            <Box sx={cardSx}>
-              <Typography sx={sectionLabelSx}>Video Script for {isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
-              {selectedPost?.videoIdeaText ? (
-                <Typography sx={{ fontSize: '13px', color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                  {selectedPost.videoIdeaText}
-                </Typography>
-              ) : (
-                <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>No video assigned for this date.</Typography>
-              )}
+      {/* Post navigation arrows */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1.5, mb: 3.5 }}>
+        <IconButton disabled={activeIdx === 0} onClick={() => navigateTo(activeIdx - 1)}
+          sx={{ bgcolor: CARD, color: activeIdx === 0 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}>
+          <ChevronLeft />
+        </IconButton>
+        <Typography sx={{ fontFamily: MONO, fontSize: '12px', color: MUTED, minWidth: 40, textAlign: 'center' }}>
+          {activeIdx + 1} / {Math.max(posts.length, 4)}
+        </Typography>
+        <IconButton disabled={activeIdx >= 3} onClick={() => navigateTo(activeIdx + 1)}
+          sx={{ bgcolor: CARD, color: activeIdx >= 3 ? 'rgba(255,255,255,0.14)' : TEXT, borderRadius: '12px', border: `1px solid ${BORD}` }}>
+          <ChevronRight />
+        </IconButton>
+      </Box>
+
+      <LockedSection />
+    </motion.div>
+  );
+}
+
+// ── State 4 — Complete ────────────────────────────────────────────────────────
+function CompleteScreen({ posts, onBack }: { posts: DailyPost[]; onBack: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+      style={{ minHeight: '100vh', background: BG, padding: '52px 24px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+    >
+      <motion.div
+        animate={{ y: [0, -14, 0] }}
+        transition={{ duration: 1.1, repeat: Infinity, type: 'spring', stiffness: 110 }}
+        style={{ fontSize: 68, marginBottom: 20 }}
+      >🏆</motion.div>
+
+      <Typography sx={{ fontFamily: FONT, fontSize: '34px', fontWeight: 800, color: TEXT, mb: 0.5, textAlign: 'center', lineHeight: 1.1 }}>
+        Perfect <span style={{ color: GREEN }}>week.</span>
+      </Typography>
+      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: MUTED, mb: 4, textAlign: 'center' }}>
+        All 4 posts published this week
+      </Typography>
+
+      {/* Summary card */}
+      <Box sx={{ width: '100%', bgcolor: CARD, borderRadius: '20px', border: `1px solid ${BORD}`, overflow: 'hidden', mb: 3 }}>
+        {posts.slice(0, 4).map((p, i) => (
+          <Box key={p._id} sx={{
+            display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5,
+            borderBottom: i < Math.min(posts.length, 4) - 1 ? `1px solid ${BORD}` : 'none',
+          }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: '10px', flexShrink: 0, background: GRADIENTS[i % 4], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography sx={{ fontSize: '18px' }}>{ICONS[i % 4]}</Typography>
             </Box>
-          )}
-          
-          <Box sx={cardSx}>
-            <Typography sx={sectionLabelSx}>Generate Video</Typography>
-            <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ fontSize: '32px' }}>🎬</Typography>
-              <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>AI Video Generation</Typography>
-              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)' }}>Coming soon in the next update.</Typography>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 600, color: TEXT }}>{LABELS[i % 4]}</Typography>
+              <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>{fmtDay(p.scheduledDate)}</Typography>
             </Box>
+            <CheckCircle sx={{ color: GBRI, fontSize: 20 }} />
           </Box>
-        </Box>
-      )}
+        ))}
+      </Box>
 
-      {/* Modals */}
-      <Dialog open={pendingFiles.length > 0} onClose={() => setPendingFiles([])} PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}>
-        <DialogTitle sx={{ fontSize: '14px', fontWeight: 700 }}>Describe this photo</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)', mb: 2 }}>
-            Tell our intelligence a little bit about what's in this photo so it can use it accurately for your content generation.
-          </Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            size="small"
-            placeholder="e.g. Storefront during Christmas, Dr. Ade giving advice..."
-            value={photoDescription}
-            onChange={(e) => setPhotoDescription(e.target.value)}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px' } }}
+      {/* Notice */}
+      <Box sx={{ width: '100%', p: 1.5, borderRadius: '12px', mb: 3, bgcolor: `${GREEN}18`, border: `1px solid ${GREEN}35`, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography sx={{ fontSize: '16px' }}>🗓️</Typography>
+        <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: GREEN }}>
+          Next week's posts arrive Monday
+        </Typography>
+      </Box>
+
+      <Button fullWidth onClick={onBack} sx={{
+        bgcolor: CARD, color: TEXT, borderRadius: '14px',
+        textTransform: 'none', fontFamily: FONT, fontWeight: 600, fontSize: '14px',
+        py: 1.6, border: `1px solid ${BORD}`, '&:hover': { bgcolor: '#1e2f28' },
+      }}>
+        Back to dashboard
+      </Button>
+    </motion.div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function SocialContent() {
+  const { user } = useSession();
+
+  const [appState,   setAppState]   = useState<AppState>('loading');
+  const [activePlan, setActivePlan] = useState<any>(null);
+  const [tone,       setTone]       = useState('warm');
+  const [showPrices, setShowPrices] = useState('yes');
+  const [genStep,    setGenStep]    = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [posts,      setPosts]      = useState<DailyPost[]>([]);
+
+  const pharmacyName = user?.businessName || 'Pharmacy';
+  const pharmacyUrl  = user?.username ? `pharmastackx.com/${user.username}` : 'pharmastackx.com';
+
+  const fetchWeek = useCallback(async (offset: number) => {
+    if (!user?._id) return null;
+    const base = getMondayLocal(new Date());
+    base.setDate(base.getDate() + offset * 7);
+    const res = await axios.get(`/api/social/manage?pharmacyId=${user._id}&date=${toYMD(base)}`);
+    return res.data as { activePlan: any; weekPosts: DailyPost[] };
+  }, [user?._id]);
+
+  // Initial load
+  useEffect(() => {
+    if (!user?._id) return;
+    fetchWeek(0).then(data => {
+      if (!data) { setAppState('onboarding'); return; }
+      const wp: DailyPost[] = data.weekPosts || [];
+      setPosts(wp);
+      setActivePlan(data.activePlan);
+      if (!data.activePlan) {
+        setAppState('onboarding');
+      } else if (wp.length >= 4 && wp.every(p => p.status === 'posted')) {
+        setAppState('complete');
+      } else {
+        setAppState('active');
+      }
+    }).catch(() => setAppState('onboarding'));
+  }, [user?._id]);
+
+  // Week navigation re-fetch
+  const [prevOffset, setPrevOffset] = useState(0);
+  useEffect(() => {
+    if (appState !== 'active' || weekOffset === prevOffset) return;
+    setPrevOffset(weekOffset);
+    fetchWeek(weekOffset).then(data => {
+      if (data) setPosts(data.weekPosts || []);
+    });
+  }, [weekOffset, appState]);
+
+  const handleGeneratePlan = async () => {
+    // Request push permission before showing the generating screen
+    if (user?._id) await requestAndSavePush(user._id);
+    setAppState('generating');
+    setGenStep(0);
+
+    const delays = [700, 1100, 2800, 1400, 700];
+    let cum = 0;
+    delays.forEach((d, i) => { cum += d; setTimeout(() => setGenStep(i + 1), cum); });
+
+    try {
+      const monday = getMondayLocal(new Date());
+      await axios.post('/api/social/generate-plan', {
+        pharmacyId: user!._id,
+        date: toYMD(monday),
+        tone,
+        showPrices: showPrices === 'yes',
+      });
+      const data = await fetchWeek(0);
+      if (data) { setPosts(data.weekPosts || []); setActivePlan(data.activePlan); }
+    } catch (e) {
+      console.error(e);
+    }
+
+    setTimeout(() => setAppState('active'), cum + 400);
+  };
+
+  const handleMarkAsPosted = async (postId: string) => {
+    await axios.put('/api/social/manage', { postId, status: 'posted' });
+    const updated = posts.map(p => p._id === postId ? { ...p, status: 'posted' as const } : p);
+    setPosts(updated);
+    if (updated.length >= 4 && updated.every(p => p.status === 'posted')) {
+      setTimeout(() => setAppState('complete'), 700);
+    }
+  };
+
+  const handleRegenerate = async (postId: string, reason: string) => {
+    const res = await axios.post('/api/social/regenerate-post', { postId, reason });
+    const updated = res.data.post as DailyPost;
+    setPosts(prev => prev.map(p => p._id === postId ? { ...p, ...updated } : p));
+  };
+
+  const handleDownload = (post: DailyPost) => {
+    if (!post.imageUrl) return;
+    const a = document.createElement('a');
+    a.href = post.imageUrl; a.download = 'social-post.jpg'; a.click();
+  };
+
+  const handleShare = async (post: DailyPost) => {
+    const text = `${post.caption}\n\n${(post.hashtags || []).map(h => `#${h}`).join(' ')}`;
+    try {
+      if (post.imageUrl && navigator.canShare) {
+        const r = await fetch(post.imageUrl);
+        const blob = await r.blob();
+        const file = new File([blob], 'post.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
+      }
+      await navigator.share({ text });
+    } catch { navigator.clipboard.writeText(text).catch(() => {}); }
+  };
+
+  if (appState === 'loading') {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress sx={{ color: GREEN }} />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ bgcolor: BG, minHeight: '100vh' }}>
+      <AnimatePresence mode="wait">
+        {appState === 'onboarding' && (
+          <OnboardingScreen key="ob"
+            tone={tone} setTone={setTone}
+            showPrices={showPrices} setShowPrices={setShowPrices}
+            onStart={handleGeneratePlan}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPendingFiles([])} sx={{ color: '#666', textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-          <Button onClick={confirmPhotoUpload} disabled={!photoDescription.trim() || uploadingPhoto} sx={{ bgcolor: G, color: '#fff', textTransform: 'none', fontWeight: 600, borderRadius: '8px', '&:hover': { bgcolor: '#0a5a45' } }}>
-            {uploadingPhoto ? 'Uploading...' : 'Upload & Save'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={reasonModalOpen} onClose={() => setReasonModalOpen(false)} PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}>
-        <DialogTitle sx={{ fontSize: '14px', fontWeight: 700 }}>Why are you rejecting this?</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.5)', mb: 2 }}>
-            Tell our intelligence a reason why you're rejecting or redesigning this post, so it can improve the next one.
-          </Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            multiline
-            rows={3}
-            size="small"
-            placeholder="e.g. Too much text, change the color, mention malaria instead..."
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px' } }}
+        )}
+        {appState === 'generating' && (
+          <GeneratingScreen key="gen" currentStep={genStep} />
+        )}
+        {appState === 'active' && (
+          <ActiveWeekView key="active"
+            posts={posts}
+            weekOffset={weekOffset}
+            onWeekChange={setWeekOffset}
+            onMarkAsPosted={handleMarkAsPosted}
+            onDownload={handleDownload}
+            onShare={handleShare}
+            onRegenerate={handleRegenerate}
+            pharmacyName={pharmacyName}
+            pharmacyUrl={pharmacyUrl}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReasonModalOpen(false)} sx={{ color: '#666', textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-          <Button onClick={handleRegenerateSubmit} disabled={!rejectionReason.trim() || regeneratingPost} sx={{ bgcolor: '#c0392b', color: '#fff', textTransform: 'none', fontWeight: 600, borderRadius: '8px', '&:hover': { bgcolor: '#922b21' } }}>
-            {regeneratingPost ? 'Regenerating...' : 'Regenerate Post'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
+        )}
+        {appState === 'complete' && (
+          <CompleteScreen key="complete"
+            posts={posts}
+            onBack={() => { setWeekOffset(1); setAppState('active'); }}
+          />
+        )}
+      </AnimatePresence>
     </Box>
   );
 }

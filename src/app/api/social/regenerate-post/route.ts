@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbConnect } from '@/lib/mongoConnect';
 import DailyPost from '@/models/DailyPost';
 import User from '@/models/User';
+import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,10 @@ export async function POST(req: NextRequest) {
 
     const post = await DailyPost.findById(postId);
     if (!post) return NextResponse.json({ message: 'Post not found' }, { status: 404 });
+
+    if ((post.regenCount ?? 0) >= 2) {
+      return NextResponse.json({ message: 'Regeneration limit reached for today.' }, { status: 429 });
+    }
 
     const pharmacy = await User.findById(post.pharmacyId);
     if (!pharmacy) return NextResponse.json({ message: 'User not found' }, { status: 404 });
@@ -84,16 +89,22 @@ The user rejected the previous image because: "${reason}". Address this reason c
       });
       const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
       if (imgPart?.inlineData) {
-        imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+        const uploaded = await uploadBase64ToBlob(
+          imgPart.inlineData.data,
+          imgPart.inlineData.mimeType,
+          `social/${post.pharmacyId}/post-regen-${Date.now()}.jpg`
+        );
+        imageUrl = uploaded ?? '';
       }
     } catch (imgErr) {
       console.error('Image gen failed during regeneration', imgErr);
     }
 
-    post.caption = caption;
-    post.hashtags = hashtags;
-    post.imageUrl = imageUrl;
-    post.status = 'ready_to_post';
+    post.caption    = caption;
+    post.hashtags   = hashtags;
+    post.imageUrl   = imageUrl;
+    post.status     = 'ready_to_post';
+    post.regenCount = (post.regenCount ?? 0) + 1;
     await post.save();
 
     return NextResponse.json({ success: true, post });

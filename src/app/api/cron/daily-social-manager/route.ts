@@ -5,8 +5,10 @@ import User from '@/models/User';
 import ContentPlan from '@/models/ContentPlan';
 import DailyPost from '@/models/DailyPost';
 import { transporter, mailOptions } from '@/lib/nodemailer';
+import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
+import { sendWebPush } from '@/lib/webPush';
 
-export const maxDuration = 60; // Max allowed for Hobby/Pro on Vercel
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 function extractFirstJSON(text: string): string | null {
@@ -25,8 +27,19 @@ function extractFirstJSON(text: string): string | null {
   return null;
 }
 
+// Returns the Monday (UTC) of the week containing the given date
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+// Posts go out Mon (offset 0), Wed (offset 2), Fri (offset 4), Sat (offset 5)
+const WEEKLY_OFFSETS = [0, 2, 4, 5];
+
 export async function GET(req: NextRequest) {
-  // Security check: Only allow authorized cron requests
   const authHeader = req.headers.get('authorization');
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -35,14 +48,14 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
     const pharmacies = await User.find({ role: 'pharmacy' });
-    
+
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const thisMonday = getMondayOfWeek(today);
+    const thisSunday = new Date(thisMonday);
+    thisSunday.setUTCDate(thisSunday.getUTCDate() + 6);
 
     let processedUsers = 0;
-    
+
     for (const pharmacy of pharmacies) {
       if (!process.env.GEMINI_API_KEY) break;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -50,141 +63,168 @@ export async function GET(req: NextRequest) {
       const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
       const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
       const photosContext = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || 'No photos available';
-      
+
       const baseContext = `Pharmacy Profile:
 Name: "${pharmacy.businessName || 'Pharmacy'}"
 Contact Info: ${contactContext}
 ${brandKitContext}
 Known physical store context from photos: ${photosContext}`;
 
-      // 1. Check if they need a new Content Plan (>20 days old or no active plan)
-      const activePlan = await ContentPlan.findOne({ pharmacyId: pharmacy._id, status: 'active' });
-      const pendingPlan = await ContentPlan.findOne({ pharmacyId: pharmacy._id, status: 'pending_approval' });
-      
-      let needsNewPlan = false;
-      if (!activePlan && !pendingPlan) needsNewPlan = true;
-      if (activePlan && !pendingPlan) {
-        const daysRemaining = Math.floor((new Date(activePlan.endDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
-        if (daysRemaining <= 10) needsNewPlan = true;
+      // Check if a plan already covers this week
+      const existingWeekPlan = await ContentPlan.findOne({
+        pharmacyId: pharmacy._id,
+        status: 'active',
+        startDate: { $lte: thisSunday },
+        endDate: { $gte: thisMonday }
+      });
+
+      if (existingWeekPlan) {
+        processedUsers++;
+        continue;
       }
 
-      if (needsNewPlan) {
-        try {
-          const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-          const prompt = `Generate a 30-day social media content plan.
+      // Generate this week's plan
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const prompt = `Generate a weekly social media content plan for a pharmacy.
 ${baseContext}
-Return a JSON object with a "schedule" array of exactly 30 items.
-Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
-All 30 posts must be images. Do not include video ideas.
+Return a JSON object with a "schedule" array of exactly 4 items — one for each posting day this week: Monday (dayOffset 0), Wednesday (dayOffset 2), Friday (dayOffset 4), Saturday (dayOffset 5).
+Each item must have: "dayOffset" (one of: 0, 2, 4, 5), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
+All 4 posts must be images. Do not include video ideas.
 { "schedule": [ { "dayOffset": 0, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
-          
-          const result = await model.generateContent(prompt);
-          const raw = result.response.text().trim();
-          const jsonStr = extractFirstJSON(raw);
-          if (jsonStr) {
-            const data = JSON.parse(jsonStr);
-            const planStart = new Date(today);
-            planStart.setDate(planStart.getDate() + (activePlan ? 10 : 1)); // start after active plan or tomorrow
-            const planEnd = new Date(planStart);
-            planEnd.setDate(planEnd.getDate() + 30);
 
-            const schedule = data.schedule.map((item: any) => {
-              const d = new Date(planStart);
-              d.setDate(d.getDate() + item.dayOffset);
-              return { date: d, category: item.category, type: item.type, topic: item.topic };
-            });
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text().trim();
+        const jsonStr = extractFirstJSON(raw);
 
-            await ContentPlan.create({
-              pharmacyId: pharmacy._id,
-              startDate: planStart,
-              endDate: planEnd,
-              status: 'pending_approval',
-              schedule
-            });
-            
-            // Notify about new plan
-            await transporter.sendMail({
-              ...mailOptions,
-              to: pharmacy.email,
-              subject: 'Action Required: Your New 30-Day Social Media Plan is Ready',
-              text: 'Hello ' + pharmacy.businessName + ',\n\nYour next 30-day social media content plan has been generated. Please log in to your dashboard to review and approve it.\n\nBest,\nPharmastackX Team'
-            }).catch(console.error);
-          }
-        } catch (err) {
-          console.error(`Failed to generate plan for ${pharmacy._id}`, err);
+        if (!jsonStr) {
+          console.error(`Failed to parse plan JSON for ${pharmacy._id}`);
+          continue;
         }
-      }
 
-      // 2. Generate tomorrow's post if there is an active plan
-      if (activePlan) {
-        // Find tomorrow's topic
-        const tomorrowTopic = activePlan.schedule.find(s => {
-          const sDate = new Date(s.date);
-          return sDate.getDate() === tomorrow.getDate() && sDate.getMonth() === tomorrow.getMonth() && sDate.getFullYear() === tomorrow.getFullYear();
+        const data = JSON.parse(jsonStr);
+
+        const normalizedSchedule = WEEKLY_OFFSETS.map((offset, i) => {
+          const item = data.schedule.find((s: any) => s.dayOffset === offset) || data.schedule[i] || { category: 'Health Tip', type: 'image', topic: 'Pharmacy Health Tip' };
+          const d = new Date(thisMonday);
+          d.setUTCDate(d.getUTCDate() + offset);
+          return { date: d, category: item.category, type: 'image', topic: item.topic };
         });
 
-        if (tomorrowTopic) {
-          // Check if post already generated
-          const existingPost = await DailyPost.findOne({ pharmacyId: pharmacy._id, scheduledDate: tomorrow });
-          if (!existingPost) {
-            try {
-              let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
+        const createdPlan = await ContentPlan.create({
+          pharmacyId: pharmacy._id,
+          startDate: thisMonday,
+          endDate: thisSunday,
+          status: 'active',
+          schedule: normalizedSchedule
+        });
 
-              if (tomorrowTopic.type === 'image') {
-                const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-                const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${tomorrowTopic.topic}. Return JSON with "caption" and "hashtags" array.`);
-                const txtJsonStr = extractFirstJSON(txtRes.response.text());
-                if (txtJsonStr) {
-                  const tData = JSON.parse(txtJsonStr);
-                  caption = tData.caption;
-                  hashtags = tData.hashtags;
-                }
+        // Generate all 4 posts for the week
+        for (let i = 0; i < createdPlan.schedule.length; i++) {
+          const topicItem = createdPlan.schedule[i];
 
-                // Try generating image (wrapped in try-catch in case of billing/quota errors)
-                try {
-                  const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
-                  const imgRes = await (imgModel as any).generateContent({
-                    contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${tomorrowTopic.topic}. Clean, professional.` }] }],
-                    generationConfig: { responseModalities: ['image'] },
-                  });
-                  const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-                  if (imgPart?.inlineData) {
-                    imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-                  }
-                } catch (imgErr) {
-                  console.error('Image gen failed in cron', imgErr);
-                }
-              } // Closed if block
+          // Skip if post already exists for this date
+          const postDate = new Date(topicItem.date);
+          const postDateEnd = new Date(postDate);
+          postDateEnd.setUTCDate(postDateEnd.getUTCDate() + 1);
+          const existing = await DailyPost.findOne({ pharmacyId: pharmacy._id, scheduledDate: { $gte: postDate, $lt: postDateEnd } });
+          if (existing) continue;
 
-              // Standalone Video Idea (always generated daily)
-              const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-              const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel. Keep it very simple and practical. Provide just the idea.`);
-              videoIdeaText = vidRes.response.text().trim();
+          let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-              await DailyPost.create({
-                pharmacyId: pharmacy._id,
-                scheduledDate: tomorrow,
-                type: tomorrowTopic.type,
-                status: 'pending_review',
-                caption,
-                hashtags,
-                imageUrl,
-                videoIdeaText
-              });
-
-              // Notify to review
-              await transporter.sendMail({
-                ...mailOptions,
-                to: pharmacy.email,
-                subject: "Review Tomorrow's Social Post",
-                text: 'Hello ' + pharmacy.businessName + ',\n\nTomorrow\'s social media post has been drafted. Please log in to review, edit, or approve it.\n\nBest,\\nPharmastackX Team'
-              }).catch(console.error);
-
-            } catch (err) {
-              console.error(`Failed to generate tomorrow's post for ${pharmacy._id}`, err);
+          try {
+            const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+            const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
+            const txtJsonStr = extractFirstJSON(txtRes.response.text());
+            if (txtJsonStr) {
+              const tData = JSON.parse(txtJsonStr);
+              caption = tData.caption;
+              hashtags = tData.hashtags;
             }
+
+            try {
+              const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
+              const imgRes = await (imgModel as any).generateContent({
+                contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
+                generationConfig: { responseModalities: ['image'] },
+              });
+              const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+              if (imgPart?.inlineData) {
+                const uploaded = await uploadBase64ToBlob(
+                  imgPart.inlineData.data,
+                  imgPart.inlineData.mimeType,
+                  `social/${pharmacy._id}/post-${Date.now()}-${i}.jpg`
+                );
+                imageUrl = uploaded ?? '';
+              }
+            } catch (imgErr) {
+              console.error('Image gen failed in weekly cron', imgErr);
+            }
+          } catch (err) {
+            console.error(`Caption gen failed for pharmacy ${pharmacy._id}`, err);
+          }
+
+          try {
+            const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+            const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel. Keep it very simple and practical. Provide just the idea.`);
+            videoIdeaText = vidRes.response.text().trim();
+          } catch (err) {
+            console.error(`Video gen failed for pharmacy ${pharmacy._id}`, err);
+          }
+
+          await DailyPost.create({
+            pharmacyId: pharmacy._id,
+            scheduledDate: topicItem.date,
+            type: 'both',
+            status: i === 0 ? 'ready_to_post' : 'pending_review',
+            caption,
+            hashtags,
+            imageUrl,
+            videoIdeaText
+          });
+        }
+
+        const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+        const weekRange = `${fmtDate(thisMonday)} – ${fmtDate(thisSunday)}`;
+        const notifTitle = 'Your 4 posts for this week are ready';
+        const notifBody  = `Tap to view and download your content for ${weekRange}.`;
+        const notifUrl   = '/store-management?tab=1';
+
+        // Web push (if subscribed)
+        if (pharmacy.webPushSubscription?.endpoint) {
+          const result = await sendWebPush(
+            pharmacy.webPushSubscription as any,
+            { title: notifTitle, body: notifBody, url: notifUrl }
+          );
+          // If subscription expired, clean it up
+          if (result === 'expired') {
+            await User.findByIdAndUpdate(pharmacy._id, { $unset: { webPushSubscription: '' } });
           }
         }
+
+        // Email (always)
+        await transporter.sendMail({
+          ...mailOptions,
+          to: pharmacy.email,
+          subject: notifTitle,
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+              <h2 style="color:#0F6E56;margin-bottom:8px">Your 4 posts for this week are ready 🎉</h2>
+              <p style="color:#444;font-size:15px;line-height:1.6">
+                Hello <strong>${pharmacy.businessName}</strong>,<br><br>
+                Your social media posts for <strong>${weekRange}</strong> (Mon, Wed, Fri, Sat) have been generated and are ready for review.
+              </p>
+              <a href="${process.env.NEXT_PUBLIC_BASE_URL ? 'https://' + process.env.NEXT_PUBLIC_BASE_URL : 'https://pharmastackx.com'}${notifUrl}"
+                style="display:inline-block;margin-top:16px;padding:12px 24px;background:#0F6E56;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">
+                View this week's posts →
+              </a>
+              <p style="color:#999;font-size:12px;margin-top:24px">PharmastackX Social Studio</p>
+            </div>
+          `,
+        }).catch(console.error);
+
+      } catch (err) {
+        console.error(`Failed to generate weekly plan for ${pharmacy._id}`, err);
       }
 
       processedUsers++;
@@ -192,7 +232,7 @@ All 30 posts must be images. Do not include video ideas.
 
     return NextResponse.json({ success: true, processedUsers });
   } catch (error) {
-    console.error('Cron job error:', error);
+    console.error('Weekly cron job error:', error);
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }
