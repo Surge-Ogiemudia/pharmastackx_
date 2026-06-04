@@ -89,12 +89,11 @@ The user rejected the previous image because: "${reason}". Address this reason c
       });
       const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
       if (imgPart?.inlineData) {
-        const uploaded = await uploadBase64ToBlob(
+        imageUrl = await uploadBase64ToBlob(
           imgPart.inlineData.data,
           imgPart.inlineData.mimeType,
           `social/${post.pharmacyId}/post-regen-${Date.now()}.jpg`
         );
-        imageUrl = uploaded ?? '';
       }
     } catch (imgErr) {
       console.error('Image gen failed during regeneration', imgErr);
