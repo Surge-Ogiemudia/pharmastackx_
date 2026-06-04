@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import ContentPlan from '@/models/ContentPlan';
 import DailyPost from '@/models/DailyPost';
+import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,20 @@ function extractFirstJSON(text: string): string | null {
   return null;
 }
 
+// Returns the Monday (UTC) of the week containing the given date
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+// Posts go out Mon (offset 0), Wed (offset 2), Fri (offset 4), Sat (offset 5)
+const WEEKLY_OFFSETS = [0, 2, 4, 5];
+
 export async function GET(req: NextRequest) {
   try {
-    // Verify cron secret if needed. For Vercel Cron, you can check authorization header
     if (process.env.CRON_SECRET) {
       const authHeader = req.headers.get('authorization');
       if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -35,102 +47,100 @@ export async function GET(req: NextRequest) {
     }
 
     await dbConnect();
-    
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ message: 'GEMINI_API_KEY not configured' }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. We want to generate posts for "Tomorrow" so they are ready before the user wakes up.
-    // In UTC, "now" is the time the cron runs (e.g. 00:00 UTC).
     const now = new Date();
-    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-    const tomorrowEnd = new Date(tomorrow);
-    tomorrowEnd.setUTCDate(tomorrowEnd.getUTCDate() + 1);
+    const thisMonday = getMondayOfWeek(now);
+    const thisSunday = new Date(thisMonday);
+    thisSunday.setUTCDate(thisSunday.getUTCDate() + 6);
 
-    // 2. Find all active or pending plans
-    const activePlans = await ContentPlan.find({ 
-      status: { $in: ['active', 'pending_approval'] },
-      endDate: { $gte: tomorrow }
+    // Find all active or pending plans covering this week
+    const activePlans = await ContentPlan.find({
+      status: 'active',
+      startDate: { $lte: thisSunday },
+      endDate: { $gte: thisMonday }
     });
 
     let generatedCount = 0;
 
-    // Process up to 5 plans per cron run to avoid hitting the 60s limit.
-    // If you have many users, you'd need a queue (like Inngest/Upstash) or higher limits.
     for (const plan of activePlans.slice(0, 5)) {
-      // Check if tomorrow's post is already generated for this pharmacy
-      const existingPost = await DailyPost.findOne({ 
-        pharmacyId: plan.pharmacyId, 
-        scheduledDate: { $gte: tomorrow, $lt: tomorrowEnd } 
-      });
-
-      if (existingPost) continue;
-
-      // Find tomorrow's topic in the schedule
-      // We look for a date in the schedule that falls within "tomorrow"
-      const topicItem = plan.schedule.find((item: any) => {
-        const itemDate = new Date(item.date);
-        return itemDate >= tomorrow && itemDate < tomorrowEnd;
-      });
-
-      if (!topicItem) continue;
-
       const pharmacy = await User.findById(plan.pharmacyId);
       if (!pharmacy) continue;
 
       const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
       const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
       const photosContext = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || 'No photos available';
-      
       const baseContext = `Pharmacy Profile:\nName: "${pharmacy.businessName || 'Pharmacy'}"\nContact Info: ${contactContext}\n${brandKitContext}\nKnown physical store context from photos: ${photosContext}`;
 
-      let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
+      // Generate any missing posts for this week
+      for (let i = 0; i < plan.schedule.length; i++) {
+        const topicItem = plan.schedule[i];
+        const postDate = new Date(topicItem.date);
+        const postDateEnd = new Date(postDate);
+        postDateEnd.setUTCDate(postDateEnd.getUTCDate() + 1);
 
-      try {
-        const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-        const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
-        const txtJsonStr = extractFirstJSON(txtRes.response.text());
-        if (txtJsonStr) {
-          const tData = JSON.parse(txtJsonStr);
-          caption = tData.caption;
-          hashtags = tData.hashtags;
-        }
-
-        const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
-        const imgRes = await (imgModel as any).generateContent({
-          contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
-          generationConfig: { responseModalities: ['image'] },
+        const existingPost = await DailyPost.findOne({
+          pharmacyId: plan.pharmacyId,
+          scheduledDate: { $gte: postDate, $lt: postDateEnd }
         });
-        const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-        if (imgPart?.inlineData) {
-          imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+        if (existingPost) continue;
+
+        let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
+
+        try {
+          const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+          const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
+          const txtJsonStr = extractFirstJSON(txtRes.response.text());
+          if (txtJsonStr) {
+            const tData = JSON.parse(txtJsonStr);
+            caption = tData.caption;
+            hashtags = tData.hashtags;
+          }
+
+          const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
+          const imgRes = await (imgModel as any).generateContent({
+            contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
+            generationConfig: { responseModalities: ['image'] },
+          });
+          const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+          if (imgPart?.inlineData) {
+            const uploaded = await uploadBase64ToBlob(
+              imgPart.inlineData.data,
+              imgPart.inlineData.mimeType,
+              `social/${pharmacy._id}/post-${Date.now()}-${i}.jpg`
+            );
+            imageUrl = uploaded ?? '';
+          }
+        } catch (err) {
+          console.error(`Generation failed for plan ${plan._id} item ${i}`, err);
         }
-      } catch (err) {
-        console.error(`Generation failed for plan ${plan._id}`, err);
+
+        try {
+          const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+          const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
+          videoIdeaText = vidRes.response.text().trim();
+        } catch (err) {
+          console.error(`Video generation failed for plan ${plan._id} item ${i}`, err);
+        }
+
+        await DailyPost.create({
+          pharmacyId: pharmacy._id,
+          scheduledDate: topicItem.date,
+          type: 'both',
+          status: 'pending_review',
+          caption,
+          hashtags,
+          imageUrl,
+          videoIdeaText
+        });
+
+        generatedCount++;
       }
-
-      try {
-        const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-        const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
-        videoIdeaText = vidRes.response.text().trim();
-      } catch (err) {
-        console.error(`Video generation failed for plan ${plan._id}`, err);
-      }
-
-      await DailyPost.create({
-        pharmacyId: pharmacy._id,
-        scheduledDate: tomorrow,
-        type: 'both',
-        status: 'pending_review',
-        caption,
-        hashtags,
-        imageUrl,
-        videoIdeaText
-      });
-
-      generatedCount++;
     }
 
     return NextResponse.json({ success: true, generatedCount });

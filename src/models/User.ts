@@ -57,6 +57,11 @@ export interface IUser extends Document {
     description?: string;
   }>;
   hasSetupBrandKit?: boolean;
+  webPushSubscription?: {
+    endpoint: string;
+    expirationTime?: number | null;
+    keys: { p256dh: string; auth: string };
+  };
 }
 
 // The schema defines the blueprint for the database
@@ -123,6 +128,14 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     description: { type: String }
   }],
   hasSetupBrandKit: { type: Boolean, default: false },
+  webPushSubscription: {
+    endpoint:       { type: String },
+    expirationTime: { type: Number },
+    keys: {
+      p256dh: { type: String },
+      auth:   { type: String },
+    },
+  },
 });
 
 // This line creates the model

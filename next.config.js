@@ -5,7 +5,7 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  importScripts: ['/firebase-messaging-sw.js'], // This is the new, correct line
+  importScripts: ['/firebase-messaging-sw.js', '/push-sw.js'],
 });
 
 const nextConfig = {

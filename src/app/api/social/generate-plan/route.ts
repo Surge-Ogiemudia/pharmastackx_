@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import ContentPlan from '@/models/ContentPlan';
 import DailyPost from '@/models/DailyPost';
+import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
 export const maxDuration = 60;
 
@@ -23,13 +24,25 @@ function extractFirstJSON(text: string): string | null {
   return null;
 }
 
+// Returns the Monday (UTC) of the week containing the given date
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+// Posts go out Mon (offset 0), Wed (offset 2), Fri (offset 4), Sat (offset 5)
+const WEEKLY_OFFSETS = [0, 2, 4, 5];
+
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { pharmacyId, date } = await req.json();
+    const { pharmacyId, date, tone, showPrices } = await req.json();
 
     if (!pharmacyId) return NextResponse.json({ message: 'Missing pharmacyId' }, { status: 400 });
-    
+
     const pharmacy = await User.findById(pharmacyId);
     if (!pharmacy) return NextResponse.json({ message: 'User not found' }, { status: 404 });
 
@@ -38,56 +51,70 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    
-    let planStart = new Date();
+
+    let refDate = new Date();
     if (date) {
       const [y, m, d] = date.split('-');
-      planStart = new Date(Date.UTC(Number(y), Number(m)-1, Number(d)));
+      refDate = new Date(Date.UTC(Number(y), Number(m)-1, Number(d)));
     } else {
-      planStart = new Date(Date.UTC(planStart.getUTCFullYear(), planStart.getUTCMonth(), planStart.getUTCDate()));
+      refDate = new Date(Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth(), refDate.getUTCDate()));
     }
+
+    const planStart = getMondayOfWeek(refDate);
+    const planEnd = new Date(planStart);
+    planEnd.setUTCDate(planEnd.getUTCDate() + 6); // Sunday
 
     const brandKitContext = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}` : '';
     const contactContext = `Address: ${pharmacy.businessAddress || 'N/A'}, Phone: ${pharmacy.phoneNumber || 'N/A'}, City: ${pharmacy.city || 'N/A'}`;
     const photosContext = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || 'No photos available';
-    
+
+    const toneMap: Record<string, string> = {
+      warm: 'warm, friendly, and approachable',
+      professional: 'professional, clinical, and authoritative',
+      bold: 'bold, energetic, and attention-grabbing',
+    };
+    const toneContext   = tone ? `Tone: ${toneMap[tone] ?? 'warm and friendly'}` : '';
+    const priceContext  = showPrices === true ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
+
     const baseContext = `Pharmacy Profile:
 Name: "${pharmacy.businessName || 'Pharmacy'}"
 Contact Info: ${contactContext}
 ${brandKitContext}
+${toneContext}
+${priceContext}
 Known physical store context from photos: ${photosContext}`;
 
-    // 1. Generate the 30-day plan
+    // 1. Generate the 7-day weekly plan (4 posts: Mon, Wed, Fri, Sat)
     const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-    const prompt = `Generate a 30-day social media content plan.
+    const prompt = `Generate a weekly social media content plan for a pharmacy.
 ${baseContext}
-Return a JSON object with a "schedule" array of exactly 30 items.
-Each item must have: "dayOffset" (0 to 29), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
-All 30 posts must be images. Do not include video ideas.
+Return a JSON object with a "schedule" array of exactly 4 items — one for each posting day this week: Monday (dayOffset 0), Wednesday (dayOffset 2), Friday (dayOffset 4), Saturday (dayOffset 5).
+Each item must have: "dayOffset" (one of: 0, 2, 4, 5), "category" (e.g., "Health Tip", "Product Spotlight"), "type" (must be "image"), and "topic" (a brief description).
+All 4 posts must be images. Do not include video ideas.
 { "schedule": [ { "dayOffset": 0, "category": "Health Tip", "type": "image", "topic": "Benefits of Vitamin C" } ] }`;
-    
+
     const result = await model.generateContent(prompt);
     const raw = result.response.text().trim();
     const jsonStr = extractFirstJSON(raw);
-    
+
     let createdPlan = null;
     if (jsonStr) {
       const data = JSON.parse(jsonStr);
-      const planEnd = new Date(planStart);
-      planEnd.setDate(planEnd.getDate() + 30);
 
-      const schedule = data.schedule.map((item: any) => {
+      // Ensure exactly 4 items at the right offsets; fall back to defaults if AI drifts
+      const normalizedSchedule = WEEKLY_OFFSETS.map((offset, i) => {
+        const item = data.schedule.find((s: any) => s.dayOffset === offset) || data.schedule[i] || { category: 'Health Tip', type: 'image', topic: 'Pharmacy Health Tip' };
         const d = new Date(planStart);
-        d.setDate(d.getDate() + item.dayOffset);
-        return { date: d, category: item.category, type: item.type, topic: item.topic };
+        d.setUTCDate(d.getUTCDate() + offset);
+        return { date: d, category: item.category, type: 'image', topic: item.topic };
       });
 
       createdPlan = await ContentPlan.create({
         pharmacyId: pharmacy._id,
         startDate: planStart,
         endDate: planEnd,
-        status: 'pending_approval',
-        schedule
+        status: 'active',
+        schedule: normalizedSchedule
       });
     }
 
@@ -95,12 +122,11 @@ All 30 posts must be images. Do not include video ideas.
       return NextResponse.json({ message: 'Failed to generate plan' }, { status: 500 });
     }
 
-    // 2. Generate today's and tomorrow's posts (dayOffset 0 and 1)
-    for (let i = 0; i <= 1; i++) {
+    // 2. Generate all 4 posts for the week upfront
+    for (let i = 0; i < createdPlan.schedule.length; i++) {
       const topicItem = createdPlan.schedule[i];
       let caption = '', hashtags: string[] = [], imageUrl = '', videoIdeaText = '';
 
-      // Generate Image & Caption
       try {
         const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const txtRes = await txtModel.generateContent(`${baseContext}\nWrite a short, engaging caption. Topic: ${topicItem.topic}. Return JSON with "caption" and "hashtags" array.`);
@@ -118,25 +144,29 @@ All 30 posts must be images. Do not include video ideas.
         });
         const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
         if (imgPart?.inlineData) {
-          imageUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+          const uploaded = await uploadBase64ToBlob(
+            imgPart.inlineData.data,
+            imgPart.inlineData.mimeType,
+            `social/${pharmacy._id}/post-${Date.now()}-${i}.jpg`
+          );
+          imageUrl = uploaded ?? '';
         }
       } catch (imgErr) {
-        console.error('Image gen failed for day ' + i, imgErr);
+        console.error('Image gen failed for week offset ' + WEEKLY_OFFSETS[i], imgErr);
       }
 
-      // Generate Video Idea
       try {
         const vidModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const vidRes = await vidModel.generateContent(`${baseContext}\nWrite a short 3-step video script idea for a TikTok/Reel about "${topicItem.topic}". Keep it very simple and practical.`);
         videoIdeaText = vidRes.response.text().trim();
       } catch (vidErr) {
-        console.error('Video gen failed for day ' + i, vidErr);
+        console.error('Video gen failed for week offset ' + WEEKLY_OFFSETS[i], vidErr);
       }
 
       await DailyPost.create({
         pharmacyId: pharmacy._id,
         scheduledDate: topicItem.date,
-        type: 'both', // Both image and video are available
+        type: 'both',
         status: i === 0 ? 'ready_to_post' : 'pending_review',
         caption,
         hashtags,
