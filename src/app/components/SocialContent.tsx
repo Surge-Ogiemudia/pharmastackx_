@@ -120,10 +120,10 @@ function PostGraphic({ post, idx, name, url }: { post: DailyPost | null; idx: nu
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
-function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }: {
+function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart, generating, progress }: {
   tone: string; setTone: (v: string) => void;
   showPrices: string; setShowPrices: (v: string) => void;
-  onStart: () => void;
+  onStart: () => void; generating: boolean; progress: number;
 }) {
   const RadioRow = ({ val, label, selected, onSelect }: any) => (
     <Box onClick={() => onSelect(val)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${selected === val ? GREEN : BORD}`, bgcolor: selected === val ? `${GREEN}1A` : 'transparent', transition: 'all 0.15s' }}>
@@ -165,9 +165,34 @@ function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart }:
         <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>Show prices on posts?</Typography>
         {[{ val: 'yes', label: 'Yes, include pricing' }, { val: 'no', label: 'No, keep it general' }].map(o => <RadioRow key={o.val} {...o} selected={showPrices} onSelect={setShowPrices} />)}
       </Box>
-      <Button fullWidth onClick={onStart} sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '14px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '16px', py: 1.9, boxShadow: `0 0 32px ${GREEN}55`, '&:hover': { bgcolor: '#0a5a45' } }}>
-        Generate today's post ✦
-      </Button>
+      <Box sx={{ position: 'relative', borderRadius: '14px', overflow: 'hidden' }}>
+        {/* Progress fill behind the button */}
+        {generating && (
+          <motion.div
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{ position: 'absolute', top: 0, left: 0, height: '100%', background: `linear-gradient(90deg, #0a5a45, ${GBRI})`, zIndex: 0 }}
+          />
+        )}
+        <Button
+          fullWidth
+          onClick={!generating ? onStart : undefined}
+          disabled={generating}
+          sx={{
+            position: 'relative', zIndex: 1,
+            bgcolor: generating ? '#0a5a45' : GREEN,
+            color: '#fff', borderRadius: '14px',
+            textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '16px', py: 1.9,
+            boxShadow: generating ? 'none' : `0 0 32px ${GREEN}55`,
+            '&:disabled': { color: '#fff', bgcolor: 'transparent' },
+            transition: 'box-shadow 0.3s',
+          }}
+        >
+          {generating
+            ? `Generating your post… ${progress}%`
+            : 'Generate today\'s post ✦'}
+        </Button>
+      </Box>
     </motion.div>
   );
 }
@@ -347,7 +372,7 @@ export default function SocialContent() {
   if (appState === 'onboarding') {
     return (
       <AnimatePresence mode="wait">
-        <OnboardingScreen key="ob" tone={tone} setTone={saveTone} showPrices={showPrices} setShowPrices={saveShowPrices} onStart={() => handleGenerate(selectedDate)} />
+        <OnboardingScreen key="ob" tone={tone} setTone={saveTone} showPrices={showPrices} setShowPrices={saveShowPrices} onStart={() => handleGenerate(selectedDate)} generating={generating} progress={genProgress} />
       </AnimatePresence>
     );
   }
