@@ -94,15 +94,15 @@ export async function POST(req: NextRequest) {
       console.log(`[generate-image] category="${category}" candidates=${candidates.length} parts=${parts.length} hasImage=${!!imgPart} finishReason=${finishReason}`);
 
       if (imgPart?.inlineData) {
-        const uploaded = await uploadBase64ToBlob(
-          imgPart.inlineData.data,
-          imgPart.inlineData.mimeType,
-          `social/${pharmacyId}/${Date.now()}.jpg`
-        );
-        if (uploaded) {
-          imageUrl = uploaded;
-        } else {
-          imageError = 'Image generated but Blob upload failed. Check BLOB_READ_WRITE_TOKEN.';
+        try {
+          imageUrl = await uploadBase64ToBlob(
+            imgPart.inlineData.data,
+            imgPart.inlineData.mimeType,
+            `social/${pharmacyId}/${Date.now()}.jpg`
+          );
+        } catch (blobErr: any) {
+          imageError = `Blob upload failed: ${blobErr?.message ?? String(blobErr)}`;
+          console.error('[generate-post] Blob error:', imageError);
         }
       } else {
         // Build a human-readable reason
