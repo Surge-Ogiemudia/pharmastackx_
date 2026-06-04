@@ -580,8 +580,8 @@ function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDow
                   {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Marked as posted' : 'Mark as posted'}
                 </Button>
 
-                {/* Regen modal */}
-                <Dialog open={regenModalOpen} onClose={() => !regenerating && setRegenModal(false)}
+                {/* Regen modal — only mounted when open to prevent scroll side-effects */}
+                {regenModalOpen && <Dialog open={regenModalOpen} onClose={() => !regenerating && setRegenModal(false)}
                   PaperProps={{ sx: { borderRadius: '18px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2 } }}>
                   <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>
                     Why regenerate this post?
@@ -625,7 +625,7 @@ function ActiveWeekView({ posts, weekOffset, onWeekChange, onMarkAsPosted, onDow
                       {regenerating ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Regenerate Post'}
                     </Button>
                   </DialogActions>
-                </Dialog>
+                </Dialog>}
               </Box>
             </Box>
           </motion.div>
@@ -767,25 +767,43 @@ export default function SocialContent() {
     // Request push permission in background — does not block the UI
     if (user?._id) requestAndSavePush(user._id).catch(console.warn);
 
-    const delays = [700, 1100, 2800, 1400, 700];
-    let cum = 0;
-    delays.forEach((d, i) => { cum += d; setTimeout(() => setGenStep(i + 1), cum); });
+    // Steps 1,2,4,5 animate on a timer; step 3 (images) waits for real API progress
+    const stepDelays = [700, 1100, 0, 1400, 700]; // step 3 duration is real
+    setTimeout(() => setGenStep(1), 700);
+    setTimeout(() => setGenStep(2), 1800);
 
     try {
       const monday = getMondayLocal(new Date());
-      await axios.post('/api/social/generate-plan', {
+
+      // Step 1+2: generate plan + captions (fast, ~10s)
+      const planRes = await axios.post('/api/social/generate-plan', {
         pharmacyId: user!._id,
-        date: toYMD(monday),
+        date:       toYMD(monday),
         tone,
         showPrices: showPrices === 'yes',
       });
+
+      const postIds: string[] = planRes.data.postIds || [];
+
+      // Step 3: generate images in parallel (one serverless call per post)
+      setGenStep(3);
+      await Promise.allSettled(
+        postIds.map(id => axios.post('/api/social/generate-image', { postId: id }))
+      );
+
+      // Step 4+5: wrap up
+      setGenStep(4);
+      await new Promise(r => setTimeout(r, 800));
+      setGenStep(5);
+      await new Promise(r => setTimeout(r, 600));
+
       const data = await fetchWeek(0);
       if (data) { setPosts(data.weekPosts || []); setActivePlan(data.activePlan); }
     } catch (e) {
       console.error(e);
     }
 
-    setTimeout(() => setAppState('active'), cum + 400);
+    setAppState('active');
   };
 
   const handleMarkAsPosted = async (postId: string) => {
