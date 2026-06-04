@@ -75,11 +75,23 @@ export async function POST(req: NextRequest) {
     let imageUrl  = '';
     let imageError = '';
     try {
+      const imgPrompts: Record<string, string> = {
+        'Medicine Spotlight': `Create a bold, editorial-style 1:1 social media graphic. Style: clean flat-lay on a solid deep green background. Show ONE featured medicine or supplement product — styled artistically, not like a stock photo. Add a subtle decorative element like a leaf or geometric shape. The pharmacy name "${pharmacy.businessName}" should appear as small elegant text in one corner. No cluttered shelves, no multiple products, no stock photography look. Modern, minimalist, Instagram-worthy.`,
+
+        'Health Awareness': `Create an uplifting, warm 1:1 social media graphic about health and wellness. Style: lifestyle illustration or soft-focus photography feel with a calming colour palette — greens, soft yellows, warm neutrals. Show a human element — hands holding fruit, someone walking, a warm cup of tea, or a simple wellness symbol. The pharmacy name "${pharmacy.businessName}" as small subtle text. No clinical or hospital imagery. Should feel encouraging and human, not medical.`,
+
+        'Low Stock Alert': `Create an urgent but visually clean 1:1 social media graphic. Style: bold typography-focused design with a warm amber or orange accent colour on dark background. Show a simple icon or minimal graphic of the featured product type. Add a sense of urgency through colour and composition — not through scary imagery. The pharmacy name "${pharmacy.businessName}" in small text. Clean, modern, punchy. Think bold brand announcement, not warning label.`,
+
+        'Human Moment': `Create a warm, community-focused 1:1 social media graphic. Style: candid lifestyle feel — a pharmacist helping a customer, a family, an elderly person being cared for, or a moment of human connection in a pharmacy setting. Warm lighting, real emotions, Nigerian context if possible — dark skin tones, local setting. The pharmacy name "${pharmacy.businessName}" as small elegant text overlay. Should feel genuine and heartwarming, not staged or stock-photo-like.`,
+      };
+
+      const imagePrompt = imgPrompts[category] ?? `Create a vibrant, modern 1:1 social media graphic for "${pharmacy.businessName}" pharmacy. Bold colours, clean design, professional. Instagram-worthy.`;
+
       const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
       const imgRes   = await (imgModel as any).generateContent({
         contents: [{
           role: 'user',
-          parts: [{ text: `Create a vibrant, professional 1:1 social media graphic for ${pharmacy.businessName || 'a pharmacy'} about: "${category}". Clean design, pharmacy branding, no text overlays.` }],
+          parts: [{ text: imagePrompt }],
         }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
       });
