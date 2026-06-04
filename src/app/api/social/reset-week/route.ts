@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import DailyPost from '@/models/DailyPost';
+import User from '@/models/User';
 
 // TEMPORARY dev/test endpoint — delete this route before going to production
 export async function DELETE(req: NextRequest) {
@@ -9,8 +10,15 @@ export async function DELETE(req: NextRequest) {
   }
 
   await dbConnect();
-  const { pharmacyId } = await req.json();
-  if (!pharmacyId) return NextResponse.json({ message: 'Missing pharmacyId' }, { status: 400 });
+  const { pharmacyId, slug } = await req.json();
+
+  let resolvedId = pharmacyId;
+  if (!resolvedId && slug) {
+    const user = await User.findOne({ slug });
+    if (!user) return NextResponse.json({ message: `No user found with slug "${slug}"` }, { status: 404 });
+    resolvedId = String(user._id);
+  }
+  if (!resolvedId) return NextResponse.json({ message: 'Missing pharmacyId or slug' }, { status: 400 });
 
   const now    = new Date();
   const day    = now.getUTCDay();
@@ -19,7 +27,7 @@ export async function DELETE(req: NextRequest) {
   const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 7);
 
   const result = await DailyPost.deleteMany({
-    pharmacyId,
+    pharmacyId: resolvedId,
     scheduledDate: { $gte: monday, $lt: sunday },
   });
 
