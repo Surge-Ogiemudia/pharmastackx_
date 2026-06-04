@@ -5,10 +5,6 @@ import User from '@/models/User';
 
 // TEMPORARY dev/test endpoint — delete this route before going to production
 export async function DELETE(req: NextRequest) {
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_RESET) {
-    return NextResponse.json({ message: 'Not allowed in production' }, { status: 403 });
-  }
-
   await dbConnect();
   const { pharmacyId, slug } = await req.json();
 
