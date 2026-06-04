@@ -762,10 +762,10 @@ export default function SocialContent() {
   }, [weekOffset, appState]);
 
   const handleGeneratePlan = async () => {
-    // Request push permission before showing the generating screen
-    if (user?._id) await requestAndSavePush(user._id);
     setAppState('generating');
     setGenStep(0);
+    // Request push permission in background — does not block the UI
+    if (user?._id) requestAndSavePush(user._id).catch(console.warn);
 
     const delays = [700, 1100, 2800, 1400, 700];
     let cum = 0;
