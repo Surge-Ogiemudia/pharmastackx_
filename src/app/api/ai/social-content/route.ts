@@ -75,7 +75,7 @@ Visual design requirements:
 
       const result = await (model as any).generateContent({
         contents: [{ role: 'user', parts: [{ text: imagePrompt }] }],
-        generationConfig: { responseModalities: ['image'] },
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
       });
 
       const parts = result.response.candidates?.[0]?.content?.parts ?? [];

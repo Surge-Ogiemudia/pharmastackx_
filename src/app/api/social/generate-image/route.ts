@@ -45,10 +45,14 @@ export async function POST(req: NextRequest) {
 
     const imgRes = await (imgModel as any).generateContent({
       contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topic}. Clean, professional, pharmacy branding.` }] }],
-      generationConfig: { responseModalities: ['image'] },
+      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
     });
 
-    const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+    const parts    = imgRes.response.candidates?.[0]?.content?.parts ?? [];
+    const imgPart  = parts.find((p: any) => p.inlineData);
+    const textPart = parts.find((p: any) => p.text);
+    console.log(`[generate-image] postId=${postId} parts=${parts.length} hasImage=${!!imgPart} text="${textPart?.text?.slice(0,80) ?? ''}"`);
+
     if (!imgPart?.inlineData) {
       return NextResponse.json({ message: 'No image returned by model', post }, { status: 200 });
     }

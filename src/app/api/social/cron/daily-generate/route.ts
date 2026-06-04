@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
           const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
           const imgRes = await (imgModel as any).generateContent({
             contents: [{ role: 'user', parts: [{ text: `${baseContext}\nDesign a stunning 1:1 social media post. Topic: ${topicItem.topic}. Clean, professional.` }] }],
-            generationConfig: { responseModalities: ['image'] },
+            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
           });
           const imgPart = imgRes.response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
           if (imgPart?.inlineData) {
