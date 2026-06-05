@@ -324,7 +324,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const example = MOCK_EXAMPLES[activeCategory];
 
   return (
-    <Box sx={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D', overflow: 'hidden' }}>
+    <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2, borderBottom: `1px solid ${BORD}`, flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -346,7 +346,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         </Box>
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: 'scroll', px: 2, pb: 4, WebkitOverflowScrolling: 'touch' }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2, pb: 6, WebkitOverflowScrolling: 'touch' }}>
 
         {/* Existing prompts */}
         <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
@@ -432,7 +432,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
           </Box>
         </Box>
 
-        <Button fullWidth disabled={!label.trim() || !basePrompt.trim() || submitting || (activeCategory === '__new__' && !newCategoryName.trim())} onClick={handleSubmit}
+        <Button fullWidth disabled={!label.trim() || !basePrompt.trim() || submitting || !effectiveCategory} onClick={handleSubmit}
           sx={{ bgcolor: '#7C3AED', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', py: 1.4, '&:hover': { bgcolor: '#6D28D9' }, '&:disabled': { opacity: 0.5 } }}>
           {submitting ? <><CircularProgress size={14} sx={{ color: '#fff', mr: 1 }} /> Generating variations…</> : 'Save & Generate 10 Variations ✦'}
         </Button>
