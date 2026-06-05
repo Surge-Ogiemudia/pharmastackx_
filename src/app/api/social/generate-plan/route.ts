@@ -81,7 +81,7 @@ ${priceContext}
 Known physical store context from photos: ${photosContext}`;
 
     // 1. Generate the weekly schedule
-    const model  = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model  = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
     const prompt = `Generate a weekly social media content plan for a pharmacy.
 ${baseContext}
 Return a JSON object with a "schedule" array of exactly 4 items — one for each posting day: Monday (dayOffset 0), Wednesday (dayOffset 2), Friday (dayOffset 4), Saturday (dayOffset 5).
@@ -117,7 +117,7 @@ Each item must have: "dayOffset" (one of: 0, 2, 4, 5), "category" (e.g., "Health
         let caption = '', hashtags: string[] = [], videoIdeaText = '';
 
         try {
-          const txtModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+          const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
           const [captionRes, videoRes] = await Promise.all([
             txtModel.generateContent(`${baseContext}\nWrite a short, engaging social media caption. Topic: ${topicItem.topic}. Return JSON: {"caption":"...","hashtags":["..."]}`),
             txtModel.generateContent(`${baseContext}\nWrite a short 3-step TikTok/Reel script idea about "${topicItem.topic}". Keep it practical.`),
