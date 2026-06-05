@@ -57,35 +57,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'GEMINI_API_KEY not configured' }, { status: 500 });
     }
 
-    // Generate 10 composition variations from the base prompt
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+    // Generate 5 composition variations (reduced from 10 to stay within timeout)
+    // The prompt is saved regardless — variations failing is non-fatal
+    let variations: string[] = [];
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
-    const variationPrompt = `You are a creative director and prompt engineer specialising in social media visual content for pharmacies.
+      const variationPrompt = `You are a creative director specialising in social media visuals for pharmacies.
 
 Given this master image prompt:
 "${basePrompt}"
 
-Generate exactly 10 variations of this prompt. Each variation MUST:
-1. Keep the exact same creative concept, mood, quality level, and visual style as the original
-2. Change ONLY the composition: object placement, camera angle, spatial arrangement, visual hierarchy, focal point position
-3. Reference specific composition techniques in each: rule of thirds, centred symmetry, diagonal tension, left-heavy, right-heavy, frame-within-frame, leading lines, wide negative space, close crop, bird's eye view, etc.
-4. Be a complete, detailed, standalone image generation prompt — not a diff from the original
-5. Maintain the same high-end, premium visual quality standard throughout
-6. Each should feel like the same talented designer but with a noticeably different layout choice
+Generate exactly 5 variations. Each must:
+1. Keep the exact same creative concept, mood and quality as the original
+2. Change ONLY composition: object placement, camera angle, spatial layout, focal point
+3. Name the specific composition technique used (rule of thirds, centred, diagonal, leading lines, etc.)
+4. Be a complete standalone prompt — not a diff
+5. Same premium quality standard throughout
 
-Return ONLY valid JSON: { "variations": ["full prompt 1", "full prompt 2", "full prompt 3", "full prompt 4", "full prompt 5", "full prompt 6", "full prompt 7", "full prompt 8", "full prompt 9", "full prompt 10"] }`;
+Return ONLY valid JSON: { "variations": ["prompt 1", "prompt 2", "prompt 3", "prompt 4", "prompt 5"] }`;
 
-    const result     = await model.generateContent(variationPrompt);
-    const jsonStr    = extractFirstJSON(result.response.text().trim());
-    let variations: string[] = [];
-
-    if (jsonStr) {
-      const parsed = JSON.parse(jsonStr);
-      variations   = parsed.variations || [];
+      const result  = await model.generateContent(variationPrompt);
+      const jsonStr = extractFirstJSON(result.response.text().trim());
+      if (jsonStr) {
+        const parsed = JSON.parse(jsonStr);
+        variations   = (parsed.variations || []).filter(Boolean);
+      }
+    } catch (varErr) {
+      console.error('Variation generation failed (non-fatal):', varErr);
     }
 
-    // Ensure we have at least some variations, even if generation failed partially
+    // Always fall back to base prompt if variations failed
     if (variations.length === 0) variations = [basePrompt];
 
     // If marking as new month, clear the flag on all other prompts first
