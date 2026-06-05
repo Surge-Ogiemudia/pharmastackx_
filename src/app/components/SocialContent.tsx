@@ -324,9 +324,11 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const example = MOCK_EXAMPLES[activeCategory];
 
   return (
-    <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2, borderBottom: `1px solid ${BORD}`, flexShrink: 0 }}>
+    <Box
+      sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, bgcolor: '#08100D', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
+    >
+      {/* Sticky header */}
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#08100D', borderBottom: `1px solid ${BORD}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AutoAwesome sx={{ fontSize: 16, color: '#A78BFA' }} />
           <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '15px', color: TEXT }}>Image Prompt Manager</Typography>
@@ -334,8 +336,8 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         <Button onClick={onClose} sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontSize: '13px', minWidth: 0 }}>Close</Button>
       </Box>
 
-      {/* Category tabs — dynamic from DB + "New theme" tab */}
-      <Box sx={{ display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', flexShrink: 0, '&::-webkit-scrollbar': { display: 'none' } }}>
+      {/* Category tabs */}
+      <Box sx={{ display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
         {dbCategories.map(cat => (
           <Box key={cat} onClick={() => setActiveCategory(cat)} sx={{ px: 1.5, py: 0.6, borderRadius: '20px', cursor: 'pointer', flexShrink: 0, bgcolor: activeCategory === cat ? '#A78BFA22' : CARD, border: `1px solid ${activeCategory === cat ? '#A78BFA55' : BORD}` }}>
             <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: activeCategory === cat ? '#A78BFA' : MUTED, whiteSpace: 'nowrap' }}>{cat}</Typography>
@@ -346,7 +348,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         </Box>
       </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2, pb: 6, WebkitOverflowScrolling: 'touch' }}>
+      <Box sx={{ px: 2, pb: 8 }}>
 
         {/* Existing prompts */}
         <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
