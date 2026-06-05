@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Button, IconButton, CircularProgress,
          Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings, AutoAwesome, Delete } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
@@ -228,6 +228,173 @@ function LockedSection() {
   );
 }
 
+// ── Admin Prompt Panel ────────────────────────────────────────────────────────
+const CATEGORIES = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'] as const;
+
+const MOCK_EXAMPLES: Record<string, { label: string; prompt: string }> = {
+  'Medicine Spotlight': {
+    label: 'Editorial flat-lay (example)',
+    prompt: `A single amber prescription bottle with a clean white label stands centered on a rich forest-green surface. Shot from a 45-degree elevated angle. Soft natural light from upper-left casts a gentle shadow to the right. Beside the bottle, exactly three small white circular pills arranged in a loose diagonal. Background is solid deep green with a barely-visible subtle grid texture. Ultra-clean, premium editorial product photography. No cluttered shelves, no multiple products, no stock photography look. Negative space fills 40% of the frame. Pharmacy name as small elegant text bottom-left. 1:1 square format.`,
+  },
+  'Health Awareness': {
+    label: 'Human connection portrait (example)',
+    prompt: `Close-up of warm dark-skinned hands — one elderly, one young — gently clasped together on a soft cream fabric surface. Warm golden afternoon light. Shallow depth of field, background softly blurred into warm amber tones. Small sprig of green leaves placed deliberately in the lower-left corner. Emotion: care, trust, generational health. No medical equipment, no clinical setting. Documentary warmth, intimate framing. Nigerian context — dark skin tones, local story. Pharmacy name as soft text upper-right. 1:1 square format.`,
+  },
+  'Low Stock Alert': {
+    label: 'Bold graphic announcement (example)',
+    prompt: `Bold typographic poster composition. Stark dark background. A single product silhouette centered with dramatic spotlight illumination. Three bold horizontal amber/orange bars slice behind the product creating urgency and visual tension. High contrast. No photographic realism — pure graphic design energy. The composition breathes: 30% product, 70% bold negative space. Feels like a luxury fashion brand announcing a limited drop. Dynamic, modern, editorial. Pharmacy name bottom-center in small caps. 1:1 square format.`,
+  },
+  'Human Moment': {
+    label: 'Candid pharmacy scene (example)',
+    prompt: `Candid street-level scene at a pharmacy counter in Lagos. A pharmacist in a neat white coat leans slightly forward, speaking warmly to a middle-aged woman in a colourful ankara blouse. Both in frame, genuine eye contact. Pharmacy interior visible but softly blurred. Warm fluorescent lighting with natural light from a side window. Not posed, not stock. Colour grade: warm, slightly lifted shadows, rich Nigerian skin tones. Pharmacy name watermarked subtly lower-right. 1:1 square format.`,
+  },
+};
+
+function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [activeCategory, setActiveCategory] = useState<string>('Medicine Spotlight');
+  const [prompts,        setPrompts]        = useState<any[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [label,          setLabel]          = useState('');
+  const [basePrompt,     setBasePrompt]     = useState('');
+  const [submitting,     setSubmitting]     = useState(false);
+  const [submitMsg,      setSubmitMsg]      = useState('');
+  const [showExample,    setShowExample]    = useState(false);
+
+  const loadPrompts = async (cat: string) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`/api/admin/social-prompts?category=${encodeURIComponent(cat)}`);
+      setPrompts(res.data.prompts || []);
+    } catch { setPrompts([]); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadPrompts(activeCategory); }, [activeCategory]);
+
+  const handleSubmit = async () => {
+    if (!label.trim() || !basePrompt.trim()) return;
+    setSubmitting(true);
+    setSubmitMsg('Generating 10 composition variations with Gemini…');
+    try {
+      await axios.post('/api/admin/social-prompts', { adminId: userId, category: activeCategory, label: label.trim(), basePrompt: basePrompt.trim() });
+      setLabel(''); setBasePrompt('');
+      setSubmitMsg('✓ Saved and variations generated.');
+      await loadPrompts(activeCategory);
+      setTimeout(() => setSubmitMsg(''), 3000);
+    } catch (e: any) {
+      setSubmitMsg(`Error: ${e?.response?.data?.message || 'Failed'}`);
+    } finally { setSubmitting(false); }
+  };
+
+  const handleDelete = async (promptId: string) => {
+    await axios.delete('/api/admin/social-prompts', { data: { promptId, adminId: userId } });
+    setPrompts(prev => prev.filter(p => p._id !== promptId));
+  };
+
+  const example = MOCK_EXAMPLES[activeCategory];
+
+  return (
+    <Box sx={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D' }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2, borderBottom: `1px solid ${BORD}`, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesome sx={{ fontSize: 16, color: '#A78BFA' }} />
+          <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '15px', color: TEXT }}>Image Prompt Manager</Typography>
+        </Box>
+        <Button onClick={onClose} sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontSize: '13px', minWidth: 0 }}>Close</Button>
+      </Box>
+
+      {/* Category tabs */}
+      <Box sx={{ display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', flexShrink: 0, '&::-webkit-scrollbar': { display: 'none' } }}>
+        {CATEGORIES.map(cat => (
+          <Box key={cat} onClick={() => setActiveCategory(cat)} sx={{ px: 1.5, py: 0.6, borderRadius: '20px', cursor: 'pointer', flexShrink: 0, bgcolor: activeCategory === cat ? '#A78BFA22' : CARD, border: `1px solid ${activeCategory === cat ? '#A78BFA55' : BORD}` }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: activeCategory === cat ? '#A78BFA' : MUTED, whiteSpace: 'nowrap' }}>{cat}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      <Box sx={{ flex: 1, overflowY: 'auto', px: 2, pb: 4 }}>
+
+        {/* Existing prompts */}
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
+          Active prompts ({loading ? '…' : prompts.filter(p => p.isActive).length})
+        </Typography>
+
+        {!loading && prompts.filter(p => p.isActive).length === 0 && (
+          <Box sx={{ p: 2, borderRadius: '12px', bgcolor: CARD, border: `1px dashed ${BORD}`, mb: 2 }}>
+            <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, textAlign: 'center' }}>
+              No prompts yet for this category. Add one below.
+            </Typography>
+          </Box>
+        )}
+
+        {prompts.filter(p => p.isActive).map(p => (
+          <Box key={p._id} sx={{ p: 1.5, borderRadius: '12px', bgcolor: CARD, border: `1px solid ${BORD}`, mb: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 700, color: TEXT }}>{p.label}</Typography>
+              <IconButton size="small" onClick={() => handleDelete(p._id)} sx={{ color: '#FF6B6B', p: 0.3, ml: 1 }}>
+                <Delete sx={{ fontSize: 15 }} />
+              </IconButton>
+            </Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED, lineHeight: 1.5, mb: 0.5 }}>
+              {p.basePrompt.slice(0, 120)}…
+            </Typography>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#A78BFA' }}>
+              {p.variations?.length || 0} composition variations generated
+            </Typography>
+          </Box>
+        ))}
+
+        {/* Divider */}
+        <Box sx={{ my: 2.5, borderTop: `1px solid ${BORD}` }} />
+
+        {/* Add new prompt */}
+        <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>Add new prompt</Typography>
+
+        {/* Example toggle */}
+        <Box onClick={() => setShowExample(v => !v)} sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.5, cursor: 'pointer' }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#A78BFA' }}>
+            {showExample ? '▲ Hide example' : '▼ See example prompt for this category'}
+          </Typography>
+        </Box>
+
+        {showExample && example && (
+          <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#1a0a3a', border: '1px solid rgba(167,139,250,0.2)', mb: 2 }}>
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', fontWeight: 700, color: '#A78BFA', mb: 0.5 }}>{example.label}</Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: 'rgba(232,240,236,0.6)', lineHeight: 1.6 }}>{example.prompt}</Typography>
+            <Button size="small" onClick={() => { setLabel(example.label.replace(' (example)', '')); setBasePrompt(example.prompt); setShowExample(false); }}
+              sx={{ mt: 1, color: '#A78BFA', textTransform: 'none', fontFamily: FONT, fontSize: '11px', fontWeight: 600, p: 0 }}>
+              Use as starting point →
+            </Button>
+          </Box>
+        )}
+
+        <TextField fullWidth size="small" placeholder="Short label, e.g. 'Minimal flat-lay v2'"
+          value={label} onChange={e => setLabel(e.target.value)}
+          sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: '#A78BFA' } }, '& .MuiInputBase-input': { color: TEXT, '&::placeholder': { color: MUTED } } }} />
+
+        <TextField fullWidth multiline rows={6} size="small"
+          placeholder="Write your master prompt here. Be specific about composition, lighting, style, subject, mood. Avoid generic descriptions. The more specific, the better the output."
+          value={basePrompt} onChange={e => setBasePrompt(e.target.value)}
+          sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '12px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: '#A78BFA' } }, '& .MuiInputBase-input': { color: TEXT, lineHeight: 1.7, '&::placeholder': { color: MUTED } } }} />
+
+        {submitMsg && (
+          <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: submitMsg.startsWith('✓') ? GBRI : '#FF6B6B', mb: 1.5 }}>{submitMsg}</Typography>
+        )}
+
+        <Button fullWidth disabled={!label.trim() || !basePrompt.trim() || submitting} onClick={handleSubmit}
+          sx={{ bgcolor: '#7C3AED', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', py: 1.4, '&:hover': { bgcolor: '#6D28D9' }, '&:disabled': { opacity: 0.5 } }}>
+          {submitting ? <><CircularProgress size={14} sx={{ color: '#fff', mr: 1 }} /> Generating variations…</> : 'Save & Generate 10 Variations ✦'}
+        </Button>
+
+        <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED, mt: 1.5, lineHeight: 1.6, textAlign: 'center' }}>
+          Gemini will generate 10 composition variants from your prompt. The system randomly picks one per pharmacy post and injects brand colours, name, and location automatically.
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SocialContent() {
   const { user } = useSession();
@@ -235,7 +402,8 @@ export default function SocialContent() {
   const [appState,    setAppState]   = useState<AppState>('loading');
   const [tone,        setTone]       = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_tone') || 'warm' : 'warm'));
   const [showPrices,  setShowPrices] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_show_prices') || 'yes' : 'yes'));
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen,    setSettingsOpen]    = useState(false);
+  const [adminPanelOpen,  setAdminPanelOpen]  = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
   const [allPosts,    setAllPosts]   = useState<DailyPost[]>([]); // all posts this week
   const [generating,  setGenerating] = useState(false);
@@ -571,6 +739,22 @@ export default function SocialContent() {
             </Button>
           </DialogActions>
         </Dialog>
+      )}
+
+      {/* Admin floating button — only visible to admin role */}
+      {user?.role === 'admin' && (
+        <Box
+          onClick={() => setAdminPanelOpen(true)}
+          sx={{ position: 'fixed', bottom: 90, right: 16, zIndex: 999, display: 'flex', alignItems: 'center', gap: 0.8, px: 1.5, py: 0.8, borderRadius: '20px', bgcolor: '#1a0a3a', border: '1px solid rgba(167,139,250,0.35)', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+        >
+          <AutoAwesome sx={{ fontSize: 13, color: '#A78BFA' }} />
+          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#A78BFA', fontWeight: 600, letterSpacing: '0.5px' }}>Prompts</Typography>
+        </Box>
+      )}
+
+      {/* Admin prompt panel */}
+      {adminPanelOpen && user?.role === 'admin' && (
+        <AdminPromptPanel userId={String(user._id)} onClose={() => setAdminPanelOpen(false)} />
       )}
 
       {/* Settings modal */}
