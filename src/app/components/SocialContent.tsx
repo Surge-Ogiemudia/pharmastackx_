@@ -49,6 +49,8 @@ interface DailyPost {
   status: 'pending_review' | 'ready_to_post' | 'posted' | 'flagged';
   regenCount: number;
   category?: string;
+  isSpecialRequest?: boolean;
+  specialRequestPrompt?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -436,6 +438,13 @@ export default function SocialContent() {
   const [genProgress, setGenProgress] = useState(0);
   const [imageError,  setImageError]  = useState<string | null>(null);
 
+  // Special request state
+  const [specialModalOpen,  setSpecialModal]   = useState(false);
+  const [specialBrief,      setSpecialBrief]   = useState('');
+  const [specialImages,     setSpecialImages]  = useState<Array<{ data: string; mimeType: string; preview: string }>>([]);
+  const [generatingSpecial, setGenSpecial]     = useState(false);
+  const [specialProgress,   setSpecialProgress]= useState(0);
+
   // Regen modal state
   const [regenModalOpen, setRegenModal]   = useState(false);
   const [regenReason,    setRegenReason]  = useState('');
@@ -447,8 +456,12 @@ export default function SocialContent() {
   const pharmacyName = user?.businessName || 'Pharmacy';
   const pharmacyUrl  = user?.slug ? `${user.slug}.psx.ng` : 'psx.ng';
 
-  // Post for the selected date
-  const todaysPost = allPosts.find(p => {
+  // Split regular posts from special requests
+  const regularPosts = allPosts.filter(p => !p.isSpecialRequest);
+  const specialPost  = allPosts.find(p => p.isSpecialRequest) ?? null;
+
+  // Post for the selected date (regular posts only)
+  const todaysPost = regularPosts.find(p => {
     const pd = new Date(p.scheduledDate); pd.setHours(0,0,0,0);
     const sd = new Date(selectedDate);    sd.setHours(0,0,0,0);
     return pd.getTime() === sd.getTime();
@@ -459,8 +472,8 @@ export default function SocialContent() {
   const slotIdx      = postCategory && categories.length > 0
     ? Math.max(0, categories.indexOf(postCategory)) % GRADIENTS.length
     : slotForDate(selectedDate) % GRADIENTS.length;
-  // allPosts is already week-filtered from the server — no need to re-filter
-  const weekCount    = allPosts.length;
+  // Regular post count only (special request is separate)
+  const weekCount    = regularPosts.length;
   const weekLimitHit = weekCount >= 4;
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
   const isPastDate   = selectedDate.getTime() < todayMidnight.getTime();
@@ -543,6 +556,44 @@ export default function SocialContent() {
       clearInterval(interval);
       setGenProgress(100);
       setTimeout(() => { setGenerating(false); setGenProgress(0); }, 400);
+    }
+  };
+
+  const handleSpecialImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, 3 - specialImages.length);
+    for (const file of files) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const base64  = dataUrl.split(',')[1];
+        setSpecialImages(prev => [...prev, { data: base64, mimeType: file.type, preview: dataUrl }]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerateSpecial = async () => {
+    if (!user?._id || !specialBrief.trim()) return;
+    setGenSpecial(true); setSpecialProgress(0);
+    const interval = setInterval(() => setSpecialProgress(p => Math.min(p + 3, 88)), 900);
+    try {
+      const res = await axios.post('/api/social/generate-special-post', {
+        pharmacyId:  user._id,
+        customPrompt: specialBrief.trim(),
+        attachments:  specialImages.map(({ data, mimeType }) => ({ data, mimeType })),
+      });
+      if (res.data.post) {
+        setAllPosts(prev => [...prev.filter(p => !p.isSpecialRequest), res.data.post]);
+        setSpecialModal(false);
+        setSpecialBrief('');
+        setSpecialImages([]);
+      }
+    } catch (e: any) {
+      console.error('Special post failed:', e?.response?.data?.message || e);
+    } finally {
+      clearInterval(interval);
+      setSpecialProgress(100);
+      setTimeout(() => { setGenSpecial(false); setSpecialProgress(0); }, 400);
     }
   };
 
@@ -750,7 +801,149 @@ export default function SocialContent() {
         </AnimatePresence>
       </Box>
 
+      {/* ── Special Request Card ────────────────────────────────────────── */}
+      <Box sx={{ px: 2, pb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ fontSize: '16px' }}>✦</Typography>
+            <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '14px', color: TEXT }}>Special Request</Typography>
+          </Box>
+          <Box sx={{ px: 1.2, py: 0.3, borderRadius: '20px', bgcolor: specialPost ? `${GREEN}18` : 'rgba(255,255,255,0.06)', border: `1px solid ${specialPost ? `${GREEN}35` : BORD}` }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: specialPost ? GREEN : MUTED }}>{specialPost ? '1/1 this week' : '0/1 this week'}</Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ bgcolor: CARD, borderRadius: '20px', border: `1px solid ${BORD}`, overflow: 'hidden' }}>
+          {generatingSpecial && (
+            <Box sx={{ height: 3 }}>
+              <motion.div animate={{ width: `${specialProgress}%` }} transition={{ duration: 0.5 }}
+                style={{ height: '100%', background: `linear-gradient(90deg,#7C3AED,#A78BFA)` }} />
+            </Box>
+          )}
+
+          {specialPost ? (
+            <Box sx={{ p: 1.5, pb: 0 }}>
+              <PostGraphic post={specialPost} idx={4} name={pharmacyName} url={pharmacyUrl} />
+            </Box>
+          ) : (
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 3 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, textAlign: 'center', lineHeight: 1.6 }}>
+                Write your own brief — a promotion, event, or anything specific to your pharmacy.
+              </Typography>
+            </Box>
+          )}
+
+          {specialPost && (
+            <Box sx={{ p: 2 }}>
+              {/* Brief used */}
+              <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
+                <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#A78BFA', mb: 0.3 }}>Your brief</Typography>
+                <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, lineHeight: 1.5 }}>{specialPost.specialRequestPrompt}</Typography>
+              </Box>
+
+              {specialPost.caption && (
+                <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: TEXT, lineHeight: 1.65, mb: 1.5 }}>{specialPost.caption}</Typography>
+              )}
+              {(specialPost.hashtags?.length ?? 0) > 0 && (
+                <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: '#A78BFA', mb: 2 }}>{specialPost.hashtags.map(h => `#${h}`).join(' ')}</Typography>
+              )}
+
+              <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                <Button disabled={!specialPost.imageUrl} onClick={() => handleDownload(specialPost)}
+                  startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+                  sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.06)', color: TEXT, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: `1px solid ${BORD}` }}>
+                  Download
+                </Button>
+                <Button onClick={() => handleShare(specialPost)}
+                  startIcon={<IosShare sx={{ fontSize: 16 }} />}
+                  sx={{ flex: 1, bgcolor: '#7C3AED', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1 }}>
+                  Share
+                </Button>
+              </Box>
+
+              {specialPost.status !== 'posted' && (
+                (specialPost.regenCount ?? 0) >= 2
+                  ? <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, textAlign: 'center' }}>
+                      <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED }}>Regeneration limit reached for today.</Typography>
+                    </Box>
+                  : <Button fullWidth onClick={() => { setRegenError(''); setRegenModal(true); }}
+                      sx={{ mb: 1.5, bgcolor: 'rgba(255,80,80,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,80,80,0.2)', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1 }}>
+                      Regenerate ({2 - (specialPost.regenCount ?? 0)} left)
+                    </Button>
+              )}
+
+              <Button fullWidth disabled={specialPost.status === 'posted'} onClick={() => handleMarkAsPosted(specialPost._id)}
+                sx={{ bgcolor: specialPost.status === 'posted' ? `${GBRI}18` : 'rgba(255,255,255,0.04)', color: specialPost.status === 'posted' ? GBRI : MUTED, border: `1px solid ${specialPost.status === 'posted' ? `${GBRI}40` : BORD}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3 }}>
+                {specialPost.status === 'posted' ? '✓ Marked as posted' : 'Mark as posted'}
+              </Button>
+            </Box>
+          )}
+
+          {!specialPost && !generatingSpecial && (
+            <Box sx={{ px: 2, pb: 2 }}>
+              <Button fullWidth onClick={() => setSpecialModal(true)}
+                sx={{ bgcolor: '#7C3AED', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', py: 1.4, boxShadow: '0 4px 20px rgba(124,58,237,0.4)' }}>
+                Create Special Post ✦
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Box>
+
       <LockedSection />
+
+      {/* Special Request Modal */}
+      {specialModalOpen && (
+        <Dialog open onClose={() => !generatingSpecial && setSpecialModal(false)}
+          PaperProps={{ sx: { borderRadius: '20px', bgcolor: CARD, border: `1px solid ${BORD}`, p: 0.5, m: 2, width: '100%' } }}>
+          <DialogTitle sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '16px', color: TEXT }}>
+            ✦ Special Request
+          </DialogTitle>
+          <DialogContent sx={{ pb: 1 }}>
+            <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', mb: 2 }}>
+              <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#A78BFA', mb: 0.5 }}>Example brief</Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: 'rgba(232,240,236,0.6)', lineHeight: 1.6, fontStyle: 'italic' }}>
+                "We're celebrating our 5th anniversary this Saturday — create a festive post announcing 20% off all vitamins this weekend only. Keep it exciting and colourful."
+              </Typography>
+            </Box>
+
+            <TextField autoFocus fullWidth multiline rows={4} size="small"
+              placeholder="Describe exactly what you want — a promotion, event, new arrival, health campaign, anything specific to your pharmacy this week..."
+              value={specialBrief} onChange={e => setSpecialBrief(e.target.value)}
+              sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: '#0F1C17', color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: '#7C3AED' } }, '& .MuiInputBase-input': { color: TEXT, lineHeight: 1.7 } }} />
+
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1 }}>
+              Reference images (optional, up to 3)
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: specialImages.length > 0 ? 1.5 : 0 }}>
+              {specialImages.map((img, i) => (
+                <Box key={i} sx={{ position: 'relative', width: 64, height: 64, borderRadius: '10px', overflow: 'hidden', border: `1px solid ${BORD}` }}>
+                  <Box component="img" src={img.preview} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Box onClick={() => setSpecialImages(prev => prev.filter((_, j) => j !== i))}
+                    sx={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <Typography sx={{ fontSize: '10px', color: '#fff', lineHeight: 1 }}>✕</Typography>
+                  </Box>
+                </Box>
+              ))}
+              {specialImages.length < 3 && (
+                <Button component="label" sx={{ width: 64, height: 64, borderRadius: '10px', border: `1px dashed ${BORD}`, color: MUTED, minWidth: 0, flexDirection: 'column', gap: 0.3 }}>
+                  <Typography sx={{ fontSize: '18px', lineHeight: 1 }}>+</Typography>
+                  <Typography sx={{ fontFamily: MONO, fontSize: '8px', color: MUTED }}>Image</Typography>
+                  <input type="file" accept="image/*" hidden multiple onChange={handleSpecialImageUpload} />
+                </Button>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button onClick={() => { setSpecialModal(false); setSpecialBrief(''); setSpecialImages([]); }}
+              sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT }}>Cancel</Button>
+            <Button disabled={!specialBrief.trim() || generatingSpecial} onClick={handleGenerateSpecial}
+              sx={{ bgcolor: '#7C3AED', color: '#fff', textTransform: 'none', fontFamily: FONT, fontWeight: 700, borderRadius: '10px', px: 2.5, '&:disabled': { opacity: 0.5 } }}>
+              {generatingSpecial ? <><CircularProgress size={14} sx={{ color: '#fff', mr: 1 }} />Generating…</> : 'Generate Post ✦'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Regen modal */}
       {regenModalOpen && (
