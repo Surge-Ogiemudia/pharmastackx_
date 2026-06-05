@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { adminId, category, label, basePrompt } = await req.json();
+    const { adminId, category, label, basePrompt, isNewMonth } = await req.json();
 
     if (!adminId || !category || !label || !basePrompt) {
       return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
@@ -88,18 +88,41 @@ Return ONLY valid JSON: { "variations": ["full prompt 1", "full prompt 2", "full
     // Ensure we have at least some variations, even if generation failed partially
     if (variations.length === 0) variations = [basePrompt];
 
+    // If marking as new month, clear the flag on all other prompts first
+    if (isNewMonth) await MasterPrompt.updateMany({}, { isNewMonth: false });
+
     const created = await MasterPrompt.create({
       category,
       label,
       basePrompt,
       variations,
-      isActive:  true,
-      createdBy: adminId,
+      isActive:   true,
+      isNewMonth: isNewMonth === true,
+      createdBy:  adminId,
     });
 
     return NextResponse.json({ success: true, prompt: created });
   } catch (err) {
     console.error('POST social-prompts error:', err);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// PATCH — toggle isNewMonth flag on a prompt
+export async function PATCH(req: NextRequest) {
+  try {
+    await dbConnect();
+    const { promptId, adminId, isNewMonth } = await req.json();
+    const admin = await User.findById(adminId);
+    if (!admin || admin.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+    }
+    // Only one prompt should be marked as new month — clear others first
+    if (isNewMonth) await MasterPrompt.updateMany({}, { isNewMonth: false });
+    const updated = await MasterPrompt.findByIdAndUpdate(promptId, { isNewMonth }, { new: true });
+    return NextResponse.json({ success: true, prompt: updated });
+  } catch (err) {
+    console.error('PATCH social-prompts error:', err);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

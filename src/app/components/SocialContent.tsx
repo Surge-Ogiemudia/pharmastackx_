@@ -260,6 +260,14 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const [prompts,        setPrompts]        = useState<any[]>([]);
   const [loading,        setLoading]        = useState(true);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [isNewMonth,      setIsNewMonth]      = useState(false);
+  const [calEvents,       setCalEvents]       = useState<any[]>([]);
+  const [calTab,          setCalTab]          = useState(false); // show calendar tab
+  const [calName,         setCalName]         = useState('');
+  const [calMonth,        setCalMonth]        = useState('');
+  const [calDay,          setCalDay]          = useState('');
+  const [calCategory,     setCalCategory]     = useState('');
+  const [calSubmitting,   setCalSubmitting]   = useState(false);
   const [label,          setLabel]          = useState('');
   const [basePrompt,     setBasePrompt]     = useState('');
   const [submitting,     setSubmitting]     = useState(false);
@@ -267,9 +275,13 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const [showExample,    setShowExample]    = useState(false);
 
   const loadCategories = async () => {
-    const res = await axios.get('/api/admin/social-prompts/categories');
-    const cats: string[] = res.data.categories || [];
+    const [catRes, calRes] = await Promise.all([
+      axios.get('/api/admin/social-prompts/categories'),
+      axios.get('/api/admin/health-calendar'),
+    ]);
+    const cats: string[] = catRes.data.categories || [];
     setDbCategories(cats);
+    setCalEvents(calRes.data.events || []);
     if (cats.length > 0 && !activeCategory) setActiveCategory(cats[0]);
   };
 
@@ -293,7 +305,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
     setSubmitting(true);
     setSubmitMsg('Generating 10 composition variations with Gemini…');
     try {
-      await axios.post('/api/admin/social-prompts', { adminId: userId, category: effectiveCategory, label: label.trim(), basePrompt: basePrompt.trim() });
+      await axios.post('/api/admin/social-prompts', { adminId: userId, category: effectiveCategory, label: label.trim(), basePrompt: basePrompt.trim(), isNewMonth });
       setLabel(''); setBasePrompt(''); setNewCategoryName('');
       setSubmitMsg('✓ Saved and variations generated.');
       await loadCategories();
@@ -409,7 +421,18 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
           <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: submitMsg.startsWith('✓') ? GBRI : '#FF6B6B', mb: 1.5 }}>{submitMsg}</Typography>
         )}
 
-        <Button fullWidth disabled={!label.trim() || !basePrompt.trim() || submitting} onClick={handleSubmit}
+        {/* New Month toggle */}
+        <Box onClick={() => setIsNewMonth(v => !v)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${isNewMonth ? '#FCD34D55' : BORD}`, bgcolor: isNewMonth ? 'rgba(252,211,77,0.08)' : 'transparent', transition: 'all 0.15s' }}>
+          <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isNewMonth ? '#FCD34D' : 'rgba(255,255,255,0.22)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {isNewMonth && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#FCD34D' }} />}
+          </Box>
+          <Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: isNewMonth ? '#FCD34D' : MUTED }}>Use for New Month posts</Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED, lineHeight: 1.4 }}>Any week containing the 1st of a month will use this prompt</Typography>
+          </Box>
+        </Box>
+
+        <Button fullWidth disabled={!label.trim() || !basePrompt.trim() || submitting || (activeCategory === '__new__' && !newCategoryName.trim())} onClick={handleSubmit}
           sx={{ bgcolor: '#7C3AED', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', py: 1.4, '&:hover': { bgcolor: '#6D28D9' }, '&:disabled': { opacity: 0.5 } }}>
           {submitting ? <><CircularProgress size={14} sx={{ color: '#fff', mr: 1 }} /> Generating variations…</> : 'Save & Generate 10 Variations ✦'}
         </Button>
@@ -417,6 +440,83 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: MUTED, mt: 1.5, lineHeight: 1.6, textAlign: 'center' }}>
           Gemini will generate 10 composition variants from your prompt. The system randomly picks one per pharmacy post and injects brand colours, name, and location automatically.
         </Typography>
+
+        {/* ── Health Calendar ──────────────────────────────────────── */}
+        <Box sx={{ mt: 3, pt: 2.5, borderTop: `1px solid ${BORD}` }}>
+          <Box onClick={() => setCalTab(v => !v)} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: calTab ? 2 : 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontSize: '16px' }}>🗓</Typography>
+              <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '14px', color: TEXT }}>Health Calendar</Typography>
+              <Box sx={{ px: 1, py: 0.2, borderRadius: '8px', bgcolor: 'rgba(34,211,238,0.12)', border: '1px solid rgba(34,211,238,0.25)' }}>
+                <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#22D3EE' }}>{calEvents.filter(e => e.isActive).length} events</Typography>
+              </Box>
+            </Box>
+            <Typography sx={{ fontFamily: MONO, fontSize: '12px', color: MUTED }}>{calTab ? '▲' : '▼'}</Typography>
+          </Box>
+
+          {calTab && (
+            <>
+              {calEvents.length === 0 && (
+                <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, mb: 2 }}>No special days added yet.</Typography>
+              )}
+              {calEvents.map(e => (
+                <Box key={e._id} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.2, borderRadius: '10px', bgcolor: CARD, border: `1px solid ${BORD}`, mb: 1 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', fontWeight: 600, color: TEXT }}>{e.name}</Typography>
+                    <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>
+                      {['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][e.month]} {e.day} · {e.category}
+                    </Typography>
+                  </Box>
+                  <IconButton size="small" onClick={async () => {
+                    await axios.delete('/api/admin/health-calendar', { data: { eventId: e._id, adminId: userId } });
+                    setCalEvents(prev => prev.filter(x => x._id !== e._id));
+                  }} sx={{ color: '#FF6B6B', p: 0.3 }}>
+                    <Delete sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Box>
+              ))}
+
+              <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mt: 2, mb: 1.5 }}>Add special day</Typography>
+
+              <TextField fullWidth size="small" placeholder="e.g. World Health Day"
+                value={calName} onChange={e => setCalName(e.target.value)}
+                sx={{ mb: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: '#22D3EE' } }, '& .MuiInputBase-input': { color: TEXT } }} />
+
+              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                <TextField size="small" placeholder="Month (1-12)" type="number" value={calMonth} onChange={e => setCalMonth(e.target.value)}
+                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD } }, '& .MuiInputBase-input': { color: TEXT } }} />
+                <TextField size="small" placeholder="Day (1-31)" type="number" value={calDay} onChange={e => setCalDay(e.target.value)}
+                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD } }, '& .MuiInputBase-input': { color: TEXT } }} />
+              </Box>
+
+              <Box sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, mb: 0.8 }}>Use which prompt category?</Typography>
+                <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                  {dbCategories.map(cat => (
+                    <Box key={cat} onClick={() => setCalCategory(cat)} sx={{ px: 1.2, py: 0.5, borderRadius: '10px', cursor: 'pointer', bgcolor: calCategory === cat ? 'rgba(34,211,238,0.12)' : CARD, border: `1px solid ${calCategory === cat ? 'rgba(34,211,238,0.3)' : BORD}` }}>
+                      <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: calCategory === cat ? '#22D3EE' : MUTED }}>{cat}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              <Button fullWidth disabled={!calName.trim() || !calMonth || !calDay || !calCategory || calSubmitting}
+                onClick={async () => {
+                  setCalSubmitting(true);
+                  try {
+                    const res = await axios.post('/api/admin/health-calendar', { adminId: userId, name: calName.trim(), month: Number(calMonth), day: Number(calDay), category: calCategory });
+                    setCalEvents(prev => [...prev, res.data.event]);
+                    setCalName(''); setCalMonth(''); setCalDay(''); setCalCategory('');
+                  } catch(e) { console.error(e); }
+                  finally { setCalSubmitting(false); }
+                }}
+                sx={{ bgcolor: 'rgba(34,211,238,0.15)', color: '#22D3EE', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '13px', py: 1.2, border: '1px solid rgba(34,211,238,0.3)', '&:disabled': { opacity: 0.5 } }}>
+                {calSubmitting ? <CircularProgress size={14} sx={{ color: '#22D3EE', mr: 1 }} /> : null}
+                Add to Calendar ✦
+              </Button>
+            </>
+          )}
+        </Box>
       </Box>
     </Box>
   );

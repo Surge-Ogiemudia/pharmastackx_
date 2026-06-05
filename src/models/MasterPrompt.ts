@@ -5,7 +5,8 @@ export interface IMasterPrompt extends Document {
   label: string;
   basePrompt: string;
   variations: string[];   // 10 auto-generated composition variants
-  isActive: boolean;
+  isActive:   boolean;
+  isNewMonth?: boolean;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -15,7 +16,8 @@ const masterPromptSchema: Schema<IMasterPrompt> = new mongoose.Schema({
   label:      { type: String, required: true },
   basePrompt: { type: String, required: true },
   variations: [{ type: String }],
-  isActive:   { type: Boolean, default: true },
+  isActive:    { type: Boolean, default: true },
+  isNewMonth:  { type: Boolean, default: false },  // use this prompt for new-month weeks
   createdBy:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });
 
