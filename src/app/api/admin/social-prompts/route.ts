@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Generate 10 composition variations from the base prompt
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const variationPrompt = `You are a creative director and prompt engineer specialising in social media visual content for pharmacies.
 

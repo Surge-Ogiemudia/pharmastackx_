@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     // 1. Caption + hashtags
     let caption = '', hashtags: string[] = [], videoIdeaText = '';
     try {
-      const txtModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const txtRes   = await txtModel.generateContent(
         `${baseCtx}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
       );
