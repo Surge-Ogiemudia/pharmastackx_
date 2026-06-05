@@ -31,10 +31,8 @@ export async function DELETE(req: NextRequest) {
   }
   if (!resolvedId) return NextResponse.json({ message: 'Missing pharmacyId, slug, or all:true' }, { status: 400 });
 
-  const result = await DailyPost.deleteMany({
-    pharmacyId: resolvedId,
-    scheduledDate: { $gte: monday, $lt: sunday },
-  });
+  // Delete ALL posts for this pharmacy (no date range) to avoid timezone mismatches
+  const result = await DailyPost.deleteMany({ pharmacyId: resolvedId });
 
   return NextResponse.json({ success: true, deleted: result.deletedCount, scope: 'single' });
 }
