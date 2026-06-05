@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import DailyPost from '@/models/DailyPost';
 import MasterPrompt from '@/models/MasterPrompt';
+import Product from '@/models/Product';
 import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
 export const maxDuration = 60;
@@ -36,28 +37,111 @@ const FALLBACK_PROMPTS: Record<string, string> = {
   'Human Moment': `Candid scene at a pharmacy counter in Nigeria. A pharmacist in a neat white coat leans slightly forward, speaking warmly to a middle-aged woman in colourful ankara. Both in frame, eye contact between them. Pharmacy interior softly blurred behind them. Warm fluorescent with natural side light. Genuine human connection — not posed. Rich warm skin tones, lifted shadows. 1:1 square format.`,
 };
 
-function buildPersonalisedPrompt(variation: string, pharmacy: any): string {
-  const primary    = pharmacy.brandKit?.primaryColor   || '#0F6E56';
-  const secondary  = pharmacy.brandKit?.secondaryColor || '#C84B8F';
-  const city       = pharmacy.city       || 'Nigeria';
-  const tagline    = pharmacy.brandKit?.tagline || '';
-  const name       = pharmacy.businessName || 'Pharmacy';
-  const photosCtx  = pharmacy.socialPhotos
-    ?.filter((p: any) => p.description)
-    .map((p: any) => p.description)
-    .join(', ') || '';
+// ── Pharmacy data bag — single source of truth passed to all prompts ──────────
+interface PharmacyData {
+  name:           string;
+  slug:           string;
+  url:            string;
+  phone:          string;
+  city:           string;
+  address:        string;
+  primaryColor:   string;
+  secondaryColor: string;
+  tagline:        string;
+  logoUrl:        string;
+  photosCtx:      string;
+}
 
-  return `${variation}
+function buildPharmacyData(pharmacy: any): PharmacyData {
+  return {
+    name:           pharmacy.businessName  || 'Pharmacy',
+    slug:           pharmacy.slug          || '',
+    url:            pharmacy.slug          ? `${pharmacy.slug}.psx.ng` : 'psx.ng',
+    phone:          pharmacy.phoneNumber   || '',
+    city:           pharmacy.city          || 'Nigeria',
+    address:        pharmacy.businessAddress || '',
+    primaryColor:   pharmacy.brandKit?.primaryColor   || '#0F6E56',
+    secondaryColor: pharmacy.brandKit?.secondaryColor || '#C84B8F',
+    tagline:        pharmacy.brandKit?.tagline || '',
+    logoUrl:        pharmacy.brandKit?.logoUrl || '',
+    photosCtx:      (pharmacy.socialPhotos || [])
+                      .filter((p: any) => p.description)
+                      .map((p: any) => p.description)
+                      .join('; ') || '',
+  };
+}
 
-PHARMACY PERSONALISATION — apply naturally, do not force:
-- Pharmacy name: "${name}" — appear as small elegant text in one corner only
-- Dominant brand colour: ${primary} — use as background, surface, or key accent
-- Secondary accent colour: ${secondary} — use sparingly for highlights or contrast elements
-- Location context: ${city}, Nigeria
-${tagline ? `- Brand tagline: "${tagline}"` : ''}
-${photosCtx ? `- Store visual context (for mood reference only): ${photosCtx}` : ''}
+// ── Replace admin template tokens with real values, strip any unresolved ones ─
+function resolveTokens(prompt: string, pd: PharmacyData, product?: any): string {
+  const map: Record<string, string> = {
+    '{{PHARMACY_NAME}}':   pd.name,
+    '{{PRIMARY_COLOUR}}':  pd.primaryColor,
+    '{{SECONDARY_COLOUR}}':pd.secondaryColor,
+    '{{PHONE}}':           pd.phone,
+    '{{CITY}}':            pd.city,
+    '{{ADDRESS}}':         pd.address,
+    '{{TAGLINE}}':         pd.tagline,
+    '{{LOGO}}':            pd.logoUrl,
+    '{{SLUG}}':            pd.slug,
+    '{{URL}}':             pd.url,
+    '{{PHARMACY_URL}}':    pd.url,
+    '{{MEDICINE_NAME}}':   product?.itemName        || '',
+    '{{MEDICINE_STRENGTH}}': product?.activeIngredient || '',
+    '{{PRODUCT_IMAGE}}':   product?.imageUrl        || '',
+    '{{PRICE}}':           product?.amount != null  ? `₦${product.amount}` : '',
+  };
 
-Keep the exact composition described above. Only adapt colours and branding identity to this specific pharmacy.`;
+  let out = prompt;
+  for (const [token, val] of Object.entries(map)) {
+    out = out.split(token).join(val);   // replaceAll without regex flags
+  }
+
+  // Strip any remaining unresolved tokens so they never reach Gemini
+  out = out.replace(/\{\{[^}]+\}\}/g, '').replace(/\{[A-Z_]{3,}\}/g, '');
+  return out.trim();
+}
+
+// ── Inject verified pharmacy data into every prompt ───────────────────────────
+function buildPersonalisedPrompt(
+  variation: string,
+  pd: PharmacyData,
+  stock: any[],
+  featuredProduct?: any,
+): string {
+  const stockList = stock.length
+    ? stock.map(p => `  • ${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''} — ₦${p.amount}`).join('\n')
+    : '  (no published stock available — do not mention specific medicines)';
+
+  const productBlock = featuredProduct
+    ? `FEATURED PRODUCT FOR THIS POST (use ONLY this — do not invent any other):
+  Name: ${featuredProduct.itemName}
+  Active ingredient: ${featuredProduct.activeIngredient !== 'N/A' ? featuredProduct.activeIngredient : 'not specified'}
+  Price: ₦${featuredProduct.amount}
+  Category: ${featuredProduct.category}`
+    : '';
+
+  // Resolve tokens first, then append the verified data block
+  const resolved = resolveTokens(variation, pd, featuredProduct);
+
+  return `${resolved}
+
+══ VERIFIED PHARMACY DATA — use EXACTLY as provided, never substitute or invent ══
+Pharmacy name:      "${pd.name}"
+Website URL:        ${pd.url}  ← render ONLY this URL, never hallucinate a different one
+Phone:              ${pd.phone || 'NOT PROVIDED — do not display any phone number'}
+City:               ${pd.city}
+Brand primary:      ${pd.primaryColor}
+Brand secondary:    ${pd.secondaryColor}
+${pd.tagline ? `Tagline:            "${pd.tagline}"` : ''}
+${pd.photosCtx ? `Store context:      ${pd.photosCtx}` : ''}
+
+PUBLISHED STOCK (only reference medicines from this list — never invent names):
+${stockList}
+
+${productBlock}
+══ END VERIFIED DATA ══
+
+Apply brand colours and pharmacy name as instructed above. Keep the composition from the prompt above unchanged.`;
 }
 
 export async function POST(req: NextRequest) {
@@ -73,18 +157,39 @@ export async function POST(req: NextRequest) {
     if (!pharmacy) return NextResponse.json({ message: 'User not found' }, { status: 404 });
     if (!process.env.GEMINI_API_KEY) return NextResponse.json({ message: 'GEMINI_API_KEY not configured' }, { status: 500 });
 
+    // ── Collect ALL verified pharmacy data before any generation ────────────
+    const pd = buildPharmacyData(pharmacy);
+
+    // Fetch published, in-stock products (linked by businessName)
+    const publishedStock = await Product.find({
+      businessName: pharmacy.businessName,
+      isPublished:  true,
+      quantity:     { $gt: 0 },
+    }).select('itemName activeIngredient category amount imageUrl quantity').limit(30).lean();
+
+    // For Medicine Spotlight, pick a real published product — never guess
+    const featuredProduct = category === 'Medicine Spotlight' && publishedStock.length > 0
+      ? publishedStock[Math.floor(Math.random() * publishedStock.length)]
+      : undefined;
+
     const toneMap: Record<string, string> = {
       warm:         'warm, friendly, and approachable',
       professional: 'professional, clinical, and authoritative',
       bold:         'bold, energetic, and attention-grabbing',
     };
-    const brandCtx  = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}.` : '';
-    const contactCtx = `${pharmacy.city || ''} pharmacy`;
-    const photosCtx  = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || '';
-    const toneCtx   = tone ? `Write in a ${toneMap[tone] ?? 'warm and friendly'} tone.` : '';
-    const priceCtx  = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
+    const toneCtx  = tone ? `Write in a ${toneMap[tone] ?? 'warm and friendly'} tone.` : '';
+    const priceCtx = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
 
-    const baseCtx = `You are creating social media content for "${pharmacy.businessName || 'Pharmacy'}", a pharmacy in Nigeria. ${contactCtx}. ${brandCtx} ${toneCtx} ${priceCtx} ${photosCtx ? 'Store context: ' + photosCtx : ''}`.trim();
+    const stockSummary = publishedStock.length
+      ? publishedStock.map(p => `${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''} — ₦${p.amount}`).join(', ')
+      : 'no published stock';
+
+    const baseCtx = `You are creating social media content for "${pd.name}", a pharmacy in ${pd.city}, Nigeria.
+Website: ${pd.url}. Phone: ${pd.phone || 'not provided'}.
+${pd.tagline ? `Tagline: "${pd.tagline}".` : ''}
+${toneCtx} ${priceCtx}
+Only reference these published medicines (never invent names): ${stockSummary}.
+${pd.photosCtx ? 'Store context: ' + pd.photosCtx : ''}`.trim();
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -92,8 +197,11 @@ export async function POST(req: NextRequest) {
     let caption = '', hashtags: string[] = [], videoIdeaText = '';
     try {
       const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+      const featuredLine = featuredProduct
+        ? `\nFeatured product: ${featuredProduct.itemName}${featuredProduct.activeIngredient !== 'N/A' ? ` (${featuredProduct.activeIngredient})` : ''} at ₦${featuredProduct.amount}. Reference ONLY this product — no other medicine names.`
+        : '';
       const txtRes   = await txtModel.generateContent(
-        `${baseCtx}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
+        `${baseCtx}${featuredLine}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
       );
       const json = extractFirstJSON(txtRes.response.text());
       if (json) {
@@ -109,21 +217,20 @@ export async function POST(req: NextRequest) {
     try {
       const masters = await MasterPrompt.find({ category, isActive: true });
       if (masters.length > 0) {
-        // Pick a random master prompt
-        const master     = masters[Math.floor(Math.random() * masters.length)];
-        const pool       = master.variations.length > 0 ? master.variations : [master.basePrompt];
-        const variation  = pool[Math.floor(Math.random() * pool.length)];
-        imagePrompt      = buildPersonalisedPrompt(variation, pharmacy);
-        console.log(`[generate-post] Using master prompt "${master.label}" (${master._id}), variation ${pool.indexOf(variation) + 1}/${pool.length}`);
+        const master    = masters[Math.floor(Math.random() * masters.length)];
+        const pool      = master.variations.length > 0 ? master.variations : [master.basePrompt];
+        const variation = pool[Math.floor(Math.random() * pool.length)];
+        imagePrompt     = buildPersonalisedPrompt(variation, pd, publishedStock, featuredProduct);
+        console.log(`[generate-post] Master: "${master.label}" var ${pool.indexOf(variation) + 1}/${pool.length} | stock: ${publishedStock.length} | featured: ${featuredProduct?.itemName ?? 'none'}`);
       } else {
-        // No master prompts yet — use hardcoded fallback with basic personalisation
         const base  = FALLBACK_PROMPTS[category] ?? FALLBACK_PROMPTS['Medicine Spotlight'];
-        imagePrompt = buildPersonalisedPrompt(base, pharmacy);
-        console.log(`[generate-post] No master prompts for "${category}", using fallback`);
+        imagePrompt = buildPersonalisedPrompt(base, pd, publishedStock, featuredProduct);
+        console.log(`[generate-post] Fallback prompt | stock: ${publishedStock.length} | featured: ${featuredProduct?.itemName ?? 'none'}`);
       }
     } catch (e) {
       console.error('Master prompt fetch failed, using fallback:', e);
-      imagePrompt = buildPersonalisedPrompt(FALLBACK_PROMPTS[category] ?? FALLBACK_PROMPTS['Medicine Spotlight'], pharmacy);
+      const base  = FALLBACK_PROMPTS[category] ?? FALLBACK_PROMPTS['Medicine Spotlight'];
+      imagePrompt = buildPersonalisedPrompt(base, pd, publishedStock, featuredProduct);
     }
 
     // 3. Generate image
