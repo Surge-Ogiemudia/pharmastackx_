@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import DailyPost from '@/models/DailyPost';
 import MasterPrompt from '@/models/MasterPrompt';
+import HealthCalendarEvent from '@/models/HealthCalendarEvent';
 import Product from '@/models/Product';
 import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
@@ -193,26 +194,70 @@ export async function POST(req: NextRequest) {
 
     console.log(`[generate-post] Found ${publishedStock.length} published products for "${pharmacy.businessName}" (slug: ${pharmacy.slug})`);
 
-    // ── Pick category dynamically from active master prompts ─────────────────
-    const activeCategories: string[] = await MasterPrompt.distinct('category', { isActive: true });
+    // ── Week boundaries for this scheduledDate ────────────────────────────────
+    const postDate  = new Date(scheduledDate);
+    const postDay   = postDate.getUTCDay();
+    const postDiff  = postDay === 0 ? -6 : 1 - postDay;
+    const weekStart = new Date(Date.UTC(postDate.getUTCFullYear(), postDate.getUTCMonth(), postDate.getUTCDate() + postDiff));
+    const weekEnd   = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
 
-    let category = 'General';
-    if (activeCategories.length > 0) {
-      // Find which categories this pharmacy has already used this week
-      const weekStart = new Date(scheduledDate);
-      weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay() + (weekStart.getUTCDay() === 0 ? -6 : 1));
-      weekStart.setUTCHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+    // Categories already used this week for this pharmacy
+    const usedThisWeek: string[] = await DailyPost.find({
+      pharmacyId, scheduledDate: { $gte: weekStart, $lt: weekEnd },
+    }).distinct('category');
 
-      const usedThisWeek = await DailyPost.find({
-        pharmacyId, scheduledDate: { $gte: weekStart, $lt: weekEnd },
-      }).distinct('category');
+    // ── Priority 1: Health calendar event for this exact date ─────────────────
+    let category        = '';
+    let chosenPrompts: any[] = [];
 
-      const unused = activeCategories.filter(c => !usedThisWeek.includes(c));
-      const pool   = unused.length > 0 ? unused : activeCategories;
-      category     = pool[Math.floor(Math.random() * pool.length)];
+    const calEvent = await HealthCalendarEvent.findOne({
+      month:    postDate.getUTCMonth() + 1,
+      day:      postDate.getUTCDate(),
+      isActive: true,
+    });
+    if (calEvent && !usedThisWeek.includes(calEvent.category)) {
+      const prompts = await MasterPrompt.find({ category: calEvent.category, isActive: true });
+      if (prompts.length > 0) {
+        category      = calEvent.category;
+        chosenPrompts = prompts;
+        console.log(`[generate-post] Health calendar match: "${calEvent.name}" → "${category}"`);
+      }
     }
-    console.log(`[generate-post] Selected category: "${category}" (from ${activeCategories.length} active categories)`);;
+
+    // ── Priority 2: New month (week contains 1st of a month) ─────────────────
+    if (!category) {
+      let weekHasFirst = false;
+      const check = new Date(weekStart);
+      while (check < weekEnd) {
+        if (check.getUTCDate() === 1) { weekHasFirst = true; break; }
+        check.setUTCDate(check.getUTCDate() + 1);
+      }
+      if (weekHasFirst) {
+        const newMonthPrompts = await MasterPrompt.find({ isNewMonth: true, isActive: true });
+        if (newMonthPrompts.length > 0) {
+          const newMonthCat = newMonthPrompts[0].category;
+          if (!usedThisWeek.includes(newMonthCat)) {
+            category      = newMonthCat;
+            chosenPrompts = newMonthPrompts;
+            console.log(`[generate-post] New month week → using "${category}"`);
+          }
+        }
+      }
+    }
+
+    // ── Priority 3: Regular rotation ─────────────────────────────────────────
+    if (!category) {
+      const activeCategories: string[] = await MasterPrompt.distinct('category', { isActive: true, isNewMonth: { $ne: true } });
+      if (activeCategories.length > 0) {
+        const unused = activeCategories.filter(c => !usedThisWeek.includes(c));
+        const pool   = unused.length > 0 ? unused : activeCategories;
+        category     = pool[Math.floor(Math.random() * pool.length)];
+        chosenPrompts = await MasterPrompt.find({ category, isActive: true });
+      }
+    }
+
+    if (!category) category = 'General';
+    console.log(`[generate-post] Final category: "${category}" | used this week: [${usedThisWeek.join(', ')}]`);;
 
     // For Medicine Spotlight: pick a real published product with preference for non-generic items
     let featuredProduct: any = undefined;
@@ -269,9 +314,9 @@ ${pd.photosCtx ? 'Store context: ' + pd.photosCtx : ''}`.trim();
     // 2. Select image prompt — master prompt system with fallback
     let imagePrompt = '';
     try {
-      const masters = await MasterPrompt.find({ category, isActive: true });
-      if (masters.length > 0) {
-        const master    = masters[Math.floor(Math.random() * masters.length)];
+      // Use pre-resolved chosenPrompts from priority logic
+      if (chosenPrompts.length > 0) {
+        const master    = chosenPrompts[Math.floor(Math.random() * chosenPrompts.length)];
         const pool      = master.variations.length > 0 ? master.variations : [master.basePrompt];
         const variation = pool[Math.floor(Math.random() * pool.length)];
         imagePrompt     = buildPersonalisedPrompt(variation, pd, publishedStock, featuredProduct);
