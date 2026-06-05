@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Button, IconButton, CircularProgress,
-         Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+         Dialog, DialogTitle, DialogContent, DialogActions, TextField, Drawer } from '@mui/material';
 import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings, AutoAwesome, Delete } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
@@ -324,11 +324,14 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const example = MOCK_EXAMPLES[activeCategory];
 
   return (
-    <Box
-      sx={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1300, bgcolor: '#08100D', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
+    <Drawer
+      anchor="bottom"
+      open
+      onClose={onClose}
+      PaperProps={{ sx: { height: '92vh', bgcolor: '#08100D', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column' } }}
     >
-      {/* Sticky header */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#08100D', borderBottom: `1px solid ${BORD}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2 }}>
+      {/* Header */}
+      <Box sx={{ flexShrink: 0, borderBottom: `1px solid ${BORD}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AutoAwesome sx={{ fontSize: 16, color: '#A78BFA' }} />
           <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '15px', color: TEXT }}>Image Prompt Manager</Typography>
@@ -337,7 +340,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
       </Box>
 
       {/* Category tabs */}
-      <Box sx={{ display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+      <Box sx={{ flexShrink: 0, display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
         {dbCategories.map(cat => (
           <Box key={cat} onClick={() => setActiveCategory(cat)} sx={{ px: 1.5, py: 0.6, borderRadius: '20px', cursor: 'pointer', flexShrink: 0, bgcolor: activeCategory === cat ? '#A78BFA22' : CARD, border: `1px solid ${activeCategory === cat ? '#A78BFA55' : BORD}` }}>
             <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: activeCategory === cat ? '#A78BFA' : MUTED, whiteSpace: 'nowrap' }}>{cat}</Typography>
@@ -348,7 +351,8 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         </Box>
       </Box>
 
-      <Box sx={{ px: 2, pb: 8 }}>
+      {/* Scrollable content */}
+      <Box sx={{ flex: 1, overflowY: 'auto', px: 2, pb: 6 }}>
 
         {/* Existing prompts */}
         <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
@@ -520,7 +524,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
           )}
         </Box>
       </Box>
-    </Box>
+    </Drawer>
   );
 }
 
