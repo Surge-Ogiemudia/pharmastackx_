@@ -419,7 +419,7 @@ export default function SocialContent() {
   const [captionExpanded, setCaptionExp]  = useState(false);
 
   const pharmacyName = user?.businessName || 'Pharmacy';
-  const pharmacyUrl  = user?.username ? `pharmastackx.com/${user.username}` : 'pharmastackx.com';
+  const pharmacyUrl  = user?.slug ? `${user.slug}.psx.ng` : 'psx.ng';
 
   // Post for the selected date
   const todaysPost = allPosts.find(p => {
