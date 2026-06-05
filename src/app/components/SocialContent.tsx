@@ -459,7 +459,8 @@ export default function SocialContent() {
   const slotIdx      = postCategory && categories.length > 0
     ? Math.max(0, categories.indexOf(postCategory)) % GRADIENTS.length
     : slotForDate(selectedDate) % GRADIENTS.length;
-  const weekCount    = weekPostCount(allPosts, selectedDate);
+  // allPosts is already week-filtered from the server — no need to re-filter
+  const weekCount    = allPosts.length;
   const weekLimitHit = weekCount >= 4;
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
   const isPastDate   = selectedDate.getTime() < todayMidnight.getTime();
@@ -498,7 +499,7 @@ export default function SocialContent() {
     const oldMon = getMondayLocal(selectedDate).getTime();
     const newMon = getMondayLocal(nd).getTime();
     setSelectedDate(nd);
-    if (newMon !== oldMon) fetchWeekPosts(nd);
+    if (newMon !== oldMon) { setAllPosts([]); fetchWeekPosts(nd); }
   };
 
   const handleGenerate = async (dateOverride?: Date) => {
