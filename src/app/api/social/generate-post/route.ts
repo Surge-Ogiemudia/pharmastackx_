@@ -114,19 +114,16 @@ function buildPersonalisedPrompt(
 
   let productBlock = '';
   if (featuredProduct) {
-    const hasRealImage = !!featuredProduct.imageUrl;
-    productBlock = `FEATURED PRODUCT FOR THIS POST:
-  Name: ${featuredProduct.itemName}
+    // Real product from published stock — use its name, the model makes it look great
+    productBlock = `FEATURED PRODUCT (from this pharmacy's real published stock — use ONLY this):
+  Medicine name: ${featuredProduct.itemName}
   Active ingredient: ${featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A' ? featuredProduct.activeIngredient : 'not specified'}
   Price: ₦${featuredProduct.amount}
-  Category: ${featuredProduct.category}
-${hasRealImage
-  ? `  Product image: ${featuredProduct.imageUrl} — incorporate this product's visual identity`
-  : `  IMPORTANT: No product image is available. Do NOT show any packaging, box, bottle or label with text/brand names on it — doing so would be fabricated. Instead show a clean, abstract visual representation of the medicine category (e.g. loose pills, a blister pack without readable text, a stylised shape). The medicine name must NEVER appear as readable text inside the image.`
-}`;
-  } else if (pd.photosCtx === '' && stock.length === 0) {
-    // No stock and no photos — tell the model to stay fully abstract
-    productBlock = `NOTE: This pharmacy has no published stock data. Do NOT show any specific medicine, product, box, bottle, or label in the image. Use fully abstract health/pharmacy visual elements only.`;
+
+  Build the entire image around this specific product name. Make it look premium.`;
+  } else {
+    // No published stock at all — absolutely no medicines in the image
+    productBlock = `CRITICAL: This pharmacy has no published stock. Do NOT show any medicine, drug, product name, packaging or bottle in the image whatsoever. Use only abstract health/pharmacy visual elements — people, colours, shapes, pharmacy context.`;
   }
 
   // Resolve tokens first, then append the verified data block
