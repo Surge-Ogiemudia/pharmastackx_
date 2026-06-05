@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export interface IMasterPrompt extends Document {
-  category: 'Medicine Spotlight' | 'Health Awareness' | 'Low Stock Alert' | 'Human Moment';
+  category: string;
   label: string;
   basePrompt: string;
   variations: string[];   // 10 auto-generated composition variants
@@ -11,11 +11,7 @@ export interface IMasterPrompt extends Document {
 }
 
 const masterPromptSchema: Schema<IMasterPrompt> = new mongoose.Schema({
-  category: {
-    type: String,
-    enum: ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'],
-    required: true,
-  },
+  category: { type: String, required: true },  // free-form theme name set by admin
   label:      { type: String, required: true },
   basePrompt: { type: String, required: true },
   variations: [{ type: String }],

@@ -24,10 +24,11 @@ const GRADIENTS = [
   'linear-gradient(135deg, #5B21B6 0%, #1E0845 100%)',
   'linear-gradient(135deg, #B45309 0%, #431407 100%)',
   'linear-gradient(135deg, #0E7490 0%, #042933 100%)',
+  'linear-gradient(135deg, #7C3AED 0%, #2D1260 100%)',
+  'linear-gradient(135deg, #BE185D 0%, #4C0519 100%)',
 ];
-const ACCENTS = ['#1DB88A', '#A78BFA', '#FCD34D', '#22D3EE'];
-const LABELS  = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'];
-const ICONS   = ['💊', '🌿', '⚠️', '🤝'];
+const ACCENTS = ['#1DB88A', '#A78BFA', '#FCD34D', '#22D3EE', '#C4B5FD', '#FB7185'];
+const ICONS   = ['💊', '🌿', '⚠️', '🤝', '✨', '🏥'];
 const SPARKLES = ['✨', '⭐', '💫', '✦', '✧'];
 
 const PRO_FEATURES = [
@@ -47,6 +48,7 @@ interface DailyPost {
   imageUrl: string;
   status: 'pending_review' | 'ready_to_post' | 'posted' | 'flagged';
   regenCount: number;
+  category?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ function PostGraphic({ post, idx, name, url }: { post: DailyPost | null; idx: nu
         : <Box sx={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
             <Typography sx={{ fontSize: '52px' }}>{ICONS[idx % 4]}</Typography>
             <Typography sx={{ fontFamily: FONT, fontSize: '11px', color: 'rgba(255,255,255,0.5)', textAlign: 'center', px: 3 }}>
-              {post ? 'Image unavailable' : LABELS[idx % 4]}
+              {post ? 'Image unavailable' : ''}
             </Typography>
           </Box>
       }
@@ -120,10 +122,11 @@ function PostGraphic({ post, idx, name, url }: { post: DailyPost | null; idx: nu
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
-function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart, generating, progress }: {
+function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart, generating, progress, categories }: {
   tone: string; setTone: (v: string) => void;
   showPrices: string; setShowPrices: (v: string) => void;
   onStart: () => void; generating: boolean; progress: number;
+  categories: string[];
 }) {
   const RadioRow = ({ val, label, selected, onSelect }: any) => (
     <Box onClick={() => onSelect(val)} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, p: '10px 14px', borderRadius: '12px', cursor: 'pointer', border: `1px solid ${selected === val ? GREEN : BORD}`, bgcolor: selected === val ? `${GREEN}1A` : 'transparent', transition: 'all 0.15s' }}>
@@ -147,11 +150,11 @@ function OnboardingScreen({ tone, setTone, showPrices, setShowPrices, onStart, g
         Generate a branded post for any day — up to 4 per week. Tap generate and it's ready to share in under a minute.
       </Typography>
       <Box sx={{ display: 'flex', gap: 1.5, overflowX: 'auto', pb: 1.5, mb: 3.5, mx: -2.5, px: 2.5, '&::-webkit-scrollbar': { display: 'none' } }}>
-        {LABELS.map((label, i) => (
-          <Box key={i} sx={{ minWidth: 98, height: 114, borderRadius: '14px', flexShrink: 0, background: GRADIENTS[i], position: 'relative', overflow: 'hidden', border: `1px solid rgba(255,255,255,0.08)` }}>
+        {(categories.length > 0 ? categories : ['Your post style']).map((label, i) => (
+          <Box key={i} sx={{ minWidth: 98, height: 114, borderRadius: '14px', flexShrink: 0, background: GRADIENTS[i % GRADIENTS.length], position: 'relative', overflow: 'hidden', border: `1px solid rgba(255,255,255,0.08)` }}>
             <Box sx={{ position: 'absolute', inset: 0, backgroundImage: `repeating-linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px),repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 28px)` }} />
             <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', p: 1.5, background: 'linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 60%)' }}>
-              <Typography sx={{ fontSize: '20px', mb: 0.5 }}>{ICONS[i]}</Typography>
+              <Typography sx={{ fontSize: '20px', mb: 0.5 }}>{ICONS[i % ICONS.length]}</Typography>
               <Typography sx={{ fontFamily: FONT, fontSize: '10px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{label}</Typography>
             </Box>
           </Box>
@@ -229,7 +232,6 @@ function LockedSection() {
 }
 
 // ── Admin Prompt Panel ────────────────────────────────────────────────────────
-const CATEGORIES = ['Medicine Spotlight', 'Health Awareness', 'Low Stock Alert', 'Human Moment'] as const;
 
 const MOCK_EXAMPLES: Record<string, { label: string; prompt: string }> = {
   'Medicine Spotlight': {
@@ -251,16 +253,26 @@ const MOCK_EXAMPLES: Record<string, { label: string; prompt: string }> = {
 };
 
 function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => void }) {
-  const [activeCategory, setActiveCategory] = useState<string>('Medicine Spotlight');
+  const [dbCategories,   setDbCategories]   = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('');
   const [prompts,        setPrompts]        = useState<any[]>([]);
   const [loading,        setLoading]        = useState(true);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [label,          setLabel]          = useState('');
   const [basePrompt,     setBasePrompt]     = useState('');
   const [submitting,     setSubmitting]     = useState(false);
   const [submitMsg,      setSubmitMsg]      = useState('');
   const [showExample,    setShowExample]    = useState(false);
 
+  const loadCategories = async () => {
+    const res = await axios.get('/api/admin/social-prompts/categories');
+    const cats: string[] = res.data.categories || [];
+    setDbCategories(cats);
+    if (cats.length > 0 && !activeCategory) setActiveCategory(cats[0]);
+  };
+
   const loadPrompts = async (cat: string) => {
+    if (!cat) return;
     setLoading(true);
     try {
       const res = await axios.get(`/api/admin/social-prompts?category=${encodeURIComponent(cat)}`);
@@ -269,17 +281,21 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadPrompts(activeCategory); }, [activeCategory]);
+  useEffect(() => { loadCategories(); }, []);
+  useEffect(() => { if (activeCategory) loadPrompts(activeCategory); }, [activeCategory]);
+
+  const effectiveCategory = activeCategory === '__new__' ? newCategoryName.trim() : activeCategory;
 
   const handleSubmit = async () => {
-    if (!label.trim() || !basePrompt.trim()) return;
+    if (!label.trim() || !basePrompt.trim() || !effectiveCategory) return;
     setSubmitting(true);
     setSubmitMsg('Generating 10 composition variations with Gemini…');
     try {
-      await axios.post('/api/admin/social-prompts', { adminId: userId, category: activeCategory, label: label.trim(), basePrompt: basePrompt.trim() });
-      setLabel(''); setBasePrompt('');
+      await axios.post('/api/admin/social-prompts', { adminId: userId, category: effectiveCategory, label: label.trim(), basePrompt: basePrompt.trim() });
+      setLabel(''); setBasePrompt(''); setNewCategoryName('');
       setSubmitMsg('✓ Saved and variations generated.');
-      await loadPrompts(activeCategory);
+      await loadCategories();
+      setActiveCategory(effectiveCategory);
       setTimeout(() => setSubmitMsg(''), 3000);
     } catch (e: any) {
       setSubmitMsg(`Error: ${e?.response?.data?.message || 'Failed'}`);
@@ -304,13 +320,16 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         <Button onClick={onClose} sx={{ color: MUTED, textTransform: 'none', fontFamily: FONT, fontSize: '13px', minWidth: 0 }}>Close</Button>
       </Box>
 
-      {/* Category tabs */}
+      {/* Category tabs — dynamic from DB + "New theme" tab */}
       <Box sx={{ display: 'flex', gap: 0.5, px: 2, py: 1.5, overflowX: 'auto', flexShrink: 0, '&::-webkit-scrollbar': { display: 'none' } }}>
-        {CATEGORIES.map(cat => (
+        {dbCategories.map(cat => (
           <Box key={cat} onClick={() => setActiveCategory(cat)} sx={{ px: 1.5, py: 0.6, borderRadius: '20px', cursor: 'pointer', flexShrink: 0, bgcolor: activeCategory === cat ? '#A78BFA22' : CARD, border: `1px solid ${activeCategory === cat ? '#A78BFA55' : BORD}` }}>
             <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: activeCategory === cat ? '#A78BFA' : MUTED, whiteSpace: 'nowrap' }}>{cat}</Typography>
           </Box>
         ))}
+        <Box onClick={() => setActiveCategory('__new__')} sx={{ px: 1.5, py: 0.6, borderRadius: '20px', cursor: 'pointer', flexShrink: 0, bgcolor: activeCategory === '__new__' ? '#A78BFA22' : CARD, border: `1px solid ${activeCategory === '__new__' ? '#A78BFA55' : BORD}` }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: activeCategory === '__new__' ? '#A78BFA' : MUTED, whiteSpace: 'nowrap' }}>+ New theme</Typography>
+        </Box>
       </Box>
 
       <Box sx={{ flex: 1, overflowY: 'auto', px: 2, pb: 4 }}>
@@ -369,6 +388,12 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
           </Box>
         )}
 
+        {activeCategory === '__new__' && (
+          <TextField fullWidth size="small" placeholder="Theme name, e.g. 'Staff Moments' or 'Seasonal Promotions'"
+            value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+            sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: '#A78BFA55' }, '&.Mui-focused fieldset': { borderColor: '#A78BFA' } }, '& .MuiInputBase-input': { color: TEXT, '&::placeholder': { color: MUTED } } }} />
+        )}
+
         <TextField fullWidth size="small" placeholder="Short label, e.g. 'Minimal flat-lay v2'"
           value={label} onChange={e => setLabel(e.target.value)}
           sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontSize: '13px', bgcolor: CARD, color: TEXT, '& fieldset': { borderColor: BORD }, '&.Mui-focused fieldset': { borderColor: '#A78BFA' } }, '& .MuiInputBase-input': { color: TEXT, '&::placeholder': { color: MUTED } } }} />
@@ -400,6 +425,7 @@ export default function SocialContent() {
   const { user } = useSession();
 
   const [appState,    setAppState]   = useState<AppState>('loading');
+  const [categories,  setCategories] = useState<string[]>([]);
   const [tone,        setTone]       = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_tone') || 'warm' : 'warm'));
   const [showPrices,  setShowPrices] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('social_show_prices') || 'yes' : 'yes'));
   const [settingsOpen,    setSettingsOpen]    = useState(false);
@@ -428,7 +454,11 @@ export default function SocialContent() {
     return pd.getTime() === sd.getTime();
   }) ?? null;
 
-  const slotIdx      = slotForDate(selectedDate);
+  // Use the post's stored category to determine visual slot; fallback to date-based index
+  const postCategory = todaysPost?.category || '';
+  const slotIdx      = postCategory && categories.length > 0
+    ? Math.max(0, categories.indexOf(postCategory)) % GRADIENTS.length
+    : slotForDate(selectedDate) % GRADIENTS.length;
   const weekCount    = weekPostCount(allPosts, selectedDate);
   const weekLimitHit = weekCount >= 4;
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
@@ -443,6 +473,13 @@ export default function SocialContent() {
     setAllPosts(res.data.weekPosts || []);
     return res.data;
   }, [user?._id]);
+
+  // Fetch active categories from admin prompts
+  useEffect(() => {
+    axios.get('/api/admin/social-prompts/categories')
+      .then(res => setCategories(res.data.categories || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -479,10 +516,13 @@ export default function SocialContent() {
       const res = await axios.post('/api/social/generate-post', {
         pharmacyId:    user._id,
         scheduledDate: toYMD(targetDate),
-        category:      LABELS[slotForDate(targetDate)],
         tone,
         showPrices:    showPrices === 'yes',
       });
+      // Refresh categories in case a new one was created
+      axios.get('/api/admin/social-prompts/categories')
+        .then(r => setCategories(r.data.categories || []))
+        .catch(() => {});
       if (res.data.post) {
         setAllPosts(prev => {
           const filtered = prev.filter(p => {
@@ -542,7 +582,7 @@ export default function SocialContent() {
   if (appState === 'onboarding') {
     return (
       <AnimatePresence mode="wait">
-        <OnboardingScreen key="ob" tone={tone} setTone={saveTone} showPrices={showPrices} setShowPrices={saveShowPrices} onStart={() => handleGenerate(selectedDate)} generating={generating} progress={genProgress} />
+        <OnboardingScreen key="ob" tone={tone} setTone={saveTone} showPrices={showPrices} setShowPrices={saveShowPrices} onStart={() => handleGenerate(selectedDate)} generating={generating} progress={genProgress} categories={categories} />
       </AnimatePresence>
     );
   }
@@ -684,7 +724,9 @@ export default function SocialContent() {
                 ) : (
                   /* No post for this day */
                   <Box sx={{ py: 2.5, textAlign: 'center' }}>
-                    <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: TEXT, mb: 0.5 }}>{LABELS[slotIdx]}</Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: TEXT, mb: 0.5 }}>
+                      {categories[slotIdx] || 'Social Post'}
+                    </Typography>
                     <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, mb: 2.5 }}>
                       {weekLimitHit ? "You've used all 4 posts this week." : "No post generated for this day yet."}
                     </Typography>

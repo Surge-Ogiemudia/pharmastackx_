@@ -10,6 +10,7 @@ export interface IDailyPost extends Document {
   imageUrl?: string;
   videoIdeaText?: string;
   regenCount: number;
+  category?:  string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,7 @@ const dailyPostSchema: Schema<IDailyPost> = new mongoose.Schema({
   imageUrl:      { type: String },
   videoIdeaText: { type: String },
   regenCount:    { type: Number, default: 0 },
+  category:      { type: String, default: '' },
 }, { timestamps: true });
 
 const DailyPost: Model<IDailyPost> = mongoose.models.DailyPost || mongoose.model<IDailyPost>('DailyPost', dailyPostSchema, 'daily_posts');
