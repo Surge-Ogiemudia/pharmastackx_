@@ -112,13 +112,22 @@ function buildPersonalisedPrompt(
     ? stock.map(p => `  • ${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''} — ₦${p.amount}`).join('\n')
     : '  (no published stock available — do not mention specific medicines)';
 
-  const productBlock = featuredProduct
-    ? `FEATURED PRODUCT FOR THIS POST (use ONLY this — do not invent any other):
+  let productBlock = '';
+  if (featuredProduct) {
+    const hasRealImage = !!featuredProduct.imageUrl;
+    productBlock = `FEATURED PRODUCT FOR THIS POST:
   Name: ${featuredProduct.itemName}
-  Active ingredient: ${featuredProduct.activeIngredient !== 'N/A' ? featuredProduct.activeIngredient : 'not specified'}
+  Active ingredient: ${featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A' ? featuredProduct.activeIngredient : 'not specified'}
   Price: ₦${featuredProduct.amount}
-  Category: ${featuredProduct.category}`
-    : '';
+  Category: ${featuredProduct.category}
+${hasRealImage
+  ? `  Product image: ${featuredProduct.imageUrl} — incorporate this product's visual identity`
+  : `  IMPORTANT: No product image is available. Do NOT show any packaging, box, bottle or label with text/brand names on it — doing so would be fabricated. Instead show a clean, abstract visual representation of the medicine category (e.g. loose pills, a blister pack without readable text, a stylised shape). The medicine name must NEVER appear as readable text inside the image.`
+}`;
+  } else if (pd.photosCtx === '' && stock.length === 0) {
+    // No stock and no photos — tell the model to stay fully abstract
+    productBlock = `NOTE: This pharmacy has no published stock data. Do NOT show any specific medicine, product, box, bottle, or label in the image. Use fully abstract health/pharmacy visual elements only.`;
+  }
 
   // Resolve tokens first, then append the verified data block
   const resolved = resolveTokens(variation, pd, featuredProduct);
@@ -160,17 +169,35 @@ export async function POST(req: NextRequest) {
     // ── Collect ALL verified pharmacy data before any generation ────────────
     const pd = buildPharmacyData(pharmacy);
 
-    // Fetch published, in-stock products (linked by businessName)
-    const publishedStock = await Product.find({
+    // Fetch published, in-stock products — try businessName first, fallback to slug
+    let publishedStock = await Product.find({
       businessName: pharmacy.businessName,
       isPublished:  true,
       quantity:     { $gt: 0 },
-    }).select('itemName activeIngredient category amount imageUrl quantity').limit(30).lean();
+    }).select('itemName activeIngredient category amount imageUrl quantity').limit(50).lean();
 
-    // For Medicine Spotlight, pick a real published product — never guess
-    const featuredProduct = category === 'Medicine Spotlight' && publishedStock.length > 0
-      ? publishedStock[Math.floor(Math.random() * publishedStock.length)]
-      : undefined;
+    // Fallback: try matching by pharmacy slug if businessName returned nothing
+    if (publishedStock.length === 0 && pharmacy.slug) {
+      publishedStock = await Product.find({
+        slug:        pharmacy.slug,
+        isPublished: true,
+        quantity:    { $gt: 0 },
+      }).select('itemName activeIngredient category amount imageUrl quantity').limit(50).lean();
+    }
+
+    console.log(`[generate-post] Found ${publishedStock.length} published products for "${pharmacy.businessName}" (slug: ${pharmacy.slug})`);
+
+    // For Medicine Spotlight: pick a real published product with preference for non-generic items
+    let featuredProduct: any = undefined;
+    if (category === 'Medicine Spotlight' && publishedStock.length > 0) {
+      // Generic/very common names to de-prioritise (preference only, not hard exclusion)
+      const genericNames = ['paracetamol', 'ibuprofen', 'aspirin', 'multivitamin', 'vitamin c', 'zinc'];
+      const nonGeneric   = publishedStock.filter(p =>
+        !genericNames.some(g => p.itemName.toLowerCase().includes(g))
+      );
+      const pool = nonGeneric.length > 0 ? nonGeneric : publishedStock;
+      featuredProduct = pool[Math.floor(Math.random() * pool.length)];
+    }
 
     const toneMap: Record<string, string> = {
       warm:         'warm, friendly, and approachable',
