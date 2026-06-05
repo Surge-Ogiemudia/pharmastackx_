@@ -37,6 +37,13 @@ const FALLBACK_PROMPTS: Record<string, string> = {
   'Human Moment': `Candid scene at a pharmacy counter in Nigeria. A pharmacist in a neat white coat leans slightly forward, speaking warmly to a middle-aged woman in colourful ankara. Both in frame, eye contact between them. Pharmacy interior softly blurred behind them. Warm fluorescent with natural side light. Genuine human connection — not posed. Rich warm skin tones, lifted shadows. 1:1 square format.`,
 };
 
+// Strip N/A, "N/A", null, undefined — treat them all as empty string
+function clean(val: any): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  return (s === 'N/A' || s === 'n/a' || s === 'NA' || s === 'null' || s === 'undefined') ? '' : s;
+}
+
 // ── Pharmacy data bag — single source of truth passed to all prompts ──────────
 interface PharmacyData {
   name:           string;
@@ -108,13 +115,12 @@ function buildPersonalisedPrompt(
   featuredProduct?: any,
 ): string {
   const stockList = stock.length
-    ? stock.map(p => `  • ${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''}`).join('\n')
+    ? stock.map(p => { const s = clean(p.activeIngredient); return `  • ${clean(p.itemName)}${s ? ` (${s})` : ''}`; }).join('\n')
     : '  (no published stock available — do not mention specific medicines)';
 
   let productBlock = '';
   if (featuredProduct) {
-    const strength = featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A'
-      ? featuredProduct.activeIngredient : '';
+    const strength = clean(featuredProduct.activeIngredient);
     productBlock = `FEATURED PRODUCT (from this pharmacy's real published stock — use ONLY this):
   Medicine name: ${featuredProduct.itemName}${strength ? `\n  Strength: ${strength}` : ''}
 
@@ -209,7 +215,7 @@ export async function POST(req: NextRequest) {
     const priceCtx = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
 
     const stockSummary = publishedStock.length
-      ? publishedStock.map(p => `${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''}`).join(', ')
+      ? publishedStock.map(p => { const s = clean(p.activeIngredient); return `${clean(p.itemName)}${s ? ` (${s})` : ''}`; }).join(', ')
       : 'no published stock';
 
     const baseCtx = `You are creating social media content for "${pd.name}", a pharmacy in ${pd.city}, Nigeria.
@@ -226,7 +232,7 @@ ${pd.photosCtx ? 'Store context: ' + pd.photosCtx : ''}`.trim();
     try {
       const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const featuredLine = featuredProduct
-        ? `\nFeatured product: ${featuredProduct.itemName}${featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A' ? ` (${featuredProduct.activeIngredient})` : ''}. Reference ONLY this product — no other medicine names.`
+        ? `\nFeatured product: ${clean(featuredProduct.itemName)}${clean(featuredProduct.activeIngredient) ? ` (${clean(featuredProduct.activeIngredient)})` : ''}. Reference ONLY this product — no other medicine names.`
         : '';
       const txtRes   = await txtModel.generateContent(
         `${baseCtx}${featuredLine}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
