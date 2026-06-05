@@ -324,7 +324,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
   const example = MOCK_EXAMPLES[activeCategory];
 
   return (
-    <Box sx={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D' }}>
+    <Box sx={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', bgcolor: '#08100D', overflow: 'hidden' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 2, borderBottom: `1px solid ${BORD}`, flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -346,7 +346,7 @@ function AdminPromptPanel({ userId, onClose }: { userId: string; onClose: () => 
         </Box>
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', px: 2, pb: 4 }}>
+      <Box sx={{ flex: 1, overflowY: 'scroll', px: 2, pb: 4, WebkitOverflowScrolling: 'touch' }}>
 
         {/* Existing prompts */}
         <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase', mb: 1.5 }}>
