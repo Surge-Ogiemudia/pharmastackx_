@@ -122,14 +122,13 @@ function buildPersonalisedPrompt(
   if (featuredProduct) {
     const strength = clean(featuredProduct.activeIngredient);
     productBlock = `FEATURED PRODUCT (from this pharmacy's real published stock — use ONLY this):
-  Medicine name: ${featuredProduct.itemName}${strength ? `\n  Strength: ${strength}` : ''}
+  Medicine name: ${clean(featuredProduct.itemName)}${strength ? `\n  Strength: ${strength}` : ''}
 
   Build the entire image around this specific product. Make it look premium and realistic.
   STRICT RULES for the medicine packaging/visual:
-  - Do NOT print any price, cost or currency on the packaging
-  - Do NOT print any quantity count or tab count on the packaging
+  - Only show the medicine name${strength ? ' and strength' : ''} on the packaging — nothing else
+  - Do NOT add any invented text, strength, dosage, quantity, price or description to the packaging
   - Do NOT print the pharmacy name on the medicine box or bottle itself
-  - Do NOT add any text to the packaging beyond the medicine name and strength
   - Keep the packaging clean, minimal and realistic — like a real medicine you would buy`;
   } else {
     // No published stock at all — absolutely no medicines in the image
