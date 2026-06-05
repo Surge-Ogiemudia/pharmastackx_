@@ -162,9 +162,9 @@ Apply brand colours and pharmacy name as instructed above. Keep the composition 
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
-    const { pharmacyId, scheduledDate, category, tone, showPrices } = await req.json();
+    const { pharmacyId, scheduledDate, tone, showPrices } = await req.json();
 
-    if (!pharmacyId || !scheduledDate || !category) {
+    if (!pharmacyId || !scheduledDate) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
@@ -192,6 +192,27 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[generate-post] Found ${publishedStock.length} published products for "${pharmacy.businessName}" (slug: ${pharmacy.slug})`);
+
+    // ── Pick category dynamically from active master prompts ─────────────────
+    const activeCategories: string[] = await MasterPrompt.distinct('category', { isActive: true });
+
+    let category = 'General';
+    if (activeCategories.length > 0) {
+      // Find which categories this pharmacy has already used this week
+      const weekStart = new Date(scheduledDate);
+      weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay() + (weekStart.getUTCDay() === 0 ? -6 : 1));
+      weekStart.setUTCHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+
+      const usedThisWeek = await DailyPost.find({
+        pharmacyId, scheduledDate: { $gte: weekStart, $lt: weekEnd },
+      }).distinct('category');
+
+      const unused = activeCategories.filter(c => !usedThisWeek.includes(c));
+      const pool   = unused.length > 0 ? unused : activeCategories;
+      category     = pool[Math.floor(Math.random() * pool.length)];
+    }
+    console.log(`[generate-post] Selected category: "${category}" (from ${activeCategories.length} active categories)`);;
 
     // For Medicine Spotlight: pick a real published product with preference for non-generic items
     let featuredProduct: any = undefined;
@@ -328,6 +349,7 @@ ${pd.photosCtx ? 'Store context: ' + pd.photosCtx : ''}`.trim();
       hashtags,
       imageUrl,
       videoIdeaText,
+      category,
       regenCount:    0,
     });
 
