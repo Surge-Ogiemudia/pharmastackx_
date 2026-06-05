@@ -88,7 +88,6 @@ function resolveTokens(prompt: string, pd: PharmacyData, product?: any): string 
     '{{MEDICINE_NAME}}':   product?.itemName        || '',
     '{{MEDICINE_STRENGTH}}': product?.activeIngredient || '',
     '{{PRODUCT_IMAGE}}':   product?.imageUrl        || '',
-    '{{PRICE}}':           product?.amount != null  ? `₦${product.amount}` : '',
   };
 
   let out = prompt;
@@ -109,18 +108,23 @@ function buildPersonalisedPrompt(
   featuredProduct?: any,
 ): string {
   const stockList = stock.length
-    ? stock.map(p => `  • ${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''} — ₦${p.amount}`).join('\n')
+    ? stock.map(p => `  • ${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''}`).join('\n')
     : '  (no published stock available — do not mention specific medicines)';
 
   let productBlock = '';
   if (featuredProduct) {
-    // Real product from published stock — use its name, the model makes it look great
+    const strength = featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A'
+      ? featuredProduct.activeIngredient : '';
     productBlock = `FEATURED PRODUCT (from this pharmacy's real published stock — use ONLY this):
-  Medicine name: ${featuredProduct.itemName}
-  Active ingredient: ${featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A' ? featuredProduct.activeIngredient : 'not specified'}
-  Price: ₦${featuredProduct.amount}
+  Medicine name: ${featuredProduct.itemName}${strength ? `\n  Strength: ${strength}` : ''}
 
-  Build the entire image around this specific product name. Make it look premium.`;
+  Build the entire image around this specific product. Make it look premium and realistic.
+  STRICT RULES for the medicine packaging/visual:
+  - Do NOT print any price, cost or currency on the packaging
+  - Do NOT print any quantity count or tab count on the packaging
+  - Do NOT print the pharmacy name on the medicine box or bottle itself
+  - Do NOT add any text to the packaging beyond the medicine name and strength
+  - Keep the packaging clean, minimal and realistic — like a real medicine you would buy`;
   } else {
     // No published stock at all — absolutely no medicines in the image
     productBlock = `CRITICAL: This pharmacy has no published stock. Do NOT show any medicine, drug, product name, packaging or bottle in the image whatsoever. Use only abstract health/pharmacy visual elements — people, colours, shapes, pharmacy context.`;
@@ -171,7 +175,7 @@ export async function POST(req: NextRequest) {
       businessName: pharmacy.businessName,
       isPublished:  true,
       quantity:     { $gt: 0 },
-    }).select('itemName activeIngredient category amount imageUrl quantity').limit(50).lean();
+    }).select('itemName activeIngredient category imageUrl quantity').limit(50).lean();
 
     // Fallback: try matching by pharmacy slug if businessName returned nothing
     if (publishedStock.length === 0 && pharmacy.slug) {
@@ -179,7 +183,7 @@ export async function POST(req: NextRequest) {
         slug:        pharmacy.slug,
         isPublished: true,
         quantity:    { $gt: 0 },
-      }).select('itemName activeIngredient category amount imageUrl quantity').limit(50).lean();
+      }).select('itemName activeIngredient category imageUrl quantity').limit(50).lean();
     }
 
     console.log(`[generate-post] Found ${publishedStock.length} published products for "${pharmacy.businessName}" (slug: ${pharmacy.slug})`);
@@ -205,7 +209,7 @@ export async function POST(req: NextRequest) {
     const priceCtx = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
 
     const stockSummary = publishedStock.length
-      ? publishedStock.map(p => `${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''} — ₦${p.amount}`).join(', ')
+      ? publishedStock.map(p => `${p.itemName}${p.activeIngredient && p.activeIngredient !== 'N/A' ? ` (${p.activeIngredient})` : ''}`).join(', ')
       : 'no published stock';
 
     const baseCtx = `You are creating social media content for "${pd.name}", a pharmacy in ${pd.city}, Nigeria.
@@ -222,7 +226,7 @@ ${pd.photosCtx ? 'Store context: ' + pd.photosCtx : ''}`.trim();
     try {
       const txtModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const featuredLine = featuredProduct
-        ? `\nFeatured product: ${featuredProduct.itemName}${featuredProduct.activeIngredient !== 'N/A' ? ` (${featuredProduct.activeIngredient})` : ''} at ₦${featuredProduct.amount}. Reference ONLY this product — no other medicine names.`
+        ? `\nFeatured product: ${featuredProduct.itemName}${featuredProduct.activeIngredient && featuredProduct.activeIngredient !== 'N/A' ? ` (${featuredProduct.activeIngredient})` : ''}. Reference ONLY this product — no other medicine names.`
         : '';
       const txtRes   = await txtModel.generateContent(
         `${baseCtx}${featuredLine}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
