@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import DailyPost from '@/models/DailyPost';
+import MasterPrompt from '@/models/MasterPrompt';
 import { uploadBase64ToBlob } from '@/lib/uploadToBlob';
 
 export const maxDuration = 60;
@@ -24,6 +25,41 @@ function extractFirstJSON(text: string): string | null {
   return null;
 }
 
+// Fallback prompts used when no master prompts exist for a category
+const FALLBACK_PROMPTS: Record<string, string> = {
+  'Medicine Spotlight': `A single amber prescription bottle with a clean white label stands centered on a rich forest-green surface. Shot from a 45-degree elevated angle. Soft natural light from upper-left casts a gentle shadow. Beside the bottle, exactly three small white circular pills arranged in a loose diagonal. Background is solid deep green with a barely-visible subtle grid texture. Ultra-clean, premium editorial product photography. Negative space fills 40% of the frame. No cluttered shelves. 1:1 square format.`,
+
+  'Health Awareness': `Close-up of warm dark-skinned hands — one elderly, one young — gently clasped together on a soft cream fabric surface. Warm golden afternoon light. Shallow depth of field, background softly blurred into warm amber. Small sprig of green leaves in the lower-left corner. No medical equipment, no clinical setting. Documentary warmth. Nigerian context — dark skin tones, a local story. 1:1 square format.`,
+
+  'Low Stock Alert': `Bold typographic poster. Stark dark background. A single product silhouette centered with dramatic spotlight illumination. Three bold horizontal amber/orange bars slice behind the product creating urgency and visual tension. High contrast. Clean graphic design energy — not photographic realism. Feels like a luxury brand announcing a limited drop. 70% bold negative space. 1:1 square format.`,
+
+  'Human Moment': `Candid scene at a pharmacy counter in Nigeria. A pharmacist in a neat white coat leans slightly forward, speaking warmly to a middle-aged woman in colourful ankara. Both in frame, eye contact between them. Pharmacy interior softly blurred behind them. Warm fluorescent with natural side light. Genuine human connection — not posed. Rich warm skin tones, lifted shadows. 1:1 square format.`,
+};
+
+function buildPersonalisedPrompt(variation: string, pharmacy: any): string {
+  const primary    = pharmacy.brandKit?.primaryColor   || '#0F6E56';
+  const secondary  = pharmacy.brandKit?.secondaryColor || '#C84B8F';
+  const city       = pharmacy.city       || 'Nigeria';
+  const tagline    = pharmacy.brandKit?.tagline || '';
+  const name       = pharmacy.businessName || 'Pharmacy';
+  const photosCtx  = pharmacy.socialPhotos
+    ?.filter((p: any) => p.description)
+    .map((p: any) => p.description)
+    .join(', ') || '';
+
+  return `${variation}
+
+PHARMACY PERSONALISATION — apply naturally, do not force:
+- Pharmacy name: "${name}" — appear as small elegant text in one corner only
+- Dominant brand colour: ${primary} — use as background, surface, or key accent
+- Secondary accent colour: ${secondary} — use sparingly for highlights or contrast elements
+- Location context: ${city}, Nigeria
+${tagline ? `- Brand tagline: "${tagline}"` : ''}
+${photosCtx ? `- Store visual context (for mood reference only): ${photosCtx}` : ''}
+
+Keep the exact composition described above. Only adapt colours and branding identity to this specific pharmacy.`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
@@ -42,68 +78,72 @@ export async function POST(req: NextRequest) {
       professional: 'professional, clinical, and authoritative',
       bold:         'bold, energetic, and attention-grabbing',
     };
-    const brandCtx   = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}.` : '';
-    const contactCtx = `${pharmacy.city || ''} pharmacy, Phone: ${pharmacy.phoneNumber || 'N/A'}`;
+    const brandCtx  = pharmacy.brandKit?.tagline ? `Tagline: ${pharmacy.brandKit.tagline}.` : '';
+    const contactCtx = `${pharmacy.city || ''} pharmacy`;
     const photosCtx  = pharmacy.socialPhotos?.filter((p: any) => p.description).map((p: any) => p.description).join(', ') || '';
-    const toneCtx    = tone ? `Write in a ${toneMap[tone] ?? 'warm and friendly'} tone.` : '';
-    const priceCtx   = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
+    const toneCtx   = tone ? `Write in a ${toneMap[tone] ?? 'warm and friendly'} tone.` : '';
+    const priceCtx  = showPrices ? 'Include specific product prices where relevant.' : 'Do not mention specific prices.';
 
     const baseCtx = `You are creating social media content for "${pharmacy.businessName || 'Pharmacy'}", a pharmacy in Nigeria. ${contactCtx}. ${brandCtx} ${toneCtx} ${priceCtx} ${photosCtx ? 'Store context: ' + photosCtx : ''}`.trim();
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. Generate caption + hashtags
+    // 1. Caption + hashtags
     let caption = '', hashtags: string[] = [], videoIdeaText = '';
-    const txtModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
     try {
-      const txtRes = await txtModel.generateContent(
-        `${baseCtx}\n\nWrite a short engaging Instagram/Facebook caption for a post about: "${category}".\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
+      const txtModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const txtRes   = await txtModel.generateContent(
+        `${baseCtx}\n\nWrite a short engaging Instagram/Facebook caption for a "${category}" post.\nReturn ONLY valid JSON: {"caption":"...","hashtags":["tag1","tag2",...],"videoIdea":"one sentence TikTok reel idea"}`
       );
       const json = extractFirstJSON(txtRes.response.text());
       if (json) {
-        const d      = JSON.parse(json);
-        caption      = d.caption      || '';
-        hashtags     = d.hashtags     || [];
-        videoIdeaText = d.videoIdea   || '';
+        const d       = JSON.parse(json);
+        caption       = d.caption   || '';
+        hashtags      = d.hashtags  || [];
+        videoIdeaText = d.videoIdea || '';
+      }
+    } catch (e) { console.error('Caption gen failed:', e); }
+
+    // 2. Select image prompt — master prompt system with fallback
+    let imagePrompt = '';
+    try {
+      const masters = await MasterPrompt.find({ category, isActive: true });
+      if (masters.length > 0) {
+        // Pick a random master prompt
+        const master     = masters[Math.floor(Math.random() * masters.length)];
+        const pool       = master.variations.length > 0 ? master.variations : [master.basePrompt];
+        const variation  = pool[Math.floor(Math.random() * pool.length)];
+        imagePrompt      = buildPersonalisedPrompt(variation, pharmacy);
+        console.log(`[generate-post] Using master prompt "${master.label}" (${master._id}), variation ${pool.indexOf(variation) + 1}/${pool.length}`);
+      } else {
+        // No master prompts yet — use hardcoded fallback with basic personalisation
+        const base  = FALLBACK_PROMPTS[category] ?? FALLBACK_PROMPTS['Medicine Spotlight'];
+        imagePrompt = buildPersonalisedPrompt(base, pharmacy);
+        console.log(`[generate-post] No master prompts for "${category}", using fallback`);
       }
     } catch (e) {
-      console.error('Caption gen failed:', e);
+      console.error('Master prompt fetch failed, using fallback:', e);
+      imagePrompt = buildPersonalisedPrompt(FALLBACK_PROMPTS[category] ?? FALLBACK_PROMPTS['Medicine Spotlight'], pharmacy);
     }
 
-    // 2. Generate image — capture exact failure reason for frontend display
-    let imageUrl  = '';
+    // 3. Generate image
+    let imageUrl   = '';
     let imageError = '';
     try {
-      const imgPrompts: Record<string, string> = {
-        'Medicine Spotlight': `Create a bold, editorial-style 1:1 social media graphic. Style: clean flat-lay on a solid deep green background. Show ONE featured medicine or supplement product — styled artistically, not like a stock photo. Add a subtle decorative element like a leaf or geometric shape. The pharmacy name "${pharmacy.businessName}" should appear as small elegant text in one corner. No cluttered shelves, no multiple products, no stock photography look. Modern, minimalist, Instagram-worthy.`,
-
-        'Health Awareness': `Create an uplifting, warm 1:1 social media graphic about health and wellness. Style: lifestyle illustration or soft-focus photography feel with a calming colour palette — greens, soft yellows, warm neutrals. Show a human element — hands holding fruit, someone walking, a warm cup of tea, or a simple wellness symbol. The pharmacy name "${pharmacy.businessName}" as small subtle text. No clinical or hospital imagery. Should feel encouraging and human, not medical.`,
-
-        'Low Stock Alert': `Create an urgent but visually clean 1:1 social media graphic. Style: bold typography-focused design with a warm amber or orange accent colour on dark background. Show a simple icon or minimal graphic of the featured product type. Add a sense of urgency through colour and composition — not through scary imagery. The pharmacy name "${pharmacy.businessName}" in small text. Clean, modern, punchy. Think bold brand announcement, not warning label.`,
-
-        'Human Moment': `Create a warm, community-focused 1:1 social media graphic. Style: candid lifestyle feel — a pharmacist helping a customer, a family, an elderly person being cared for, or a moment of human connection in a pharmacy setting. Warm lighting, real emotions, Nigerian context if possible — dark skin tones, local setting. The pharmacy name "${pharmacy.businessName}" as small elegant text overlay. Should feel genuine and heartwarming, not staged or stock-photo-like.`,
-      };
-
-      const imagePrompt = imgPrompts[category] ?? `Create a vibrant, modern 1:1 social media graphic for "${pharmacy.businessName}" pharmacy. Bold colours, clean design, professional. Instagram-worthy.`;
-
       const imgModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image' });
       const imgRes   = await (imgModel as any).generateContent({
-        contents: [{
-          role: 'user',
-          parts: [{ text: imagePrompt }],
-        }],
+        contents: [{ role: 'user', parts: [{ text: imagePrompt }] }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
       });
 
-      const candidates = imgRes.response.candidates ?? [];
-      const parts      = candidates[0]?.content?.parts ?? [];
-      const imgPart    = parts.find((p: any) => p.inlineData);
-      const textPart   = parts.find((p: any) => p.text);
+      const candidates   = imgRes.response.candidates ?? [];
+      const parts        = candidates[0]?.content?.parts ?? [];
+      const imgPart      = parts.find((p: any) => p.inlineData);
+      const textPart     = parts.find((p: any) => p.text);
       const finishReason = candidates[0]?.finishReason ?? '';
-      const safetyRatings = candidates[0]?.safetyRatings ?? [];
+      const blocked      = (candidates[0]?.safetyRatings ?? []).filter((r: any) => r.blocked);
 
-      console.log(`[generate-image] category="${category}" candidates=${candidates.length} parts=${parts.length} hasImage=${!!imgPart} finishReason=${finishReason}`);
+      console.log(`[generate-post] image: category="${category}" hasImage=${!!imgPart} finishReason=${finishReason}`);
 
       if (imgPart?.inlineData) {
         try {
@@ -114,10 +154,8 @@ export async function POST(req: NextRequest) {
           );
         } catch (blobErr: any) {
           imageError = `Blob upload failed: ${blobErr?.message ?? String(blobErr)}`;
-          console.error('[generate-post] Blob error:', imageError);
         }
       } else {
-        // Build a human-readable reason
         if (finishReason && finishReason !== 'STOP') {
           imageError = `Model stopped: ${finishReason}`;
         } else if (textPart?.text) {
@@ -127,25 +165,20 @@ export async function POST(req: NextRequest) {
         } else {
           imageError = `Model returned ${parts.length} part(s) but none contained image data.`;
         }
-
-        const blocked = safetyRatings.filter((r: any) => r.blocked);
-        if (blocked.length) {
-          imageError += ` Blocked by safety filter: ${blocked.map((r: any) => r.category).join(', ')}.`;
-        }
-        console.error('[generate-image] No image data:', imageError);
+        if (blocked.length) imageError += ` Safety filter blocked: ${blocked.map((r: any) => r.category).join(', ')}.`;
+        console.error('[generate-post] No image data:', imageError);
       }
     } catch (e: any) {
       imageError = e?.message ?? String(e);
       console.error('Image gen threw:', imageError);
     }
 
-    // 3. Delete any existing post for this date (clean re-generate)
+    // 4. Delete any existing post for this date, then save
     const dateStart = new Date(scheduledDate);
     const dateEnd   = new Date(dateStart);
     dateEnd.setUTCDate(dateEnd.getUTCDate() + 1);
     await DailyPost.deleteOne({ pharmacyId, scheduledDate: { $gte: dateStart, $lt: dateEnd } });
 
-    // 4. Save post
     const post = await DailyPost.create({
       pharmacyId,
       scheduledDate: dateStart,
