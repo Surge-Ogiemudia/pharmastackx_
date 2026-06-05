@@ -9,8 +9,10 @@ export interface IDailyPost extends Document {
   hashtags?: string[];
   imageUrl?: string;
   videoIdeaText?: string;
-  regenCount: number;
-  category?:  string;
+  regenCount:           number;
+  category?:            string;
+  isSpecialRequest?:    boolean;
+  specialRequestPrompt?:string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,8 +30,10 @@ const dailyPostSchema: Schema<IDailyPost> = new mongoose.Schema({
   hashtags:      [{ type: String }],
   imageUrl:      { type: String },
   videoIdeaText: { type: String },
-  regenCount:    { type: Number, default: 0 },
-  category:      { type: String, default: '' },
+  regenCount:          { type: Number, default: 0 },
+  category:            { type: String, default: '' },
+  isSpecialRequest:    { type: Boolean, default: false },
+  specialRequestPrompt:{ type: String, default: '' },
 }, { timestamps: true });
 
 const DailyPost: Model<IDailyPost> = mongoose.models.DailyPost || mongoose.model<IDailyPost>('DailyPost', dailyPostSchema, 'daily_posts');
