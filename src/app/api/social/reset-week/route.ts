@@ -6,15 +6,7 @@ import User from '@/models/User';
 // TEMPORARY dev/test endpoint — delete this route before going to production
 export async function DELETE(req: NextRequest) {
   await dbConnect();
-  const { pharmacyId, slug } = await req.json();
-
-  let resolvedId = pharmacyId;
-  if (!resolvedId && slug) {
-    const user = await User.findOne({ slug });
-    if (!user) return NextResponse.json({ message: `No user found with slug "${slug}"` }, { status: 404 });
-    resolvedId = String(user._id);
-  }
-  if (!resolvedId) return NextResponse.json({ message: 'Missing pharmacyId or slug' }, { status: 400 });
+  const { pharmacyId, slug, all } = await req.json();
 
   const now    = new Date();
   const day    = now.getUTCDay();
@@ -22,10 +14,27 @@ export async function DELETE(req: NextRequest) {
   const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
   const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 7);
 
+  // Reset ALL pharmacies this week
+  if (all === true) {
+    const result = await DailyPost.deleteMany({
+      scheduledDate: { $gte: monday, $lt: sunday },
+    });
+    return NextResponse.json({ success: true, deleted: result.deletedCount, scope: 'all' });
+  }
+
+  // Reset single pharmacy
+  let resolvedId = pharmacyId;
+  if (!resolvedId && slug) {
+    const user = await User.findOne({ slug });
+    if (!user) return NextResponse.json({ message: `No user found with slug "${slug}"` }, { status: 404 });
+    resolvedId = String(user._id);
+  }
+  if (!resolvedId) return NextResponse.json({ message: 'Missing pharmacyId, slug, or all:true' }, { status: 400 });
+
   const result = await DailyPost.deleteMany({
     pharmacyId: resolvedId,
     scheduledDate: { $gte: monday, $lt: sunday },
   });
 
-  return NextResponse.json({ success: true, deleted: result.deletedCount });
+  return NextResponse.json({ success: true, deleted: result.deletedCount, scope: 'single' });
 }
