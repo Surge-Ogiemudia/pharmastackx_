@@ -49,6 +49,19 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [resetTimer, setResetTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (resetTimer > 0) {
+      interval = setInterval(() => {
+        setResetTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (resetTimer === 0) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [resetTimer]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -96,6 +109,7 @@ export default function AuthPage() {
     try {
       await axios.post('/api/auth/forgot-password', { email: formData.email });
       setSuccess('Password reset link sent! Please check your email.');
+      setResetTimer(60);
       setLoading(false);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to send reset link. Please check the email address.');
@@ -1282,10 +1296,24 @@ export default function AuthPage() {
             <Box 
                 component="button" 
                 type="submit"
-                disabled={loading}
-                sx={{ width: '100%', bgcolor: '#111', color: '#fff', borderRadius: '14px', py: 2, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sora), sans-serif', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s', '&:hover': { opacity: 0.85 }, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}
+                disabled={loading || resetTimer > 0}
+                sx={{ 
+                  width: '100%', 
+                  bgcolor: (loading || resetTimer > 0) ? '#e8e8e8' : '#111', 
+                  color: (loading || resetTimer > 0) ? '#888' : '#fff', 
+                  borderRadius: '14px', py: 2, fontSize: 14, fontWeight: 600, 
+                  fontFamily: 'var(--font-sora), sans-serif', border: 'none', 
+                  cursor: (loading || resetTimer > 0) ? 'not-allowed' : 'pointer', 
+                  transition: 'opacity 0.2s', '&:hover': { opacity: (loading || resetTimer > 0) ? 1 : 0.85 }, 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 
+                }}
             >
-                {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Send Reset Link'}
+                {loading 
+                  ? <CircularProgress size={20} sx={{ color: (loading || resetTimer > 0) ? '#888' : '#fff' }} /> 
+                  : (resetTimer > 0 
+                      ? `Didn't find mail, try again in ${resetTimer}s` 
+                      : 'Send Reset Link')
+                }
             </Box>
         </Box>
 
