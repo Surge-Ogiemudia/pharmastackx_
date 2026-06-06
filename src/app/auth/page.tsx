@@ -372,7 +372,7 @@ export default function AuthPage() {
           sx={{ p: '24px 24px 24px', textAlign: 'center' }}
         >
           <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-            Already have an account? <span onClick={() => setStep('sign-in')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Sign in</span>
+            Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
           </Typography>
         </Box>
     </motion.div>
@@ -521,7 +521,7 @@ export default function AuthPage() {
 
             <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} sx={{ textAlign: 'center' }}>
                 <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                    Already have an account? <span onClick={() => setStep('sign-in')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Sign in</span>
+                    Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
                 </Typography>
             </Box>
         </Box>
@@ -740,7 +740,7 @@ export default function AuthPage() {
 
                 <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} sx={{ textAlign: 'center', mt: 1 }}>
                     <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                        Already have an account? <span onClick={() => setStep('sign-in')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Sign in</span>
+                        Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
                     </Typography>
                 </Box>
             </Box>
@@ -935,7 +935,7 @@ export default function AuthPage() {
 
                 <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} sx={{ textAlign: 'center', mt: 1, mb: 2 }}>
                     <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                        Already have an account? <span onClick={() => setStep('sign-in')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Sign in</span>
+                        Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
                     </Typography>
                 </Box>
             </Box>
@@ -1074,7 +1074,7 @@ export default function AuthPage() {
 
                 <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} sx={{ textAlign: 'center', mb: 3 }}>
                     <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                        Already have an account? <span onClick={() => setStep('sign-in')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Sign in</span>
+                        Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
                     </Typography>
                 </Box>
             </Box>
