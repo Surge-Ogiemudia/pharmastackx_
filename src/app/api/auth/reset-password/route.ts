@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import User from '@/models/User';
 import { dbConnect } from '@/lib/mongoConnect';
 
+import bcrypt from 'bcryptjs';
+
 export async function POST(request: Request) {
   try {
     await dbConnect();
@@ -26,8 +28,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid or expired password reset token.' }, { status: 400 });
     }
 
-    // Assign the plain password. The User model's pre-save hook will hash it.
-    user.password = password;
+    // Hash the password since the User model does not have a pre-save hook
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    user.password = hashedPassword;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
