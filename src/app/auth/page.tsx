@@ -267,21 +267,21 @@ export default function AuthPage() {
           <Box 
             onClick={() => setStep('sign-in')}
             sx={{ 
-              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '16px', p: '12px 16px', 
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '16px', p: '8px 16px', 
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5, backdropFilter: 'blur(4px)',
               transition: 'all 0.25s ease',
               '&:hover': { borderColor: '#0F6E56', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(15,110,86,0.08)' },
               '&:hover .arrow': { color: '#0F6E56', transform: 'translateX(3px)' }
             }}
           >
-            <Box sx={{ width: 36, height: 36, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#E1F5EE' }}>
-              <Box sx={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #0F6E56' }} />
+            <Box sx={{ width: 28, height: 28, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#E1F5EE' }}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #0F6E56' }} />
             </Box>
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 14, fontWeight: 700, color: '#111' }}>Existing user?</Typography>
-              <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 400 }}>Log in here</Typography>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 13, fontWeight: 700, color: '#111' }}>Existing user?</Typography>
+              <Typography sx={{ fontSize: 11, color: '#888', fontWeight: 400 }}>Log in here</Typography>
             </Box>
-            <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
+            <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 18 }} />
           </Box>
         </Box>
 
