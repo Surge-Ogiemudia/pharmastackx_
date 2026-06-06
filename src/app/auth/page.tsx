@@ -306,7 +306,7 @@ export default function AuthPage() {
         </Box>
 
         {/* Choices */}
-        <Box sx={{ p: '8px 24px 0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <Box sx={{ p: '8px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           {/* Patient Card */}
           <Box 
@@ -315,7 +315,7 @@ export default function AuthPage() {
             animate={{ opacity: 1, scale: 1 }} 
             transition={{ delay: 0.2 }}
             sx={{ 
-              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '22px', 
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '16px', 
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, backdropFilter: 'blur(4px)',
               transition: 'all 0.25s ease',
               '&:hover': { borderColor: '#0F6E56', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(15,110,86,0.08)' },
@@ -323,8 +323,8 @@ export default function AuthPage() {
             }}
             onClick={() => setStep('patient-signup')}
           >
-            <Box sx={{ width: 52, height: 52, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#E1F5EE' }}>
-              <Box sx={{ width: 22, height: 22, borderRadius: '50%', border: '2.5px solid #0F6E56' }} />
+            <Box sx={{ width: 44, height: 44, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#E1F5EE' }}>
+              <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: '2.5px solid #0F6E56' }} />
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#111', letterSpacing: '-0.4px', mb: 0.5 }}>Patient</Typography>
@@ -340,7 +340,7 @@ export default function AuthPage() {
             animate={{ opacity: 1, scale: 1 }} 
             transition={{ delay: 0.3 }}
             sx={{ 
-              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '22px', 
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '16px', 
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, backdropFilter: 'blur(4px)',
               transition: 'all 0.25s ease',
               '&:hover': { borderColor: '#C84B8F', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(200,75,143,0.08)' },
@@ -348,8 +348,8 @@ export default function AuthPage() {
             }}
             onClick={() => setStep('pharmacist-signup')}
           >
-            <Box sx={{ width: 52, height: 52, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#fdf0f6' }}>
-              <Box sx={{ width: 22, height: 22, borderRadius: '50%', border: '2.5px solid #C84B8F' }} />
+            <Box sx={{ width: 44, height: 44, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#fdf0f6' }}>
+              <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: '2.5px solid #C84B8F' }} />
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#111', letterSpacing: '-0.4px', mb: 0.5 }}>Pharmacist</Typography>
@@ -358,35 +358,31 @@ export default function AuthPage() {
             <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
           </Box>
 
-        </Box>
-
-        {/* Provider Types */}
-        <Box 
-          component={motion.div} 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.4 }}
-          sx={{ p: '20px 24px 24px' }}
-        >
-          <Typography sx={{ fontSize: 10, color: '#bbb', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 500, mb: 1.5 }}>Also joining as</Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-            {[
-              { label: 'Pharmacy Owner', step: 'pharmacy-owner-signup' },
-              { label: 'Clinic', step: 'clinic-signup' }
-            ].map((item) => (
-              <Box 
-                key={item.label}
-                onClick={() => item.step && setStep(item.step as any)}
-                sx={{ 
-                  bgcolor: 'rgba(255,255,255,0.8)', border: '1px solid #ebebeb', borderRadius: '10px', p: '10px 12px', 
-                  fontSize: 11, color: '#888', fontWeight: 400, textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s',
-                  '&:hover': { borderColor: item.label === 'Clinic' ? '#BA7517' : '#0F6E56', color: item.label === 'Clinic' ? '#BA7517' : '#0F6E56', bgcolor: '#fff' }
-                }}
-              >
-                {item.label}
-              </Box>
-            ))}
+          {/* Pharmacy Card */}
+          <Box 
+            component={motion.div} 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            transition={{ delay: 0.4 }}
+            sx={{ 
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '16px', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, backdropFilter: 'blur(4px)',
+              transition: 'all 0.25s ease',
+              '&:hover': { borderColor: '#BA7517', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(186,117,23,0.08)' },
+              '&:hover .arrow': { color: '#BA7517', transform: 'translateX(3px)' }
+            }}
+            onClick={() => setStep('pharmacy-owner-signup')}
+          >
+            <Box sx={{ width: 44, height: 44, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#fdf8f0' }}>
+              <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: '2.5px solid #BA7517' }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#111', letterSpacing: '-0.4px', mb: 0.5 }}>Pharmacy</Typography>
+              <Typography sx={{ fontSize: 11, color: '#888', lineHeight: 1.55, fontWeight: 300 }}>I want to manage my store, receive medicine requests and serve patients near me.</Typography>
+            </Box>
+            <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
           </Box>
+
         </Box>
     </motion.div>
   );
