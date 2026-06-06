@@ -267,17 +267,17 @@ export default function AuthPage() {
           <Box 
             onClick={() => setStep('sign-in')}
             sx={{ 
-              bgcolor: 'rgba(15,110,86,0.06)', border: '1.5px solid rgba(15,110,86,0.15)', borderRadius: '16px', p: '16px', 
+              bgcolor: 'rgba(15,110,86,0.06)', border: '1.5px solid rgba(15,110,86,0.15)', borderRadius: '14px', p: '12px 16px', 
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               transition: 'all 0.2s ease',
               '&:hover': { bgcolor: 'rgba(15,110,86,0.1)', transform: 'translateY(-2px)', borderColor: '#0F6E56' }
             }}
           >
-            <Box>
-              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#0F6E56', mb: 0.5 }}>Existing user?</Typography>
-              <Typography sx={{ fontSize: 12, color: '#555', fontWeight: 400 }}>Log in to your account</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 14, fontWeight: 700, color: '#0F6E56' }}>Existing user?</Typography>
+              <Typography sx={{ fontSize: 12, color: '#555', fontWeight: 400 }}>Log in here</Typography>
             </Box>
-            <KeyboardArrowRightIcon sx={{ color: '#0F6E56' }} />
+            <KeyboardArrowRightIcon sx={{ color: '#0F6E56', fontSize: 20 }} />
           </Box>
         </Box>
 
