@@ -267,17 +267,21 @@ export default function AuthPage() {
           <Box 
             onClick={() => setStep('sign-in')}
             sx={{ 
-              bgcolor: 'rgba(15,110,86,0.06)', border: '1.5px solid rgba(15,110,86,0.15)', borderRadius: '14px', p: '12px 16px', 
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              transition: 'all 0.2s ease',
-              '&:hover': { bgcolor: 'rgba(15,110,86,0.1)', transform: 'translateY(-2px)', borderColor: '#0F6E56' }
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '16px', p: '12px 16px', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5, backdropFilter: 'blur(4px)',
+              transition: 'all 0.25s ease',
+              '&:hover': { borderColor: '#0F6E56', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(15,110,86,0.08)' },
+              '&:hover .arrow': { color: '#0F6E56', transform: 'translateX(3px)' }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 14, fontWeight: 700, color: '#0F6E56' }}>Existing user?</Typography>
-              <Typography sx={{ fontSize: 12, color: '#555', fontWeight: 400 }}>Log in here</Typography>
+            <Box sx={{ width: 36, height: 36, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#E1F5EE' }}>
+              <Box sx={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #0F6E56' }} />
             </Box>
-            <KeyboardArrowRightIcon sx={{ color: '#0F6E56', fontSize: 20 }} />
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 14, fontWeight: 700, color: '#111' }}>Existing user?</Typography>
+              <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 400 }}>Log in here</Typography>
+            </Box>
+            <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
           </Box>
         </Box>
 
