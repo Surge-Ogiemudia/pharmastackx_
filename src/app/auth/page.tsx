@@ -257,6 +257,32 @@ export default function AuthPage() {
           <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 500 }}>Back to home</Typography>
         </Box>
 
+        {/* Existing Users Section */}
+        <Box 
+          component={motion.div} 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          sx={{ p: '8px 24px 0' }}
+        >
+          <Box 
+            onClick={() => setStep('sign-in')}
+            sx={{ 
+              bgcolor: 'rgba(15,110,86,0.06)', border: '1.5px solid rgba(15,110,86,0.15)', borderRadius: '16px', p: '16px', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              transition: 'all 0.2s ease',
+              '&:hover': { bgcolor: 'rgba(15,110,86,0.1)', transform: 'translateY(-2px)', borderColor: '#0F6E56' }
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#0F6E56', mb: 0.5 }}>Existing user?</Typography>
+              <Typography sx={{ fontSize: 12, color: '#555', fontWeight: 400 }}>Log in to your account</Typography>
+            </Box>
+            <KeyboardArrowRightIcon sx={{ color: '#0F6E56' }} />
+          </Box>
+        </Box>
+
+        {renderSectionDivider('Create new account')}
+
         {/* Hero */}
         <Box sx={{ p: '8px 24px 16px' }}>
           <Typography 
@@ -340,7 +366,7 @@ export default function AuthPage() {
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.4 }}
-          sx={{ p: '20px 24px 0' }}
+          sx={{ p: '20px 24px 24px' }}
         >
           <Typography sx={{ fontSize: 10, color: '#bbb', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 500, mb: 1.5 }}>Also joining as</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
@@ -361,19 +387,6 @@ export default function AuthPage() {
               </Box>
             ))}
           </Box>
-        </Box>
-
-        {/* Sign In Link */}
-        <Box 
-          component={motion.div} 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.4 }}
-          sx={{ p: '24px 24px 24px', textAlign: 'center' }}
-        >
-          <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-            Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#0F6E56', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #0F6E56', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(15,110,86,0.08)' } }}>Sign in</Box>
-          </Typography>
         </Box>
     </motion.div>
   );
