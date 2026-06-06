@@ -88,6 +88,21 @@ export default function AuthPage() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await axios.post('/api/auth/forgot-password', { email: formData.email });
+      setSuccess('Password reset link sent! Please check your email.');
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to send reset link. Please check the email address.');
+      setLoading(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent, role: string) => {
     e.preventDefault();
     setLoading(true);
@@ -1182,7 +1197,7 @@ export default function AuthPage() {
                 </Box>
             </Box>
             <Box sx={{ textAlign: 'right', mb: 2.5 }}>
-                <Typography sx={{ fontSize: 11, color: '#C84B8F', fontWeight: 500, cursor: 'pointer' }}>Forgot password?</Typography>
+                <Typography onClick={() => setStep('forgot-password')} sx={{ fontSize: 11, color: '#C84B8F', fontWeight: 500, cursor: 'pointer', transition: 'opacity 0.2s', '&:hover': { opacity: 0.7 } }}>Forgot password?</Typography>
             </Box>
             <Box 
                 component="button" 
@@ -1197,6 +1212,80 @@ export default function AuthPage() {
                 <Typography sx={{ fontSize: 12, color: '#bbb' }}>
                     Don't have an account? <span onClick={() => setStep('role')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Create one</span>
                 </Typography>
+            </Box>
+        </Box>
+
+    </motion.div>
+  );
+
+  const renderForgotPassword = () => (
+    <motion.div
+      key="forgot-password"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+    >
+        {/* Back Button */}
+        <Box 
+          component={motion.div} 
+          initial={{ opacity: 0, y: -10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
+          onClick={() => setStep('sign-in')}
+        >
+          <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
+            <ArrowBackIcon sx={{ fontSize: 16 }} />
+          </Box>
+          <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 500 }}>Back to Sign in</Typography>
+        </Box>
+
+        {/* Hero */}
+        <Box sx={{ px: 3, pb: 3, textAlign: 'center' }}>
+          <Typography 
+            component={motion.h1} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: 26, fontWeight: 900, color: '#111', lineHeight: 1.1, letterSpacing: '-1px', mb: 1 }}
+          >
+            Reset your<br/><em style={{ color: '#0F6E56', fontStyle: 'italic' }}>password.</em>
+          </Typography>
+          <Typography 
+            component={motion.p} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            sx={{ fontSize: 13, color: '#888', fontWeight: 300, lineHeight: 1.65 }}
+          >
+            Enter your email address to receive a password reset link.
+          </Typography>
+        </Box>
+
+        <Box component="form" onSubmit={handleForgotPassword} sx={{ px: 3, display: 'flex', flexDirection: 'column', flex: 1 }}>
+            {(error || success) && (
+                <Alert 
+                  severity={error ? 'error' : 'success'} 
+                  sx={{ mb: 2, borderRadius: '12px', fontSize: 13 }}
+                >
+                    {error || success}
+                </Alert>
+            )}
+
+            <Box sx={{ mb: 2 }}>
+                <Typography sx={labelSx}>Email address</Typography>
+                <InputBase 
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="you@email.com" 
+                    type="email" 
+                    required
+                    sx={inputSx} 
+                />
+            </Box>
+            
+            <Box 
+                component="button" 
+                type="submit"
+                disabled={loading}
+                sx={{ width: '100%', bgcolor: '#111', color: '#fff', borderRadius: '14px', py: 2, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sora), sans-serif', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s', '&:hover': { opacity: 0.85 }, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}
+            >
+                {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Send Reset Link'}
             </Box>
         </Box>
 
@@ -1233,6 +1322,7 @@ export default function AuthPage() {
                 {step === 'pharmacy-owner-signup' && renderPharmacyOwnerSignup()}
                 {step === 'clinic-signup' && renderClinicSignup()}
                 {step === 'sign-in' && renderSignIn()}
+                {step === 'forgot-password' && renderForgotPassword()}
             </AnimatePresence>
 
         </Box>
