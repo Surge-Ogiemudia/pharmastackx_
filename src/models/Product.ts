@@ -20,8 +20,8 @@ export interface IProduct extends Document {
   itemNameVector?: number[];
   syncBatchId?: string;
   source?: 'manual' | 'synkk';
-  // SIMPLIFIED DEFINITION:
   enrichmentStatus?: string; 
+  classificationMethod?: 'database_match' | 'ai_classified' | 'manual_override';
 }
 
 const productSchema: Schema<IProduct> = new mongoose.Schema({
@@ -48,8 +48,13 @@ const productSchema: Schema<IProduct> = new mongoose.Schema({
   // The API code is now solely responsible for setting this value.
   enrichmentStatus: { 
     type: String,
-    required: false, // It's not required because old documents won't have it.
+    required: false, 
   },
+  classificationMethod: {
+    type: String,
+    enum: ['database_match', 'ai_classified', 'manual_override'],
+    required: false
+  }
 }, { timestamps: true }); 
 
 productSchema.index({ businessName: 1 });

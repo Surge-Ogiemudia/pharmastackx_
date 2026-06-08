@@ -9,11 +9,17 @@ export default async function PharmaciesList() {
   const users = await User.find({ role: 'pharmacy' }).lean();
   
   const networkData = await Promise.all(users.map(async (user) => {
-    const lastLog = await UploadLog.findOne({ userId: user._id }).sort({ createdAt: -1 });
-    
-    let status = 'healthy';
-    if (!lastLog) status = 'critical';
-    else if (Date.now() - new Date(lastLog.createdAt).getTime() > 24 * 60 * 60 * 1000) status = 'warning';
+    let lastSyncTime = user.lastSyncTime ? new Date(user.lastSyncTime) : null;
+    let timeDiff = lastSyncTime ? Date.now() - lastSyncTime.getTime() : Infinity;
+
+    let status = 'critical'; // > 24h or never
+    if (timeDiff <= 15 * 60 * 1000) {
+      status = 'excellent'; // < 15m
+    } else if (timeDiff <= 60 * 60 * 1000) {
+      status = 'healthy'; // 15m to 1h
+    } else if (timeDiff <= 24 * 60 * 60 * 1000) {
+      status = 'warning'; // 1h to 24h
+    }
 
     return {
       id: user._id.toString(),
@@ -21,13 +27,15 @@ export default async function PharmaciesList() {
       location: user.businessAddress || user.city || 'Unknown Location',
       pos: (user as any).posSystem || 'Auto-Detected',
       installedAt: user.createdAt?.toLocaleDateString() || 'N/A',
-      lastSync: lastLog ? new Date(lastLog.createdAt).toLocaleString() : 'Never',
+      lastSync: lastSyncTime ? lastSyncTime.toLocaleString() : 'Never',
+      syncTier: user.lastSyncTier || null,
       status
     };
   }));
 
   const statusStyles = {
-    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    excellent: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    healthy: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     critical: 'bg-red-500/10 text-red-400 border-red-500/20'
   };
@@ -77,6 +85,7 @@ export default async function PharmaciesList() {
                 <th className="p-4">Location</th>
                 <th className="p-4">Installed At</th>
                 <th className="p-4">Last Sync</th>
+                <th className="p-4">Tier</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 rounded-tr-xl"></th>
               </tr>
@@ -104,7 +113,17 @@ export default async function PharmaciesList() {
                     </div>
                   </td>
                   <td className="p-4">
+                    {pharmacy.syncTier ? (
+                      <span className="px-2 py-1 bg-slate-800 text-slate-300 text-xs rounded border border-slate-700">
+                        Tier {pharmacy.syncTier}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-600">-</span>
+                    )}
+                  </td>
+                  <td className="p-4">
                     <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[pharmacy.status as keyof typeof statusStyles]}`}>
+                      {pharmacy.status === 'excellent' && <CheckCircle2 className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'healthy' && <CheckCircle2 className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'warning' && <AlertCircle className="w-3.5 h-3.5" />}
                       {pharmacy.status === 'critical' && <ServerCrash className="w-3.5 h-3.5" />}

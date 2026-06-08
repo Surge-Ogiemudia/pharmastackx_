@@ -1,7 +1,9 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import Product from '@/models/Product';
+import RejectedProduct from '@/models/RejectedProduct';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
+import { classifyProducts } from '@/lib/classificationEngine';
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
 
     // 2. Parse Payload
     const body = await req.json();
-    const { pharmacy_slug, updates, deletes } = body;
+    const { pharmacy_slug, updates, deletes, sync_tier } = body;
 
     if (!pharmacy_slug || !Array.isArray(updates) || !Array.isArray(deletes)) {
       return NextResponse.json({ success: false, error: 'Invalid payload schema' }, { status: 400 });
@@ -34,13 +36,17 @@ export async function POST(req: Request) {
     const businessName = pharmacyUser.businessName || 'Unknown Pharmacy';
     const actual_slug = pharmacyUser.slug;
 
-    // 4. Bulk Upsert Operations for Updates
+    // 3.5 Classification Filter (AI + Database)
+    const { approved: approvedUpdates, rejected: rejectedUpdates } = await classifyProducts(updates);
+
+    // 4. Bulk Upsert Operations for Approved Updates
     // We strictly UPSERT based on itemName and slug so we don't destroy AI-enriched fields (imageUrl, info, etc)
-    const bulkOps = updates.map((item: any) => {
+    const bulkOps = approvedUpdates.map((item: any) => {
       // Clean up the incoming data
       const itemName = item.name;
       const amount = Number(item.price) || 0;
       const quantity = Number(item.qty) || 0;
+      const classificationMethod = item.classificationMethod || 'ai_classified';
 
       return {
         updateOne: {
@@ -49,7 +55,8 @@ export async function POST(req: Request) {
             $set: {
               amount: amount,
               quantity: quantity,
-              source: 'synkk'
+              source: 'synkk',
+              classificationMethod: classificationMethod
             },
             // Only set these if it's a completely brand new item being inserted
             $setOnInsert: {
@@ -66,11 +73,38 @@ export async function POST(req: Request) {
       };
     });
 
-    // Execute the bulk upsert
+    // Execute the bulk upsert for approved products
     let upsertCount = 0;
     if (bulkOps.length > 0) {
       const result = await Product.bulkWrite(bulkOps);
       upsertCount = (result.upsertedCount || 0) + (result.modifiedCount || 0);
+    }
+
+    // Handle Rejected Products
+    let rejectedCount = 0;
+    if (rejectedUpdates.length > 0) {
+      const rejectedOps = rejectedUpdates.map((item: any) => ({
+        updateOne: {
+          filter: { itemName: item.name, pharmacySlug: actual_slug },
+          update: {
+            $set: {
+              amount: Number(item.price) || 0,
+              qty: Number(item.qty) || 0,
+              reason: item.reason,
+              rejectionMethod: item.rejectionMethod || 'ai_classified'
+            },
+            $setOnInsert: {
+              itemName: item.name,
+              pharmacyId: pharmacyUser._id,
+              pharmacySlug: actual_slug,
+              businessName: businessName
+            }
+          },
+          upsert: true
+        }
+      }));
+      const rejectedResult = await RejectedProduct.bulkWrite(rejectedOps);
+      rejectedCount = (rejectedResult.upsertedCount || 0) + (rejectedResult.modifiedCount || 0);
     }
 
     // 5. Delete removed items
@@ -84,9 +118,22 @@ export async function POST(req: Request) {
       deletedCount = deleteResult.deletedCount || 0;
     }
 
+    // 6. Update Pharmacy User with sync metadata
+    if (sync_tier !== undefined) {
+      await User.updateOne(
+        { slug: actual_slug },
+        { $set: { lastSyncTier: sync_tier, lastSyncTime: new Date() } }
+      );
+    } else {
+      await User.updateOne(
+        { slug: actual_slug },
+        { $set: { lastSyncTime: new Date() } }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Sync complete. Upserted ${upsertCount} items. Removed ${deletedCount} out-of-stock items.`,
+      message: `Sync complete. Upserted ${upsertCount} items. Rejected ${rejectedCount} items. Removed ${deletedCount} out-of-stock items.`,
       newSlug: actual_slug
     });
 

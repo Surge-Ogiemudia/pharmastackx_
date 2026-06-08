@@ -62,6 +62,8 @@ export interface IUser extends Document {
     expirationTime?: number | null;
     keys: { p256dh: string; auth: string };
   };
+  lastSyncTier?: number;
+  lastSyncTime?: Date;
 }
 
 // The schema defines the blueprint for the database
@@ -136,6 +138,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
       auth:   { type: String },
     },
   },
+  lastSyncTier: { type: Number },
+  lastSyncTime: { type: Date },
 });
 
 // This line creates the model
