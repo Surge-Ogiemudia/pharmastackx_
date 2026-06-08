@@ -40,6 +40,8 @@ export interface User {
     description?: string;
   }>;
   hasSetupBrandKit?: boolean;
+  lastSyncTier?: number;
+  lastSyncTime?: Date | string;
 }
 
 export interface Business extends User {

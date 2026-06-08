@@ -6,7 +6,9 @@ import UploadLog from '@/models/UploadLog';
 import Product from '@/models/Product';
 import Order from '@/models/Order';
 import PageView from '@/models/PageView';
-import AlertButton from './AlertButton'; // We will create this next
+import RejectedProduct from '@/models/RejectedProduct';
+import AlertButton from './AlertButton';
+import { overrideRejectedProduct } from './actions';
 
 export default async function PharmacyDetail({ params }: { params: { id: string } }) {
   await dbConnect();
@@ -25,6 +27,11 @@ export default async function PharmacyDetail({ params }: { params: { id: string 
   const logs = await UploadLog.find({ businessName: pharmacy.businessName })
     .sort({ uploadedAt: -1 })
     .limit(5)
+    .lean();
+
+  const rejectedProducts = await RejectedProduct.find({ pharmacyId: pharmacy._id })
+    .sort({ createdAt: -1 })
+    .limit(50)
     .lean();
 
   const isHealthy = logs.length > 0 && (Date.now() - new Date(logs[0].uploadedAt).getTime() < 24 * 60 * 60 * 1000);
@@ -119,6 +126,50 @@ export default async function PharmacyDetail({ params }: { params: { id: string 
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Rejected Products (AI Filter) */}
+          <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+            <h3 className="text-sm font-medium text-slate-300 mb-4 flex items-center gap-2">
+              <X className="w-4 h-4" /> AI Filter: Rejected Products
+            </h3>
+            {rejectedProducts.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="text-xs uppercase bg-slate-900/50 text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Product Name</th>
+                      <th className="px-4 py-3">Reason</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rejectedProducts.map((rp: any) => {
+                      const handleOverride = overrideRejectedProduct.bind(null, rp._id.toString(), `/dashboard/pharmacies/${params.id}`);
+                      return (
+                        <tr key={rp._id.toString()} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="px-4 py-3 font-medium text-slate-200">{rp.itemName}</td>
+                          <td className="px-4 py-3 text-red-400">{rp.reason}</td>
+                          <td className="px-4 py-3">{new Date(rp.createdAt).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            <form action={handleOverride}>
+                              <button type="submit" className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-xs rounded-md hover:bg-emerald-500/20 transition-colors font-medium">
+                                Approve to Catalog
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex gap-4 p-3 rounded-lg bg-slate-900/30 border border-slate-800/50">
+                <p className="text-sm text-slate-500">No rejected products found. The catalog is clean.</p>
+              </div>
+            )}
           </div>
 
         </div>
