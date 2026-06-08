@@ -5,7 +5,7 @@ import RejectedProduct from '@/models/RejectedProduct';
 import Product from '@/models/Product';
 import { revalidatePath } from 'next/cache';
 
-export async function overrideRejectedProduct(rejectedProductId: string, path: string) {
+export async function overrideRejectedProduct(rejectedProductId: string, path: string): Promise<void> {
   try {
     await dbConnect();
     
@@ -37,9 +37,7 @@ export async function overrideRejectedProduct(rejectedProductId: string, path: s
     await RejectedProduct.findByIdAndDelete(rejectedProductId);
 
     revalidatePath(path);
-    return { success: true };
   } catch (error: any) {
     console.error("Manual override failed:", error);
-    return { success: false, error: error.message };
   }
 }
