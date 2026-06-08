@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Button, IconButton, CircularProgress,
          Dialog, DialogTitle, DialogContent, DialogActions, TextField, Drawer } from '@mui/material';
-import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings, AutoAwesome, Delete } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, FileDownload, IosShare, Lock, CheckCircle, Settings, AutoAwesome, Delete, WhatsApp } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from '@/context/SessionProvider';
 import axios from 'axios';
@@ -750,7 +750,23 @@ export default function SocialContent() {
   const regenLeft = Math.max(0, 2 - (todaysPost?.regenCount ?? 0));
 
   return (
-    <Box sx={{ bgcolor: BG, minHeight: '100vh' }}>
+    <Box sx={{ bgcolor: BG, minHeight: '100vh', position: 'relative' }}>
+      {/* Floating "talk to admin" WhatsApp button */}
+      <Box component="a" href="https://wa.me/2349050006638" target="_blank" rel="noopener noreferrer"
+        sx={{
+          position: 'fixed', bottom: 88, right: 16, zIndex: 1300,
+          display: 'flex', alignItems: 'center', gap: 1,
+          px: 1.6, py: 1.1, borderRadius: '999px', textDecoration: 'none',
+          bgcolor: '#25D366', color: '#06291C',
+          boxShadow: '0 6px 22px rgba(37,211,102,0.45)',
+          border: '1px solid rgba(255,255,255,0.25)',
+        }}>
+        <WhatsApp sx={{ fontSize: 20 }} />
+        <Typography sx={{ fontFamily: FONT, fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          Having challenges? Talk to admin
+        </Typography>
+      </Box>
+
       {/* Date carousel */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 2 }}>
         <IconButton onClick={() => changeDate(-1)} disabled={isPastDate} size="small" sx={{ bgcolor: CARD, color: isPastDate ? 'rgba(255,255,255,0.15)' : TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
