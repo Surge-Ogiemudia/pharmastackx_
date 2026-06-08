@@ -5,6 +5,8 @@ import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import { classifyProducts } from '@/lib/classificationEngine';
 
+export const maxDuration = 60; // Increase Vercel timeout to 60 seconds to allow Gemini to finish classifying batch inventory
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
