@@ -459,6 +459,9 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                 <EditableListItem fieldName="username" label="Name" value={accountUser.username} icon={<Person />} />
                                 <EditableListItem fieldName="email" label="Email" value={accountUser.email} icon={<ContactMail />} />
                                 <EditableListItem fieldName="mobile" label="Phone" value={accountUser.mobile || accountUser.phoneNumber} icon={<Phone />} />
+                                <EditableListItem fieldName="state" label="State" value={accountUser.state} icon={<LocationOn />} />
+                                <EditableListItem fieldName="city" label="City" value={accountUser.city} icon={<Business />} />
+                                <EditableListItem fieldName="businessAddress" label="Address" value={accountUser.businessAddress} icon={<Assignment />} />
                             </SubPageWrapper>
                         )}
 
