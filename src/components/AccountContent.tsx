@@ -320,6 +320,18 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                             <Typography sx={{ fontSize: '11px', color: accountUser.mobile || accountUser.phoneNumber ? '#888' : '#ccc', fontFamily: 'Sora, sans-serif' }}>{accountUser.mobile || accountUser.phoneNumber || 'Add phone'}</Typography>
                                             <Edit sx={{ fontSize: 11, color: '#ddd' }} />
                                         </Box>
+                                        <Box onClick={() => { setEditingField('state'); setFieldValue(accountUser.state); }} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: 'pointer', width: 'fit-content' }}>
+                                            <Typography sx={{ fontSize: '11px', color: accountUser.state ? '#888' : '#ccc', fontFamily: 'Sora, sans-serif' }}>{accountUser.state || 'Add state'}</Typography>
+                                            <Edit sx={{ fontSize: 11, color: '#ddd' }} />
+                                        </Box>
+                                        <Box onClick={() => { setEditingField('city'); setFieldValue(accountUser.city); }} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: 'pointer', width: 'fit-content' }}>
+                                            <Typography sx={{ fontSize: '11px', color: accountUser.city ? '#888' : '#ccc', fontFamily: 'Sora, sans-serif' }}>{accountUser.city || 'Add city'}</Typography>
+                                            <Edit sx={{ fontSize: 11, color: '#ddd' }} />
+                                        </Box>
+                                        <Box onClick={() => { setEditingField('businessAddress'); setFieldValue(accountUser.businessAddress); }} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: 'pointer', width: 'fit-content' }}>
+                                            <Typography sx={{ fontSize: '11px', color: accountUser.businessAddress ? '#888' : '#ccc', fontFamily: 'Sora, sans-serif' }}>{accountUser.businessAddress || 'Add address'}</Typography>
+                                            <Edit sx={{ fontSize: 11, color: '#ddd' }} />
+                                        </Box>
                                     </Box>
                                     {/* badges */}
                                     <Box sx={{ display: 'flex', gap: 0.75, mt: 1, flexWrap: 'wrap' }}>
