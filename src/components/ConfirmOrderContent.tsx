@@ -53,7 +53,7 @@ const STANDARD_DELIVERY_FEE = 10;
 const EXPRESS_DELIVERY_FEE = 10;
 
 export default function ConfirmOrderContent({ setView }: { setView: (view: string) => void }) {
-  const { items, updateQuantity, removeFromCart, clearCart, requestId, quoteId, fetchCartFromDB } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, requestId, quoteId, fetchCartFromDB, initializeCart } = useCart();
   const { activePromo, applyPromo, removePromo, validatePromo, calculateDiscount } = usePromo();
   const { addOrder } = useOrders();
   const { user } = useSession();
@@ -64,13 +64,39 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>;
   }
 
-  // Sync with cloud on mount
+  // Sync with cloud on mount OR parse B2B URL params
   useEffect(() => {
+    const action = searchParams?.get('action');
+    if (action === 'checkout') {
+      const itemName = searchParams.get('item');
+      const priceStr = searchParams.get('price');
+      const seller = searchParams.get('seller');
+      
+      if (itemName && priceStr && seller) {
+        console.log("[ConfirmOrder] Initializing B2B Checkout Cart from URL");
+        const price = parseFloat(priceStr) || 0;
+        const b2bItem = {
+          id: `b2b-${Date.now()}`,
+          name: itemName,
+          image: '',
+          activeIngredients: 'Sourced from B2B',
+          drugClass: 'B2B Item',
+          price: price,
+          pharmacy: seller,
+          quantity: 1,
+          isQuoteItem: false
+        };
+        // Initialize the cart locally and skip DB sync
+        initializeCart([b2bItem], 'b2b-request', 'b2b-quote', true);
+        return;
+      }
+    }
+
     if (user?._id) {
       console.log("[ConfirmOrder] Triggering fresh Cart sync from DB...");
       fetchCartFromDB();
     }
-  }, [user?._id, fetchCartFromDB]);
+  }, [user?._id, fetchCartFromDB, searchParams, initializeCart]);
 
   // State
   const [loading, setLoading] = useState(false);
