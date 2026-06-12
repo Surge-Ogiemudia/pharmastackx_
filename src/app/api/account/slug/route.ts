@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import Product from '@/models/Product';
@@ -6,7 +6,7 @@ import RejectedProduct from '@/models/RejectedProduct';
 import jwt from 'jsonwebtoken';
 import { pusherServer } from '@/lib/pusher';
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
   try {
     await dbConnect();
     const token = req.cookies.get('token')?.value;
