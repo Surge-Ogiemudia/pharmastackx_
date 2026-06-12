@@ -4,7 +4,7 @@ import User from '@/models/User';
 import Product from '@/models/Product';
 import RejectedProduct from '@/models/RejectedProduct';
 import jwt from 'jsonwebtoken';
-import { pusherServer } from '@/lib/pusherServer';
+import { pusherServer } from '@/lib/pusher';
 
 export async function PUT(req: Request) {
   try {
