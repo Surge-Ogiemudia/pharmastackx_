@@ -62,6 +62,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const [storefrontView, setStorefrontView] = useState<'share' | 'upload' | 'stock'>('share');
   const [userBusinessName, setUserBusinessName] = useState('');
   const [userSlug, setUserSlug] = useState('');
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [newSlugValue, setNewSlugValue] = useState('');
+  const [isSavingSlug, setIsSavingSlug] = useState(false);
   
   const isMounted = useRef(false);
 
@@ -169,6 +172,27 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
       alert(err.response?.data?.message || 'Failed to initialize store.');
     } finally {
       if (isMounted.current) setSetupLoading(false);
+    }
+  };
+
+  const handleUpdateSlug = async () => {
+    if (!newSlugValue || newSlugValue === userSlug) {
+      setIsEditingSlug(false);
+      return;
+    }
+    setIsSavingSlug(true);
+    try {
+      const res = await axios.put('/api/account/slug', { newSlug: newSlugValue });
+      if (isMounted.current) {
+        setUserSlug(res.data.slug);
+        setIsEditingSlug(false);
+        alert('Store link updated successfully!');
+        if (refreshSession) refreshSession();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update store link.');
+    } finally {
+      if (isMounted.current) setIsSavingSlug(false);
     }
   };
 
@@ -741,12 +765,53 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.15)', borderRadius: '12px', padding: '12px 16px', mb: 2.5, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--sora)' }}>
-                      {userSlug}<span style={{ opacity: 0.4 }}>.psx.ng</span>
-                    </Typography>
-                    <Typography onClick={handleCopyUrl} sx={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.9 } }}>
-                      {copied ? 'Copied' : 'Copy link'}
-                    </Typography>
+                    {isEditingSlug ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                        <TextField 
+                          variant="standard"
+                          value={newSlugValue}
+                          onChange={(e) => setNewSlugValue(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'))}
+                          disabled={isSavingSlug}
+                          autoFocus
+                          InputProps={{
+                            disableUnderline: true,
+                            endAdornment: <Typography sx={{ opacity: 0.4, fontSize: '13px', color: '#fff' }}>.psx.ng</Typography>
+                          }}
+                          sx={{ 
+                            input: { color: '#fff', fontSize: '13px', fontWeight: 600, fontFamily: 'var(--sora)', padding: 0 },
+                            bgcolor: 'rgba(255,255,255,0.1)', px: 1, py: 0.5, borderRadius: '4px'
+                          }}
+                        />
+                        <Button 
+                          onClick={handleUpdateSlug} 
+                          disabled={isSavingSlug}
+                          sx={{ minWidth: 'auto', p: '2px 8px', fontSize: '10px', color: '#fff', bgcolor: '#0F6E56', '&:hover': { bgcolor: '#0b5240' } }}
+                        >
+                          {isSavingSlug ? 'Saving...' : 'Save'}
+                        </Button>
+                        <Button 
+                          onClick={() => setIsEditingSlug(false)} 
+                          disabled={isSavingSlug}
+                          sx={{ minWidth: 'auto', p: '2px 8px', fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    ) : (
+                      <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--sora)' }}>
+                            {userSlug}<span style={{ opacity: 0.4 }}>.psx.ng</span>
+                          </Typography>
+                          <IconButton onClick={() => { setNewSlugValue(userSlug); setIsEditingSlug(true); }} size="small" sx={{ color: 'rgba(255,255,255,0.5)', p: 0.5, '&:hover': { color: '#fff' } }}>
+                            <Edit sx={{ fontSize: '14px' }} />
+                          </IconButton>
+                        </Box>
+                        <Typography onClick={handleCopyUrl} sx={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.9 } }}>
+                          {copied ? 'Copied' : 'Copy link'}
+                        </Typography>
+                      </>
+                    )}
                   </Box>
                   {/* SYNKK STATUS STRIP */}
                   {synkkStatus && (
