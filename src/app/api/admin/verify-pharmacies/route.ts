@@ -8,13 +8,10 @@ export async function GET() {
   try {
     await dbConnect();
 
-    // Query for any businessName that matches the user's list (case-insensitive regex)
     const users = await User.find({
       $or: [
-        { businessName: { $regex: /nat\s*k/i } },
-        { businessName: { $regex: /mantle/i } },
-        { businessName: { $regex: /ernosa/i } },
-        { businessName: { $regex: /divine\s*lifegate/i } }
+        { businessName: { $regex: /divine/i } },
+        { businessName: { $regex: /lifegate/i } }
       ]
     }).select('businessName slug email _id');
 
