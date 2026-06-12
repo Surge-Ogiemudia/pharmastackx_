@@ -25,10 +25,12 @@ export default async function PharmaciesList() {
       id: user._id.toString(),
       name: user.businessName || user.username || 'Unnamed Pharmacy',
       location: user.businessAddress || user.city || 'Unknown Location',
+      phone: user.phoneNumber || '',
       pos: (user as any).posSystem || 'Auto-Detected',
       installedAt: user.createdAt?.toLocaleDateString() || 'N/A',
       lastSync: lastSyncTime ? lastSyncTime.toLocaleString() : 'Never',
       syncTier: user.lastSyncTier || null,
+      appVersion: user.appVersion || 'Pre-v1.1.4',
       status
     };
   }));
@@ -86,6 +88,7 @@ export default async function PharmaciesList() {
                 <th className="p-4">Installed At</th>
                 <th className="p-4">Last Sync</th>
                 <th className="p-4">Tier</th>
+                <th className="p-4">Version</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 rounded-tr-xl"></th>
               </tr>
@@ -120,6 +123,21 @@ export default async function PharmaciesList() {
                     ) : (
                       <span className="text-xs text-slate-600">-</span>
                     )}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium text-slate-200">
+                        {pharmacy.appVersion}
+                      </span>
+                      {pharmacy.appVersion !== 'v1.1.4' && pharmacy.phone && (
+                        <a 
+                          href={`tel:${pharmacy.phone}`}
+                          className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider font-semibold"
+                        >
+                          Call to Update
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[pharmacy.status as keyof typeof statusStyles]}`}>

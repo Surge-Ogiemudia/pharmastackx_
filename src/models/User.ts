@@ -65,6 +65,7 @@ export interface IUser extends Document {
   lastSyncTier?: number;
   lastSyncTime?: Date;
   encryptedWebPosData?: string;
+  appVersion?: string;
 }
 
 // The schema defines the blueprint for the database
@@ -142,6 +143,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   lastSyncTier: { type: Number },
   lastSyncTime: { type: Date },
   encryptedWebPosData: { type: String },
+  appVersion: { type: String },
 });
 
 // This line creates the model
