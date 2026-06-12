@@ -121,17 +121,14 @@ export async function POST(req: Request) {
     }
 
     // 6. Update Pharmacy User with sync metadata
-    if (sync_tier !== undefined) {
-      await User.updateOne(
-        { slug: actual_slug },
-        { $set: { lastSyncTier: sync_tier, lastSyncTime: new Date() } }
-      );
-    } else {
-      await User.updateOne(
-        { slug: actual_slug },
-        { $set: { lastSyncTime: new Date() } }
-      );
-    }
+    const userUpdateFields: any = { lastSyncTime: new Date() };
+    if (sync_tier !== undefined) userUpdateFields.lastSyncTier = sync_tier;
+    if (body.app_version) userUpdateFields.appVersion = body.app_version;
+
+    await User.updateOne(
+      { slug: actual_slug },
+      { $set: userUpdateFields }
+    );
 
     return NextResponse.json({
       success: true,
