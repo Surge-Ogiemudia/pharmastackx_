@@ -86,15 +86,20 @@ ${sampleData}`;
       return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 500 });
     }
 
-    // 4. Save new Intelligence for the global network
-    await POSIntelligence.create({
-      headerSignature,
-      posName: pathOrUrl?.split(/[\\\\/]/).pop()?.split('.')[0] || 'Unknown System',
-      fileExtension: pathOrUrl?.split('.').pop() || 'csv',
-      typicalFilePathPattern: pathOrUrl || '',
-      mappingSchema: schemaMapping,
-      confidenceScore: 0.95
-    });
+    // 4. Save new Intelligence for the global network (Upsert to prevent E11000 duplicate key errors)
+    await POSIntelligence.findOneAndUpdate(
+      { headerSignature },
+      {
+        $set: {
+          posName: pathOrUrl?.split(/[\\\\/]/).pop()?.split('.')[0] || 'Unknown System',
+          fileExtension: pathOrUrl?.split('.').pop() || 'csv',
+          typicalFilePathPattern: pathOrUrl || '',
+          mappingSchema: schemaMapping,
+          confidenceScore: 0.95
+        }
+      },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({ status: 'analyzed', schemaMapping, source: 'gemini' });
 
