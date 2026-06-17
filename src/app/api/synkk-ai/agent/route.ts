@@ -141,11 +141,12 @@ export async function POST(req: Request) {
     }
 
     // Build the message history for Claude
+    // messages array coming from desktop already has the tool_result appended correctly
     const claudeMessages: Anthropic.MessageParam[] = messages && messages.length > 0
       ? messages
       : [
           {
-            role: 'user',
+            role: 'user' as const,
             content: `The pharmacy's POS system is at: ${url}\n\nThe hidden browser is already open and the user is logged in. Start by checking network traffic to see if any API endpoints have already been captured during page load.`,
           },
         ];
@@ -183,10 +184,6 @@ export async function POST(req: Request) {
         type: 'done',
         items: input.items,
         method: input.method,
-        messages: [
-          ...claudeMessages,
-          { role: 'assistant', content: response.content },
-        ],
       });
     }
 
@@ -195,23 +192,20 @@ export async function POST(req: Request) {
       return NextResponse.json({
         type: 'failed',
         reason: input.reason,
-        messages: [
-          ...claudeMessages,
-          { role: 'assistant', content: response.content },
-        ],
       });
     }
 
     // Any other tool — tell the desktop to execute it
+    // IMPORTANT: Only include the tool_use block in the assistant message (not mixed text+tool_use)
+    // Claude requires: assistant[tool_use] -> user[tool_result] with no other blocks between them
     return NextResponse.json({
       type: 'tool_call',
       tool: toolUse.name,
       args: toolUse.input,
       toolUseId: toolUse.id,
-      // Send back the updated messages so desktop can append the tool result and call us again
       messages: [
         ...claudeMessages,
-        { role: 'assistant', content: response.content },
+        { role: 'assistant' as const, content: [toolUse] },
       ],
     });
 
