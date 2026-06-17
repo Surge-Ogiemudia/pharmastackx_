@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, email, password, pharmacyName, phone } = body;
 
-    if (!action || (action !== 'login' && action !== 'register' && action !== 'check')) {
+    if (!action || (action !== 'login' && action !== 'register' && action !== 'check' && action !== 'update')) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -94,6 +94,44 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ success: true, slug: user.slug, name: user.businessName, message: 'Login successful' });
+    }
+
+    if (action === 'update') {
+      const { oldSlug, slug, coordinates } = body;
+      if (!oldSlug || !slug) {
+        return NextResponse.json({ success: false, error: 'Missing old or new slug' }, { status: 400 });
+      }
+
+      const userToUpdate = await User.findOne({ slug: oldSlug });
+      if (!userToUpdate) {
+        return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+      }
+
+      let uniqueSlug = slug.toLowerCase().replace(/[^a-z0-9\-]+/g, '');
+      
+      // Check if new slug is already taken by someone else
+      if (uniqueSlug !== oldSlug) {
+        const existingWithSlug = await User.findOne({ slug: uniqueSlug });
+        if (existingWithSlug) {
+          return NextResponse.json({ success: false, error: 'That storefront link is already taken.' }, { status: 400 });
+        }
+      }
+
+      userToUpdate.slug = uniqueSlug;
+      if (pharmacyName) {
+        userToUpdate.businessName = pharmacyName;
+        userToUpdate.username = pharmacyName;
+      }
+      
+      if (coordinates && coordinates.lat && coordinates.lng) {
+        userToUpdate.businessCoordinates = {
+          latitude: coordinates.lat,
+          longitude: coordinates.lng
+        };
+      }
+
+      await userToUpdate.save();
+      return NextResponse.json({ success: true, slug: userToUpdate.slug, message: 'Update successful' });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
