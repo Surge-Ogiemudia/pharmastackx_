@@ -1,214 +1,217 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI, FunctionDeclaration, SchemaType, Tool } from '@google/generative-ai';
 
 export const maxDuration = 120;
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const SYSTEM_PROMPT = `You are Synkk's AI extraction agent running inside a pharmacy's computer.
 
-// The tools the agent can ask the desktop to execute
-const AGENT_TOOLS: Anthropic.Tool[] = [
+Your ONE job: extract the full inventory from a pharmacy POS system and return it as a structured list of {name, qty, price}.
+
+You have a hidden browser window already open. The user has already logged in. Get the stock out — quietly, efficiently, completely.
+
+STRATEGY (try in this order):
+1. FIRST: Check network traffic. Many POS systems expose all inventory via a single API call.
+2. If you find an API endpoint — use execute_script to steal the auth token from localStorage/sessionStorage and fetch ALL pages in a single loop script. Do not call one page at a time.
+3. If no API — read the DOM, find pagination controls, expand rows to max, scrape all pages.
+4. Screenshot only as absolute last resort.
+
+CRITICAL RULES:
+- Never return partial results. Get ALL items.
+- Items need name (string), qty (number), price (number). You can figure out field names from context.
+- When you have the endpoint and auth token, write ONE script that loops through all pages and returns the complete array.
+- Call finish when you have everything. Call give_up only if truly impossible.
+- Be decisive. Don't retry the same failing approach more than twice.`;
+
+const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: 'navigate',
-    description: 'Navigate the hidden browser to a URL and wait for it to load.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Navigate the hidden browser to a URL.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {
-        url: { type: 'string', description: 'The URL to navigate to' },
+        url: { type: SchemaType.STRING, description: 'The URL to navigate to' },
       },
       required: ['url'],
     },
   },
   {
     name: 'get_network_traffic',
-    description: 'Get all JSON network responses intercepted so far from the hidden browser. Returns API endpoints and their response data. Use this early — it\'s the fastest way to find a direct data endpoint.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Get all JSON API calls intercepted from the hidden browser so far. Use this first — fastest path to finding the inventory endpoint.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {},
-      required: [],
     },
   },
   {
     name: 'read_page_dom',
-    description: 'Read the full visible text content of the current page in the hidden browser. Use this to understand page structure, find pagination controls, dropdowns, and table data.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Read the full visible text of the current page. Use to understand structure, find pagination, tables, dropdowns.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {},
-      required: [],
     },
   },
   {
     name: 'execute_script',
-    description: 'Execute JavaScript in the hidden browser page context. Use this to: change dropdowns to show more rows, steal auth tokens from localStorage/sessionStorage, click pagination buttons, or fetch data directly from internal APIs using the page\'s own auth headers.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Execute JavaScript in the hidden browser. Use to: steal auth tokens from localStorage/sessionStorage, fetch data from internal APIs, change dropdowns, paginate. For fetching all inventory, write a single script that loops all pages and returns the full array.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {
-        script: { type: 'string', description: 'JavaScript to execute. Must return a value (use return statement or be an expression). For async operations wrap in an async IIFE.' },
+        script: { type: SchemaType.STRING, description: 'JavaScript to execute. Must return a value. For async use an async IIFE.' },
       },
       required: ['script'],
     },
   },
   {
     name: 'fetch_directly',
-    description: 'Make a direct HTTP request to an API endpoint from the desktop (not the browser). Use this once you have discovered an inventory API endpoint and want to paginate through all results efficiently.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Make a direct HTTP request from the desktop to an API endpoint.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {
-        url: { type: 'string', description: 'The API endpoint URL' },
-        headers: { type: 'object', description: 'Request headers (e.g. Authorization token)' },
-        method: { type: 'string', description: 'HTTP method, defaults to GET' },
+        url: { type: SchemaType.STRING },
+        headers: { type: SchemaType.OBJECT, description: 'Request headers' },
+        method: { type: SchemaType.STRING, description: 'HTTP method, default GET' },
       },
       required: ['url'],
     },
   },
   {
     name: 'screenshot',
-    description: 'Capture a screenshot of the current page in the hidden browser. Use this as a last resort when the DOM text is not enough to understand what\'s on the page.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Capture a screenshot of the current page. Last resort only.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {},
-      required: [],
     },
   },
   {
     name: 'finish',
-    description: 'Call this when you have successfully extracted all inventory items. Pass the final structured array.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Call this when you have ALL inventory items. Pass the complete structured array.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {
         items: {
-          type: 'array',
-          description: 'The extracted inventory items',
+          type: SchemaType.ARRAY,
+          description: 'All extracted inventory items',
           items: {
-            type: 'object',
+            type: SchemaType.OBJECT,
             properties: {
-              name: { type: 'string' },
-              qty: { type: 'number' },
-              price: { type: 'number' },
+              name: { type: SchemaType.STRING },
+              qty: { type: SchemaType.NUMBER },
+              price: { type: SchemaType.NUMBER },
             },
-            required: ['name', 'qty', 'price'],
           },
         },
-        method: {
-          type: 'string',
-          description: 'Short description of how you extracted the data (e.g. "direct API endpoint", "DOM scrape with pagination", "network intercept")',
-        },
+        method: { type: SchemaType.STRING, description: 'How you extracted the data' },
+        script: { type: SchemaType.STRING, description: 'The exact script that worked for fetching all items (so it can be reused next sync)' },
       },
       required: ['items', 'method'],
     },
   },
   {
     name: 'give_up',
-    description: 'Call this only if you have exhausted all approaches and truly cannot extract the inventory. Provide a clear reason why.',
-    input_schema: {
-      type: 'object' as const,
+    description: 'Call only if all approaches exhausted.',
+    parameters: {
+      type: SchemaType.OBJECT,
       properties: {
-        reason: { type: 'string', description: 'Why extraction failed' },
+        reason: { type: SchemaType.STRING },
       },
       required: ['reason'],
     },
   },
 ];
 
-const SYSTEM_PROMPT = `You are Synkk's AI extraction agent. You are running inside a pharmacy's computer.
-
-Your ONE job: extract the full inventory from a pharmacy POS system and return it as a structured list of {name, qty, price}.
-
-You have a hidden browser window already open. The user has already logged in to their POS. You are here to get the stock out — quietly, efficiently, completely.
-
-STRATEGY (try in this order, but use your judgment):
-1. FIRST: Check network traffic immediately. Many POS systems make API calls that expose all inventory in one request. This is the fastest path.
-2. If you find an API endpoint — use execute_script to steal the auth token from localStorage/sessionStorage and fetch all pages directly.
-3. If no API endpoint is obvious — read the DOM. Look for a "rows per page" or "show all" dropdown and expand it to get more items.
-4. Paginate through all pages if needed. Never stop after one page.
-5. Screenshot only if you genuinely can't understand the page structure from DOM text.
-
-IMPORTANT RULES:
-- Never return partial results. Get ALL items, paginate until done.
-- Items have name, qty (number), and price (number). You can figure out which field is which from context — you don't need to be told.
-- Ignore non-medical items (groceries, beverages) if you can clearly identify them, but when in doubt keep the item.
-- Be efficient. Don't take screenshots if you don't need them. Don't read DOM if network traffic already has the data.
-- If an approach fails, immediately try the next one. Don't retry the same thing twice.
-- Once you find the API endpoint and confirm the total count, paginate ALL pages in a single execute_script call using a loop — do not call execute_script once per page.
-- Call finish() as soon as you have all items. Call give_up() only if truly impossible.
-- If you have confirmed 6000 items exist, fetch all pages in one script: loop from offset 0 to total, collect everything, return the full array.`;
+const GEMINI_TOOLS: Tool[] = [{ functionDeclarations: TOOL_DECLARATIONS }];
 
 export async function POST(req: Request) {
   try {
     const { messages, url } = await req.json();
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'Missing Anthropic API key' }, { status: 500 });
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Missing Gemini API key' }, { status: 500 });
     }
 
-    // Build the message history for Claude
-    // messages array coming from desktop already has the tool_result appended correctly
-    const claudeMessages: Anthropic.MessageParam[] = messages && messages.length > 0
-      ? messages
-      : [
-          {
-            role: 'user' as const,
-            content: `The pharmacy's POS system is at: ${url}\n\nThe hidden browser is already open and the user is logged in. Start by checking network traffic to see if any API endpoints have already been captured during page load.`,
-          },
-        ];
-
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      tools: AGENT_TOOLS,
-      messages: claudeMessages,
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: SYSTEM_PROMPT,
+      tools: GEMINI_TOOLS,
     });
 
-    // Check what Claude wants to do
-    const toolUse = response.content.find(block => block.type === 'tool_use') as Anthropic.ToolUseBlock | undefined;
-    const textBlock = response.content.find(block => block.type === 'text') as Anthropic.TextBlock | undefined;
+    // Build chat history from messages
+    // messages format: [{ role: 'user'|'model', parts: [...] }]
+    let history: any[] = [];
+    let currentUserMessage: any = null;
 
-    if (!toolUse) {
-      // Claude responded with text but no tool call — this shouldn't happen often
-      // but if it does, treat it as a give_up
-      return NextResponse.json({
-        type: 'error',
-        reason: textBlock?.text || 'Agent returned no tool call',
-        // Send back updated messages so desktop can continue if needed
-        messages: [
-          ...claudeMessages,
-          { role: 'assistant', content: response.content },
-        ],
-      });
+    if (messages && messages.length > 0) {
+      // All but the last message go into history
+      // The last message is the current user turn
+      history = messages.slice(0, -1);
+      currentUserMessage = messages[messages.length - 1];
     }
 
-    // Claude wants to call a tool
-    if (toolUse.name === 'finish') {
-      const input = toolUse.input as { items: any[]; method: string };
+    const chat = model.startChat({ history });
+
+    // Determine what to send
+    let messageToSend: any;
+    if (!currentUserMessage) {
+      // First turn
+      messageToSend = {
+        role: 'user',
+        parts: [{ text: `The pharmacy POS is at: ${url}\n\nThe hidden browser is open and the user is logged in. Start by checking network traffic.` }],
+      };
+    } else {
+      messageToSend = currentUserMessage;
+    }
+
+    const result = await chat.sendMessage(messageToSend.parts || messageToSend.content || messageToSend);
+
+    const response = result.response;
+    const candidate = response.candidates?.[0];
+    if (!candidate) {
+      return NextResponse.json({ type: 'error', reason: 'No response from Gemini' });
+    }
+
+    // Build updated messages array for next turn
+    const updatedMessages = [
+      ...(messages || []),
+      ...(currentUserMessage ? [] : [messageToSend]), // add initial message if first turn
+      { role: 'model', parts: candidate.content.parts },
+    ];
+
+    // Check for function calls
+    const functionCall = candidate.content.parts.find((p: any) => p.functionCall);
+
+    if (!functionCall) {
+      // Text only response
+      const text = candidate.content.parts.find((p: any) => p.text)?.text || '';
+      return NextResponse.json({ type: 'error', reason: `No tool call: ${text}` });
+    }
+
+    const { name: toolName, args } = functionCall.functionCall;
+
+    if (toolName === 'finish') {
       return NextResponse.json({
         type: 'done',
-        items: input.items,
-        method: input.method,
+        items: args.items || [],
+        method: args.method,
+        script: args.script || null,
       });
     }
 
-    if (toolUse.name === 'give_up') {
-      const input = toolUse.input as { reason: string };
+    if (toolName === 'give_up') {
       return NextResponse.json({
         type: 'failed',
-        reason: input.reason,
+        reason: args.reason,
       });
     }
 
-    // Any other tool — tell the desktop to execute it
-    // IMPORTANT: Only include the tool_use block in the assistant message (not mixed text+tool_use)
-    // Claude requires: assistant[tool_use] -> user[tool_result] with no other blocks between them
+    // Return tool call to desktop for execution
     return NextResponse.json({
       type: 'tool_call',
-      tool: toolUse.name,
-      args: toolUse.input,
-      toolUseId: toolUse.id,
-      messages: [
-        ...claudeMessages,
-        { role: 'assistant' as const, content: [toolUse] },
-      ],
+      tool: toolName,
+      args,
+      // For Gemini, tool results go back as function response parts
+      messages: updatedMessages,
     });
 
   } catch (error: any) {
