@@ -68,7 +68,7 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
       type: SchemaType.OBJECT,
       properties: {
         url: { type: SchemaType.STRING },
-        headers: { type: SchemaType.OBJECT, description: 'Request headers' },
+        headers: { type: SchemaType.OBJECT, description: 'Request headers', properties: {} },
         method: { type: SchemaType.STRING, description: 'HTTP method, default GET' },
       },
       required: ['url'],
