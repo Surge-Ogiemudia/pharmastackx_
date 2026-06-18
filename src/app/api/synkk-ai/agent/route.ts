@@ -187,7 +187,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ type: 'error', reason: `No tool call: ${text}` });
     }
 
-    const { name: toolName, args } = functionCall.functionCall;
+    const { name: toolName, args } = functionCall.functionCall as { name: string; args: any };
 
     if (toolName === 'finish') {
       return NextResponse.json({
