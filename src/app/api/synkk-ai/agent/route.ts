@@ -130,7 +130,9 @@ IMPORTANT RULES:
 - Ignore non-medical items (groceries, beverages) if you can clearly identify them, but when in doubt keep the item.
 - Be efficient. Don't take screenshots if you don't need them. Don't read DOM if network traffic already has the data.
 - If an approach fails, immediately try the next one. Don't retry the same thing twice.
-- Call finish() when you have all the items. Call give_up() only if truly impossible.`;
+- Once you find the API endpoint and confirm the total count, paginate ALL pages in a single execute_script call using a loop — do not call execute_script once per page.
+- Call finish() as soon as you have all items. Call give_up() only if truly impossible.
+- If you have confirmed 6000 items exist, fetch all pages in one script: loop from offset 0 to total, collect everything, return the full array.`;
 
 export async function POST(req: Request) {
   try {
