@@ -137,33 +137,21 @@ export async function POST(req: Request) {
       tools: GEMINI_TOOLS,
     });
 
-    // Build chat history from messages
-    // messages format: [{ role: 'user'|'model', parts: [...] }]
-    let history: any[] = [];
-    let currentUserMessage: any = null;
+    // Build the full contents array for generateContent
+    // This avoids startChat history validation which rejects functionResponse in user turns
+    let contents: any[];
 
-    if (messages && messages.length > 0) {
-      // All but the last message go into history
-      // The last message is the current user turn
-      history = messages.slice(0, -1);
-      currentUserMessage = messages[messages.length - 1];
-    }
-
-    const chat = model.startChat({ history });
-
-    // Determine what to send
-    let messageToSend: any;
-    if (!currentUserMessage) {
-      // First turn
-      messageToSend = {
+    if (!messages || messages.length === 0) {
+      // First turn — inject the initial prompt
+      contents = [{
         role: 'user',
         parts: [{ text: `The pharmacy POS is at: ${url}\n\nThe hidden browser is open and the user is logged in. Start by checking network traffic.` }],
-      };
+      }];
     } else {
-      messageToSend = currentUserMessage;
+      contents = messages;
     }
 
-    const result = await chat.sendMessage(messageToSend.parts || messageToSend.content || messageToSend);
+    const result = await model.generateContent({ contents });
 
     const response = result.response;
     const candidate = response.candidates?.[0];
@@ -173,8 +161,7 @@ export async function POST(req: Request) {
 
     // Build updated messages array for next turn
     const updatedMessages = [
-      ...(messages || []),
-      ...(currentUserMessage ? [] : [messageToSend]), // add initial message if first turn
+      ...contents,
       { role: 'model', parts: candidate.content.parts },
     ];
 
