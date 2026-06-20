@@ -148,10 +148,31 @@ export async function POST(req: Request) {
         parts: [{ text: `The pharmacy POS is at: ${url}\n\nThe hidden browser is open and the user is logged in. Start by checking network traffic.` }],
       }];
     } else {
-      contents = messages;
+      // Strip thoughtSignature blobs — they're Gemini's internal thinking trace,
+      // huge base64 strings we don't need to echo back, and they balloon the payload
+      contents = messages.map((msg: any) => ({
+        ...msg,
+        parts: msg.parts.map((p: any) => {
+          const { thoughtSignature, ...rest } = p;
+          return rest;
+        }),
+      }));
     }
 
-    const result = await model.generateContent({ contents });
+    // Retry up to 3 times on 429 rate limit with exponential backoff
+    let result: any;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        result = await model.generateContent({ contents });
+        break;
+      } catch (err: any) {
+        if (err?.status === 429 && attempt < 3) {
+          await new Promise(r => setTimeout(r, attempt * 8000)); // 8s, 16s
+          continue;
+        }
+        throw err;
+      }
+    }
 
     const response = result.response;
     const candidate = response.candidates?.[0];
