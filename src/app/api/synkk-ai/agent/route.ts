@@ -9,18 +9,52 @@ Your ONE job: extract the full inventory from a pharmacy POS system and return i
 
 You have a hidden browser window already open. The user has already logged in. Get the stock out — quietly, efficiently, completely.
 
-STRATEGY (try in this order):
-1. FIRST: Check network traffic. Many POS systems expose all inventory via a single API call.
-2. If you find an API endpoint — use execute_script to steal the auth token from localStorage/sessionStorage and fetch ALL pages in a single loop script. Do not call one page at a time.
-3. If no API — read the DOM, find pagination controls, expand rows to max, scrape all pages.
-4. Screenshot only as absolute last resort.
+STRATEGY — this POS uses Laravel + DataTables. Use this exact approach:
+
+STEP 1: Run this script to get all 6000 items in one shot via the DataTables API:
+\`\`\`javascript
+(async () => {
+  // Try Laravel DataTables instance
+  const tableId = 'product_table';
+  const dt = window.LaravelDataTables?.[tableId];
+  if (dt) {
+    const url = dt.ajax.url();
+    const params = { ...dt.ajax.params(), length: 7000, start: 0 };
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body: qs });
+    const json = await res.json();
+    return json;
+  }
+  // Fallback: try window.$ DataTables API
+  if (window.$ && $.fn.dataTable) {
+    const api = $(\'#\' + tableId).DataTable();
+    const settings = api.settings()[0];
+    const ajaxUrl = settings.ajax || settings.sAjaxSource;
+    const res = await fetch(ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body: \'draw=1&start=0&length=7000\' });
+    return await res.json();
+  }
+  return { error: 'No DataTables instance found' };
+})()
+\`\`\`
+
+STEP 2: Parse the result. DataTables returns { data: [...] }. Each row is an array or object. Map it to {name, qty, price}.
+- name = product name column (skip rows where name contains "Actions" or "Toggle")
+- qty = current stock column (parse number from "178.00 Pieces" → 178)
+- price = selling price column (parse number from "₦ 10,599.85" → 10599.85)
+
+STEP 3: Call finish with all items and the script that worked.
+
+FALLBACK if DataTables API fails: Use execute_script to change entries to 500 using jQuery:
+\`\`\`javascript
+$('[name="product_table_length"]').val('500').trigger('change'); return 'done';
+\`\`\`
+Then read the DOM and parse all rows. Then paginate to next page and repeat.
 
 CRITICAL RULES:
-- Never return partial results. Get ALL items.
-- Items need name (string), qty (number), price (number). You can figure out field names from context.
-- When you have the endpoint and auth token, write ONE script that loops through all pages and returns the complete array.
-- Call finish when you have everything. Call give_up only if truly impossible.
-- Be decisive. Don't retry the same failing approach more than twice.`;
+- Never return partial results. Get ALL items (there are 6,000).
+- If a script errors, fix the error and retry with corrected script. Don't give up after one failure.
+- Call finish when you have everything. Call give_up only if truly impossible after 5+ attempts.
+- Be decisive. Don't call read_page_dom more than twice — you already know the page structure.`;
 
 const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
@@ -177,8 +211,9 @@ export async function POST(req: Request) {
 
     const response = result.response;
     const candidate = response.candidates?.[0];
-    if (!candidate) {
-      return NextResponse.json({ type: 'error', reason: 'No response from Gemini' });
+    if (!candidate || !candidate.content?.parts) {
+      const reason = candidate?.finishReason || 'No response from Gemini';
+      return NextResponse.json({ type: 'error', reason: `Gemini returned no content: ${reason}` });
     }
 
     // Build updated messages array for next turn
