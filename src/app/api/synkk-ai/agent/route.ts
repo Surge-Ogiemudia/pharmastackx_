@@ -166,7 +166,7 @@ export async function POST(req: Request) {
         result = await model.generateContent({ contents });
         break;
       } catch (err: any) {
-        const is429 = err?.message?.includes('429') || err?.status === 429 || err?.httpStatusCode === 429;
+        const is429 = err?.message?.includes('429') || err?.message?.includes('503') || err?.status === 429 || err?.status === 503;
         if (is429 && attempt < 4) {
           await new Promise(r => setTimeout(r, attempt * 15000)); // 15s, 30s, 45s
           continue;
