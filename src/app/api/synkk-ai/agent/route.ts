@@ -159,15 +159,16 @@ export async function POST(req: Request) {
       }));
     }
 
-    // Retry up to 3 times on 429 rate limit with exponential backoff
+    // Retry up to 4 times on 429 rate limit with backoff
     let result: any;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         result = await model.generateContent({ contents });
         break;
       } catch (err: any) {
-        if (err?.status === 429 && attempt < 3) {
-          await new Promise(r => setTimeout(r, attempt * 8000)); // 8s, 16s
+        const is429 = err?.message?.includes('429') || err?.status === 429 || err?.httpStatusCode === 429;
+        if (is429 && attempt < 4) {
+          await new Promise(r => setTimeout(r, attempt * 15000)); // 15s, 30s, 45s
           continue;
         }
         throw err;
