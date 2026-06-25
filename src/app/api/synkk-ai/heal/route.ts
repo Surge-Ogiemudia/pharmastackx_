@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: `You are a pharmacy inventory extraction specialist. Given a POS webpage HTML, you write a single self-contained JavaScript async IIFE that extracts ALL inventory items and returns them as an array of {name: string, qty: number, price: number}.
 
 The script runs inside Electron's webContents.executeJavaScript() — it has full DOM and window access, including jQuery ($), fetch, XMLHttpRequest, and any globals the page loaded.
