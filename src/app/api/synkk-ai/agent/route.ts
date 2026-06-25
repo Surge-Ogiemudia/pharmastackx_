@@ -37,10 +37,12 @@ STEP 1: Run this script to get all 6000 items in one shot via the DataTables API
 })()
 \`\`\`
 
-STEP 2: Parse the result. DataTables returns { data: [...] }. Each row is an array or object. Map it to {name, qty, price}.
-- name = product name column (skip rows where name contains "Actions" or "Toggle")
-- qty = current stock column (parse number from "178.00 Pieces" → 178)
-- price = selling price column (parse number from "₦ 10,599.85" → 10599.85)
+STEP 2: The result may be { data: [...] } OR { data: { data: [...] } } (double-nested). Unwrap accordingly.
+IMPORTANT: Before mapping, log Object.keys(firstRow) to see the ACTUAL column names — do NOT guess. Use whatever keys are actually present.
+- name = the column containing the medicine/product name (NOT price, NOT qty)
+- qty = current stock (parse number from "178.00 Pieces" → 178)
+- price = selling price (parse number from "₦ 10,599.85" → 10599.85)
+- Filter out rows where name is empty or contains "Actions"
 
 STEP 3: Call finish with all items and the script that worked.
 
