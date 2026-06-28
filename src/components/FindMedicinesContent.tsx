@@ -75,7 +75,8 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ itemName?: string; amount?: number; quantity?: number }>({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const gridRef = useRef<HTMLDivElement>(null); 
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null); 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -466,7 +467,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
               const accentColor = gradient.match(/#[A-Fa-f0-9]{6}/g)?.[1] || '#E1BEE7';
 
               return (
-                <div key={medicine.id} className={styles.productCard}>
+                <div key={medicine.id} className={styles.productCard} onClick={() => setSelectedProduct(medicine)}>
                   {medicine.image && medicine.image.length > 5 ? (
                     <div className={styles.productImg} style={{ background: gradient }}>
                       <img
@@ -612,6 +613,89 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           {slug && pharmacyDetails?.professionalVerificationStatus === 'approved' ? 'Verified by PCN · ' : ''}Live inventory · Instant fulfillment
         </div>
       </footer>
+
+      {/* PRODUCT DETAIL MODAL */}
+      {selectedProduct && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, backdropFilter: 'blur(4px)' }} onClick={() => setSelectedProduct(null)} />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1001,
+            background: '#fff', borderRadius: '20px 20px 0 0',
+            maxHeight: '85vh', overflowY: 'auto',
+            animation: 'slideUp 0.3s ease',
+          }}>
+            <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+            <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: '#999', fontWeight: 500 }}>Product details</span>
+              <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#999', padding: 4 }}>&times;</button>
+            </div>
+
+            {selectedProduct.image && selectedProduct.image.length > 5 && (
+              <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'center' }}>
+                <img src={selectedProduct.image} alt={selectedProduct.name} style={{ maxHeight: 180, maxWidth: '100%', objectFit: 'contain', borderRadius: 12 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              </div>
+            )}
+
+            <div style={{ padding: '12px 20px 20px' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', color: '#1a1a1a' }}>{selectedProduct.name}</h2>
+
+              {selectedProduct.activeIngredients && selectedProduct.activeIngredients !== 'N/A' && selectedProduct.activeIngredients !== 'Standard' && (
+                <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>{selectedProduct.activeIngredients}</div>
+              )}
+
+              {selectedProduct.drugClass && selectedProduct.drugClass !== 'N/A' && (
+                <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#E8F5E9', color: '#2E7D32', marginBottom: 12 }}>{selectedProduct.drugClass}</span>
+              )}
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 12, marginBottom: 16 }}>
+                <div style={{ flex: 1, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 11, color: '#999', marginBottom: 2 }}>Price</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a1a' }}>{selectedProduct.formattedPrice}</div>
+                </div>
+                <div style={{ flex: 1, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 11, color: '#999', marginBottom: 2 }}>Stock</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: selectedProduct.stockQty > 0 ? '#2E7D32' : '#d32f2f' }}>
+                    {selectedProduct.stockQty != null ? (selectedProduct.stockQty > 0 ? `${selectedProduct.stockQty} available` : 'Out of stock') : 'In stock'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedProduct.travelTime != null && (
+                <div style={{ fontSize: 13, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>&#128205;</span> ~{selectedProduct.travelTime} mins away
+                </div>
+              )}
+
+              {selectedProduct.businessName && (
+                <div style={{ fontSize: 13, color: '#666', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>&#127978;</span> {selectedProduct.businessName}
+                </div>
+              )}
+
+              {selectedProduct.info && selectedProduct.info !== 'N/A' && (
+                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+                  {selectedProduct.info}
+                </div>
+              )}
+
+              <button
+                disabled={!selectedProduct.inStock}
+                onClick={() => {
+                  handleAddToCart(selectedProduct);
+                  setSelectedProduct(null);
+                }}
+                style={{
+                  width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+                  background: selectedProduct.inStock ? '#0F6E56' : '#ccc',
+                  color: '#fff', fontSize: 15, fontWeight: 600, cursor: selectedProduct.inStock ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {selectedProduct.inStock ? 'Add to cart' : 'Out of stock'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* CART DRAWER */}
       <div className={`${styles.overlay} ${isCartOpen ? styles.show : ''}`} onClick={() => setIsCartOpen(false)}></div>
