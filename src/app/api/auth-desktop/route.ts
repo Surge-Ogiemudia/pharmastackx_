@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     if (action === 'register') {
-      const { slug, coordinates } = body; // The custom slug chosen by the user in StorefrontSetup
+      const { slug, coordinates, state, city } = body;
       if (!password || !pharmacyName || !phone) {
         return NextResponse.json({ success: false, error: 'Missing registration fields' }, { status: 400 });
       }
@@ -63,7 +63,9 @@ export async function POST(req: Request) {
         phoneNumber: phone,
         slug: uniqueSlug,
         isStorePublished: true,
-        canManageStore: true
+        canManageStore: true,
+        ...(state && { state }),
+        ...(city && { city }),
       };
       
       if (coordinates && coordinates.lat && coordinates.lng) {
