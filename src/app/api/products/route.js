@@ -78,13 +78,14 @@ export async function GET(req) {
                 { $cond: [{ $and: ['$imageUrl', { $ne: ['$imageUrl', ''] }] }, 1, 0] },
                 { $cond: [{ $and: ['$info', { $ne: ['$info', ''] }] }, 1, 0] }
               ]
-            }
+            },
+            inStockSort: { $cond: [{ $gt: ['$quantity', 0] }, 0, 1] }
           }
         },
       ];
 
       const countPipeline = [...pipeline, { $count: "total" }];
-      const resultsPipeline = [...pipeline, { $sort: { completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
+      const resultsPipeline = [...pipeline, { $sort: { inStockSort: 1, completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
 
       const countResult = await Product.aggregate(countPipeline);
       totalProducts = countResult.length > 0 ? countResult[0].total : 0;
@@ -93,14 +94,15 @@ export async function GET(req) {
     } else {
       let sortOption = {};
       if (sortBy === 'name') {
-        sortOption.itemName = 1;
+        sortOption = { itemName: 1 };
       } else if (sortBy === 'price') {
-        sortOption.amount = 1;
+        sortOption = { amount: 1 };
       }
+      sortOption = { ...sortOption };
 
       totalProducts = await Product.countDocuments(query);
       products = await Product.find(query)
-        .sort(sortOption)
+        .sort({ quantity: -1, ...sortOption })
         .skip(skip)
         .limit(limit)
         .lean();
