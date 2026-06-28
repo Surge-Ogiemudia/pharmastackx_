@@ -629,7 +629,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           <div style={{
             position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1001,
             background: '#fff', borderRadius: '20px 20px 0 0',
-            maxHeight: '85vh', overflowY: 'auto',
+            maxHeight: '85vh', overflowY: 'auto', paddingBottom: 80,
             animation: 'slideUp 0.3s ease',
           }}>
             <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
