@@ -424,27 +424,32 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
               if (categoryLower.includes('antibio')) gradient = 'linear-gradient(135deg,#FCE4EC,#F8BBD0)';
               if (categoryLower.includes('resp')) gradient = 'linear-gradient(135deg,#E0F7FA,#B2EBF2)';
 
+              const accentColor = gradient.match(/#[A-Fa-f0-9]{6}/g)?.[1] || '#E1BEE7';
+
               return (
                 <div key={medicine.id} className={styles.productCard}>
-                  <div className={styles.productImg} style={{ background: gradient }}>
-                    <svg className={styles.productImgSvg} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="24" y="16" width="32" height="48" rx="16" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.15" strokeWidth="1.5"/>
-                      <line x1="24" y1="40" x2="56" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1.5" strokeDasharray="3 2"/>
-                      <circle cx="40" cy="30" r="3" fill="currentColor" fillOpacity="0.12"/>
-                      <circle cx="40" cy="50" r="3" fill="currentColor" fillOpacity="0.08"/>
-                      <path d="M34 22 a6 6 0 0 1 12 0" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1"/>
-                    </svg>
-                    {medicine.image && (
+                  {medicine.image ? (
+                    <div className={styles.productImg} style={{ background: gradient }}>
                       <img
                         src={medicine.image}
                         alt={medicine.name}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        onError={(e) => {
+                          const card = (e.target as HTMLImageElement).closest(`.${styles.productCard}`);
+                          const imgContainer = (e.target as HTMLImageElement).closest(`.${styles.productImg}`);
+                          if (imgContainer && card) {
+                            const bar = document.createElement('div');
+                            bar.style.cssText = `height:4px;background:${accentColor};border-radius:12px 12px 0 0;`;
+                            card.replaceChild(bar, imgContainer);
+                          }
+                        }}
                       />
-                    )}
-                    {medicine.drugClass && medicine.drugClass !== 'N/A' && (
-                      <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
-                    )}
-                  </div>
+                      {medicine.drugClass && medicine.drugClass !== 'N/A' && (
+                        <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ height: 4, background: accentColor, borderRadius: '12px 12px 0 0' }} />
+                  )}
                   <div className={styles.productBody}>
                     <div className={styles.productName}>{medicine.name}</div>
                     {medicine.activeIngredients && medicine.activeIngredients !== 'N/A' && medicine.activeIngredients !== 'Standard' && (
