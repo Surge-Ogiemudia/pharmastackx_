@@ -76,7 +76,9 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const [editValues, setEditValues] = useState<{ itemName?: string; amount?: number; quantity?: number }>({});
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null); 
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [enrichedData, setEnrichedData] = useState<any>(null);
+  const [isEnriching, setIsEnriching] = useState(false); 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -244,6 +246,36 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       .then(url => setQrCodeDataUrl(url))
       .catch(console.error);
   }, [slug]);
+
+  useEffect(() => {
+    if (!selectedProduct) { setEnrichedData(null); return; }
+    const hasCategory = selectedProduct.drugClass && selectedProduct.drugClass !== 'N/A';
+    const hasIngredient = selectedProduct.activeIngredients && selectedProduct.activeIngredients !== 'N/A' && selectedProduct.activeIngredients !== 'Standard';
+    const hasInfo = selectedProduct.info && selectedProduct.info !== 'N/A' && selectedProduct.info?.length > 10;
+    if (hasCategory && hasIngredient && hasInfo) { setEnrichedData(null); return; }
+    setIsEnriching(true);
+    fetch('/api/products/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: selectedProduct.id, productName: selectedProduct.name }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.data) {
+          setEnrichedData(data.data);
+          if (data.enriched) {
+            setMedicines(prev => prev.map(m => m.id === selectedProduct.id ? {
+              ...m,
+              drugClass: data.data.category && data.data.category !== 'N/A' ? data.data.category : m.drugClass,
+              activeIngredients: data.data.activeIngredient && data.data.activeIngredient !== 'N/A' ? data.data.activeIngredient : m.activeIngredients,
+              info: data.data.info && data.data.info !== 'N/A' ? data.data.info : m.info,
+            } : m));
+          }
+        }
+      })
+      .catch(console.error)
+      .finally(() => setIsEnriching(false));
+  }, [selectedProduct?.id]);
 
   const handleAddToCart = (medicine: any) => {
     event({ action: 'add_to_cart', category: 'ecommerce', label: medicine.name, value: medicine.price });
@@ -647,13 +679,21 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             <div style={{ padding: '12px 20px 20px' }}>
               <h2 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', color: '#1a1a1a' }}>{selectedProduct.name}</h2>
 
-              {selectedProduct.activeIngredients && selectedProduct.activeIngredients !== 'N/A' && selectedProduct.activeIngredients !== 'Standard' && (
-                <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>{selectedProduct.activeIngredients}</div>
-              )}
-
-              {selectedProduct.drugClass && selectedProduct.drugClass !== 'N/A' && (
-                <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#E8F5E9', color: '#2E7D32', marginBottom: 12 }}>{selectedProduct.drugClass}</span>
-              )}
+              {(() => {
+                const ingredient = enrichedData?.activeIngredient && enrichedData.activeIngredient !== 'N/A' ? enrichedData.activeIngredient
+                  : selectedProduct.activeIngredients && selectedProduct.activeIngredients !== 'N/A' && selectedProduct.activeIngredients !== 'Standard' ? selectedProduct.activeIngredients : null;
+                const category = enrichedData?.category && enrichedData.category !== 'N/A' ? enrichedData.category
+                  : selectedProduct.drugClass && selectedProduct.drugClass !== 'N/A' ? selectedProduct.drugClass : null;
+                return (
+                  <>
+                    {ingredient && <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>{ingredient}</div>}
+                    {category && <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#E8F5E9', color: '#2E7D32', marginBottom: 12 }}>{category}</span>}
+                    {isEnriching && !ingredient && !category && (
+                      <div style={{ fontSize: 12, color: '#999', marginBottom: 8, fontStyle: 'italic' }}>Looking up product info...</div>
+                    )}
+                  </>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: 12, marginTop: 12, marginBottom: 16 }}>
                 <div style={{ flex: 1, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px' }}>
@@ -680,11 +720,19 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                 </div>
               )}
 
-              {selectedProduct.info && selectedProduct.info !== 'N/A' && (
-                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
-                  {selectedProduct.info}
-                </div>
-              )}
+              {(() => {
+                const info = enrichedData?.info && enrichedData.info !== 'N/A' && enrichedData.info.length > 10 ? enrichedData.info
+                  : selectedProduct.info && selectedProduct.info !== 'N/A' && selectedProduct.info.length > 10 ? selectedProduct.info : null;
+                return info ? (
+                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+                    {info}
+                  </div>
+                ) : isEnriching ? (
+                  <div style={{ fontSize: 12, color: '#bbb', background: '#f8f8f8', borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontStyle: 'italic' }}>
+                    Loading description...
+                  </div>
+                ) : null;
+              })()}
 
               <button
                 disabled={!selectedProduct.inStock}
