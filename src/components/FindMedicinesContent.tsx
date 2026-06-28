@@ -441,13 +441,15 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     )}
-                    {medicine.drugClass && (
+                    {medicine.drugClass && medicine.drugClass !== 'N/A' && (
                       <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
                     )}
                   </div>
                   <div className={styles.productBody}>
                     <div className={styles.productName}>{medicine.name}</div>
-                    <div className={styles.productStrength}>{medicine.activeIngredients || 'Standard'}</div>
+                    {medicine.activeIngredients && medicine.activeIngredients !== 'N/A' && medicine.activeIngredients !== 'Standard' && (
+                      <div className={styles.productStrength}>{medicine.activeIngredients}</div>
+                    )}
                     
                     {medicine.travelTime != null && (
                       <div className={styles.travelTime}>
