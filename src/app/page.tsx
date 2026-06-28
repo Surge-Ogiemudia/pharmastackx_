@@ -85,13 +85,24 @@ export default function HomePage() {
     const v = searchParams?.get('view');
     if (searchParams?.get('requestId')) return 'orderMedicines';
     if (v) return v;
+    if (typeof window !== 'undefined') {
+      const h = window.location.hostname;
+      const isSub = ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && !h.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
+      if (isSub) return 'findMedicines';
+    }
     return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [activeRequest, setActiveRequest] = useState<any>(null);
-  const [isSubdomain, setIsSubdomain] = useState(false);
+  const [isSubdomain, setIsSubdomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = window.location.hostname;
+      return ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && !h.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
+    }
+    return false;
+  });
   const [activeRequestId, setActiveRequestId] = useState<string | null>(() => searchParams?.get('requestId') || null);
   const [showNotification, setShowNotification] = useState(false);
   const [permission, setPermission] = useState<'default' | 'granted' | 'denied'>('default');
