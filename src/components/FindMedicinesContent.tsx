@@ -246,9 +246,14 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
   const handleAddToCart = (medicine: any) => {
     event({ action: 'add_to_cart', category: 'ecommerce', label: medicine.name, value: medicine.price });
+    const wasEmpty = cart.length === 0;
     addToCart(medicine);
-    setToastMsg(medicine.name);
-    setTimeout(() => setToastMsg(''), 2000);
+    if (wasEmpty) {
+      setIsCartOpen(true);
+    } else {
+      setToastMsg(medicine.name);
+      setTimeout(() => setToastMsg(''), 2000);
+    }
   };
 
   const handleSaveEdit = async (medicineId: string) => {
