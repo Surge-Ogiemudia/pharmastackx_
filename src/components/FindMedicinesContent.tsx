@@ -74,7 +74,8 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const isAdmin = sessionUser?.role === 'admin';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ itemName?: string; amount?: number; quantity?: number }>({});
-  const [isSavingEdit, setIsSavingEdit] = useState(false); 
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null); 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -448,7 +449,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
         ) : medicines.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>No medicines found.</div>
         ) : (
-          <div className={styles.productGrid}>
+          <div ref={gridRef} className={styles.productGrid}>
             {medicines.map(medicine => {
               const categoryLower = (medicine.drugClass || '').toLowerCase();
               let gradient = 'linear-gradient(135deg,#F3E5F5,#E1BEE7)';
@@ -580,7 +581,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             <button
               className={styles.pageBtn}
               disabled={currentPage === 1}
-              onClick={() => { setCurrentPage(currentPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => { setCurrentPage(currentPage - 1); gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
             >
               ← Prev
             </button>
@@ -588,7 +589,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
             <button
               className={styles.pageBtn}
               disabled={currentPage === totalPages}
-              onClick={() => { setCurrentPage(currentPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => { setCurrentPage(currentPage + 1); gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
             >
               Next →
             </button>
