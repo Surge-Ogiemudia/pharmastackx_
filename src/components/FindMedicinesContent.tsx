@@ -6,6 +6,7 @@ import { useCart } from '../contexts/CartContext';
 import QRCode from 'qrcode';
 import { event } from '../lib/gtag';
 import { debounce } from 'lodash';
+import { useSession } from '@/context/SessionProvider';
 import styles from '../app/find-medicines/FindMedicines.module.css';
 
 // --- CONFIGURATION --- //
@@ -68,7 +69,12 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const [totalProducts, setTotalProducts] = useState(0);
 
   const itemsPerPage = 20;
-  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart(); 
+  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart();
+  const { user: sessionUser } = useSession();
+  const isAdmin = sessionUser?.role === 'admin';
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ itemName?: string; amount?: number; quantity?: number }>({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false); 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -242,6 +248,33 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
     addToCart(medicine);
     setToastMsg(medicine.name);
     setTimeout(() => setToastMsg(''), 2000);
+  };
+
+  const handleSaveEdit = async (medicineId: string) => {
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch(`/api/stock/${medicineId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(editValues),
+      });
+      if (res.ok) {
+        setMedicines(prev => prev.map(m => m.id === medicineId ? {
+          ...m,
+          name: editValues.itemName ?? m.name,
+          price: editValues.amount ?? m.price,
+          formattedPrice: editValues.amount != null ? `₦${Number(editValues.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : m.formattedPrice,
+          stockQty: editValues.quantity ?? m.stockQty,
+        } : m));
+        setEditingId(null);
+        setEditValues({});
+      }
+    } catch (err) {
+      console.error('Failed to save edit:', err);
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
@@ -451,39 +484,89 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                     <div style={{ height: 4, background: accentColor, borderRadius: '12px 12px 0 0' }} />
                   )}
                   <div className={styles.productBody}>
-                    <div className={styles.productName}>{medicine.name}</div>
-                    {medicine.activeIngredients && medicine.activeIngredients !== 'N/A' && medicine.activeIngredients !== 'Standard' && (
-                      <div className={styles.productStrength}>{medicine.activeIngredients}</div>
-                    )}
-                    
-                    {medicine.travelTime != null && (
-                      <div className={styles.travelTime}>
-                        ~{medicine.travelTime} mins away
+                    {editingId === medicine.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <input
+                          type="text"
+                          defaultValue={medicine.name}
+                          onChange={e => setEditValues(v => ({ ...v, itemName: e.target.value }))}
+                          style={{ fontSize: 13, fontWeight: 500, padding: '4px 8px', borderRadius: 6, border: '1px solid #ccc', background: 'var(--surface-1, #f8f8f8)', color: 'var(--text-primary, #000)', width: '100%' }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <input
+                            type="number"
+                            defaultValue={medicine.price || 0}
+                            onChange={e => setEditValues(v => ({ ...v, amount: parseFloat(e.target.value) || 0 }))}
+                            placeholder="Price"
+                            style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid #ccc', background: 'var(--surface-1, #f8f8f8)', color: 'var(--text-primary, #000)', flex: 1, width: 0 }}
+                          />
+                          <input
+                            type="number"
+                            defaultValue={medicine.stockQty ?? 0}
+                            onChange={e => setEditValues(v => ({ ...v, quantity: parseInt(e.target.value) || 0 }))}
+                            placeholder="Qty"
+                            style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid #ccc', background: 'var(--surface-1, #f8f8f8)', color: 'var(--text-primary, #000)', flex: 1, width: 0 }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                          <button
+                            onClick={() => { setEditingId(null); setEditValues({}); }}
+                            style={{ flex: 1, fontSize: 11, padding: '5px 0', borderRadius: 6, border: '1px solid #ccc', background: 'transparent', color: 'var(--text-secondary, #666)', cursor: 'pointer' }}
+                          >Cancel</button>
+                          <button
+                            onClick={() => handleSaveEdit(medicine.id)}
+                            disabled={isSavingEdit}
+                            style={{ flex: 1, fontSize: 11, padding: '5px 0', borderRadius: 6, border: 'none', background: '#0F6E56', color: '#fff', cursor: 'pointer', opacity: isSavingEdit ? 0.6 : 1 }}
+                          >{isSavingEdit ? 'Saving...' : 'Save'}</button>
+                        </div>
                       </div>
-                    )}
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between' }}>
+                          <div className={styles.productName}>{medicine.name}</div>
+                          {isAdmin && (
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditingId(medicine.id); setEditValues({}); }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted, #999)', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+                              title="Edit product"
+                            >&#9998;</button>
+                          )}
+                        </div>
+                        {medicine.activeIngredients && medicine.activeIngredients !== 'N/A' && medicine.activeIngredients !== 'Standard' && (
+                          <div className={styles.productStrength}>{medicine.activeIngredients}</div>
+                        )}
 
-                    {medicine.stockQty !== null && medicine.stockQty === 0 && (
-                      <div className={styles.outOfStock}>Out of stock</div>
-                    )}
-                    {medicine.stockQty !== null && medicine.stockQty > 0 && medicine.stockQty <= 10 && (
-                      <div className={styles.lowStock}>Only {medicine.stockQty} left</div>
-                    )}
+                        {medicine.travelTime != null && (
+                          <div className={styles.travelTime}>
+                            ~{medicine.travelTime} mins away
+                          </div>
+                        )}
 
-                    <div className={styles.productFooter} style={{ marginTop: 'auto', paddingTop: '12px' }}>
-                      <div className={styles.productPrice}>
-                        {medicine.formattedPrice} <span>/ each</span>
-                      </div>
-                      <button
-                        className={`${styles.addBtn} ${!medicine.inStock ? styles.addBtnDisabled : ''}`}
-                        disabled={!medicine.inStock}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToCart(medicine);
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
+                        {medicine.stockQty !== null && medicine.stockQty === 0 && (
+                          <div className={styles.outOfStock}>Out of stock</div>
+                        )}
+                        {medicine.stockQty !== null && medicine.stockQty > 0 && medicine.stockQty <= 10 && (
+                          <div className={styles.lowStock}>Only {medicine.stockQty} left</div>
+                        )}
+
+                        <div className={styles.productFooter} style={{ marginTop: 'auto', paddingTop: '12px' }}>
+                          <div className={styles.productPrice}>
+                            {medicine.formattedPrice} <span>/ each</span>
+                          </div>
+                          <button
+                            className={`${styles.addBtn} ${!medicine.inStock ? styles.addBtnDisabled : ''}`}
+                            disabled={!medicine.inStock}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToCart(medicine);
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
