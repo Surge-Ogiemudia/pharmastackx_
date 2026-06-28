@@ -435,7 +435,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           <div className={styles.productGrid}>
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className={styles.skeletonCard}>
-                <div className={styles.skeletonImg} />
+                <div style={{ height: 4, background: '#e5e7eb', borderRadius: '12px 12px 0 0' }} />
                 <div className={styles.skeletonBody}>
                   <div className={styles.skeletonLine} style={{ width: '70%' }} />
                   <div className={styles.skeletonLine} style={{ width: '50%' }} />
@@ -462,7 +462,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
               return (
                 <div key={medicine.id} className={styles.productCard}>
-                  {medicine.image ? (
+                  {medicine.image && medicine.image.length > 5 ? (
                     <div className={styles.productImg} style={{ background: gradient }}>
                       <img
                         src={medicine.image}
