@@ -67,7 +67,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const [totalPages, setTotalPages] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
 
-  const itemsPerPage = 12;
+  const itemsPerPage = 20;
   const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart(); 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
