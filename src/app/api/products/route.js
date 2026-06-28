@@ -45,8 +45,8 @@ export async function GET(req) {
     const limit = parseInt(searchParams.get('limit')) || 12;
     const skip = (page - 1) * limit;
 
-    // Build the base match query
-    let query = { isPublished: true };
+    // Build the base match query — exclude items with zero or missing price
+    let query = { isPublished: true, amount: { $gt: 0 } };
     if (slug) {
       query.slug = slug;
     }
