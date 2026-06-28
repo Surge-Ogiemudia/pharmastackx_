@@ -468,27 +468,35 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
 
               return (
                 <div key={medicine.id} className={styles.productCard} onClick={() => setSelectedProduct(medicine)}>
-                  {medicine.image && medicine.image.length > 5 ? (
-                    <div className={styles.productImg} style={{ background: gradient }}>
-                      <img
-                        src={medicine.image}
-                        alt={medicine.name}
-                        onError={(e) => {
-                          const card = (e.target as HTMLImageElement).closest(`.${styles.productCard}`);
-                          const imgContainer = (e.target as HTMLImageElement).closest(`.${styles.productImg}`);
-                          if (imgContainer && card) {
-                            const bar = document.createElement('div');
-                            bar.style.cssText = `height:4px;background:${accentColor};border-radius:12px 12px 0 0;`;
-                            card.replaceChild(bar, imgContainer);
-                          }
-                        }}
-                      />
-                      {medicine.drugClass && medicine.drugClass !== 'N/A' && (
-                        <div className={styles.productCategoryTag}>{medicine.drugClass}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ height: 4, background: accentColor, borderRadius: '12px 12px 0 0' }} />
+                  <div style={{ height: 4, background: accentColor, borderRadius: '12px 12px 0 0' }} />
+                  {medicine.image && medicine.image.length > 5 && (
+                    <img
+                      src={medicine.image}
+                      alt=""
+                      style={{ display: 'none' }}
+                      onLoad={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        const card = img.closest(`.${styles.productCard}`);
+                        if (!card) return;
+                        const bar = card.firstElementChild;
+                        if (bar) bar.remove();
+                        const container = document.createElement('div');
+                        container.className = styles.productImg;
+                        container.style.background = gradient;
+                        const realImg = document.createElement('img');
+                        realImg.src = medicine.image;
+                        realImg.alt = medicine.name;
+                        realImg.style.cssText = 'object-fit:contain;width:100%;height:100%;max-width:80%;z-index:10;';
+                        container.appendChild(realImg);
+                        if (medicine.drugClass && medicine.drugClass !== 'N/A') {
+                          const tag = document.createElement('div');
+                          tag.className = styles.productCategoryTag;
+                          tag.textContent = medicine.drugClass;
+                          container.appendChild(tag);
+                        }
+                        card.insertBefore(container, card.firstChild);
+                      }}
+                    />
                   )}
                   <div className={styles.productBody}>
                     {editingId === medicine.id ? (
