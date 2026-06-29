@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
       { expiresIn: '1h' }
     );
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
+    if (baseUrl && !baseUrl.startsWith('http')) baseUrl = `https://${baseUrl}`;
     const response = NextResponse.redirect(`${baseUrl}/store-management`);
 
     response.cookies.set('session_token', token, {
