@@ -750,7 +750,7 @@ export default function SocialContent() {
   const regenLeft = Math.max(0, 2 - (todaysPost?.regenCount ?? 0));
 
   return (
-    <Box sx={{ bgcolor: BG, minHeight: '100vh', position: 'relative' }}>
+    <Box sx={{ minHeight: '100vh', position: 'relative', p: { xs: 0, md: 3 } }}>
       {/* Floating "talk to admin" WhatsApp button */}
       <Box component="a" href="https://wa.me/2349050006638" target="_blank" rel="noopener noreferrer"
         sx={{
@@ -767,52 +767,49 @@ export default function SocialContent() {
         </Typography>
       </Box>
 
-      {/* Date carousel */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 2 }}>
-        <IconButton onClick={() => changeDate(-1)} disabled={isPastDate} size="small" sx={{ bgcolor: CARD, color: isPastDate ? 'rgba(255,255,255,0.15)' : TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: MUTED, letterSpacing: '1px', textTransform: 'uppercase' }}>{selectedDate.toLocaleDateString('default', { weekday: 'long' })}</Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: '17px', fontWeight: 700, color: TEXT }}>{fmtDate(selectedDate)}</Typography>
+      {/* Header: date + settings + usage */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, pt: 2.5, pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <IconButton onClick={() => changeDate(-1)} disabled={isPastDate} size="small" sx={{ bgcolor: '#f1f5f4', color: isPastDate ? '#ccc' : '#333', borderRadius: '10px', width: 36, height: 36, border: '1px solid #e5e7eb' }}><ChevronLeft sx={{ fontSize: 20 }} /></IconButton>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '9px', color: '#999', letterSpacing: '1px', textTransform: 'uppercase' }}>{selectedDate.toLocaleDateString('default', { weekday: 'long' })}</Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: '17px', fontWeight: 700, color: '#1a1a1a' }}>{fmtDate(selectedDate)}</Typography>
+          </Box>
+          <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: '#f1f5f4', color: '#333', borderRadius: '10px', width: 36, height: 36, border: '1px solid #e5e7eb' }}><ChevronRight sx={{ fontSize: 20 }} /></IconButton>
         </Box>
-        <IconButton onClick={() => changeDate(1)} size="small" sx={{ bgcolor: CARD, color: TEXT, borderRadius: '10px', width: 36, height: 36, border: `1px solid ${BORD}` }}><ChevronRight sx={{ fontSize: 20 }} /></IconButton>
-      </Box>
-
-      {/* Settings gear — top right */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, mb: 0.5, mt: -1 }}>
-        <Box onClick={() => setSettingsOpen(true)} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', px: 1.2, py: 0.5, borderRadius: '8px', border: `1px solid ${BORD}`, bgcolor: CARD }}>
-          <Settings sx={{ fontSize: 13, color: MUTED }} />
-          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>Post settings</Typography>
-        </Box>
-      </Box>
-
-      {/* Week usage pill */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-        <Box sx={{ px: 1.5, py: 0.4, borderRadius: '20px', bgcolor: weekLimitHit ? 'rgba(255,80,80,0.12)' : `${GREEN}18`, border: `1px solid ${weekLimitHit ? 'rgba(255,80,80,0.3)' : `${GREEN}35`}` }}>
-          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: weekLimitHit ? '#FF6B6B' : GREEN, fontWeight: 600 }}>
-            {weekLimitHit ? 'Weekly limit reached (4/4)' : `${weekCount}/4 posts this week`}
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ px: 1.5, py: 0.4, borderRadius: '20px', bgcolor: weekLimitHit ? 'rgba(255,80,80,0.08)' : '#E8F5E9', border: `1px solid ${weekLimitHit ? 'rgba(255,80,80,0.3)' : '#C8E6C9'}` }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: weekLimitHit ? '#d32f2f' : GREEN, fontWeight: 600 }}>
+              {weekLimitHit ? '4/4' : `${weekCount}/4`} this week
+            </Typography>
+          </Box>
+          <Box onClick={() => setSettingsOpen(true)} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', px: 1.2, py: 0.5, borderRadius: '8px', border: '1px solid #e5e7eb', bgcolor: '#f8f8f8' }}>
+            <Settings sx={{ fontSize: 13, color: '#999' }} />
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: '#999' }}>Settings</Typography>
+          </Box>
         </Box>
       </Box>
 
-      {/* Post card */}
-      <Box sx={{ px: 2, mb: 2 }}>
+      {/* Desktop: two-column layout. Mobile: stacked */}
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, px: 2, mb: 2, mt: 1 }}>
         <AnimatePresence mode="wait">
-          <motion.div key={toYMD(selectedDate)} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
-            <Box sx={{ bgcolor: CARD, borderRadius: '20px', overflow: 'hidden', border: `1px solid ${BORD}` }}>
-
-              {/* Progress bar while generating */}
+          <motion.div key={toYMD(selectedDate)} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}
+            style={{ display: 'flex', flexDirection: 'inherit', gap: 'inherit', width: '100%' }}>
+            {/* Left column: post image */}
+            <Box sx={{ flex: { xs: 'none', md: '0 0 380px' }, position: 'relative' }}>
               {generating && (
-                <Box sx={{ height: 3 }}>
+                <Box sx={{ height: 3, borderRadius: '16px 16px 0 0', overflow: 'hidden' }}>
                   <motion.div animate={{ width: `${genProgress}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
                     style={{ height: '100%', background: `linear-gradient(90deg,${GREEN},${GBRI})` }} />
                 </Box>
               )}
-
-              <Box sx={{ p: 1.5, pb: 0 }}>
+              <Box sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
                 <PostGraphic post={generating ? null : todaysPost} idx={slotIdx} name={pharmacyName} url={pharmacyUrl} />
               </Box>
+            </Box>
 
-              <Box sx={{ p: 2 }}>
+            {/* Right column: details & actions */}
+            <Box sx={{ flex: 1 }}>
                 {/* Image error log — shown whenever image generation failed */}
                 {!generating && imageError && !todaysPost?.imageUrl && (
                   <Box sx={{ mb: 2, p: 1.5, borderRadius: '10px', bgcolor: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)' }}>
@@ -826,32 +823,25 @@ export default function SocialContent() {
                 )}
 
                 {generating ? (
-                  /* Loading state */
                   <Box sx={{ py: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                     <CircularProgress size={22} sx={{ color: GREEN }} />
-                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED }}>Generating your post…</Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: '#999' }}>Generating your post…</Typography>
                   </Box>
                 ) : todaysPost ? (
-                  /* Post exists */
                   <>
-                    {/* Status + platforms */}
+                    {/* Status */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-                      <Box sx={{ px: 1.2, py: 0.3, borderRadius: '6px', bgcolor: isPosted ? `${GBRI}22` : `${GREEN}22`, border: `1px solid ${isPosted ? `${GBRI}40` : `${GREEN}40`}` }}>
-                        <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: isPosted ? GBRI : GREEN }}>{isPosted ? '✓ Posted' : 'Ready'}</Typography>
+                      <Box sx={{ px: 1.2, py: 0.3, borderRadius: '6px', bgcolor: isPosted ? '#E8F5E9' : '#FFF8E1', border: `1px solid ${isPosted ? '#C8E6C9' : '#FFECB3'}` }}>
+                        <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 600, color: isPosted ? '#2E7D32' : '#F57F17' }}>{isPosted ? '✓ Posted' : 'Ready to share'}</Typography>
                       </Box>
-                      {['Instagram', 'Facebook'].map(pl => (
-                        <Box key={pl} sx={{ px: 1, py: 0.3, borderRadius: '6px', border: `1px solid ${BORD}` }}>
-                          <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: MUTED }}>{pl}</Typography>
-                        </Box>
-                      ))}
                     </Box>
 
                     {/* Caption */}
                     <Box sx={{ mb: 1.5 }}>
-                      <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: TEXT, lineHeight: 1.65 }}>
-                        {captionExpanded || (todaysPost.caption?.length ?? 0) <= 110 ? todaysPost.caption : `${todaysPost.caption?.slice(0, 110)}...`}
+                      <Typography sx={{ fontFamily: FONT, fontSize: '14px', color: '#333', lineHeight: 1.7 }}>
+                        {captionExpanded || (todaysPost.caption?.length ?? 0) <= 180 ? todaysPost.caption : `${todaysPost.caption?.slice(0, 180)}...`}
                       </Typography>
-                      {(todaysPost.caption?.length ?? 0) > 110 && (
+                      {(todaysPost.caption?.length ?? 0) > 180 && (
                         <Typography onClick={() => setCaptionExp(v => !v)} sx={{ fontFamily: FONT, fontSize: '12px', color: GREEN, fontWeight: 600, cursor: 'pointer', mt: 0.5, display: 'inline-block' }}>
                           {captionExpanded ? 'Show less' : 'Read more'}
                         </Typography>
@@ -860,65 +850,79 @@ export default function SocialContent() {
 
                     {/* Hashtags */}
                     {(todaysPost.hashtags?.length ?? 0) > 0 && (
-                      <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: ACCENTS[slotIdx], mb: 2, wordBreak: 'break-word' }}>
+                      <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: GREEN, mb: 2, wordBreak: 'break-word' }}>
                         {todaysPost.hashtags.map(h => `#${h}`).join(' ')}
                       </Typography>
                     )}
 
-                    {/* Download / Share */}
-                    <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                    {/* Image error */}
+                    {imageError && !todaysPost?.imageUrl && (
+                      <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: '#FFF3F3', border: '1px solid #FFCDD2' }}>
+                        <Typography sx={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: '#d32f2f', mb: 0.3 }}>Image generation failed</Typography>
+                        <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: '#999', lineHeight: 1.5, wordBreak: 'break-word' }}>{imageError}</Typography>
+                      </Box>
+                    )}
+
+                    {/* Actions: Download / Share / WhatsApp */}
+                    <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
                       <Button disabled={!todaysPost.imageUrl} onClick={() => handleDownload(todaysPost)} startIcon={<FileDownload sx={{ fontSize: 16 }} />}
-                        sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.06)', color: TEXT, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: `1px solid ${BORD}` }}>
+                        sx={{ flex: 1, minWidth: 120, bgcolor: '#f8f8f8', color: '#333', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1, border: '1px solid #e5e7eb' }}>
                         Download
                       </Button>
                       <Button onClick={() => handleShare(todaysPost)} startIcon={<IosShare sx={{ fontSize: 16 }} />}
-                        sx={{ flex: 1, bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1, boxShadow: `0 4px 18px ${GREEN}44` }}>
+                        sx={{ flex: 1, minWidth: 120, bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1 }}>
                         Share
+                      </Button>
+                      <Button
+                        component="a"
+                        href={`https://wa.me/?text=${encodeURIComponent(`${todaysPost.caption}\n\n${(todaysPost.hashtags || []).map(h => `#${h}`).join(' ')}`)}`}
+                        target="_blank"
+                        startIcon={<WhatsApp sx={{ fontSize: 16 }} />}
+                        sx={{ flex: 1, minWidth: 120, bgcolor: '#25D366', color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 700, py: 1.1 }}>
+                        WhatsApp
                       </Button>
                     </Box>
 
                     {/* Regenerate */}
                     {!isPosted && (
                       regenLeft === 0
-                        ? <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, textAlign: 'center' }}>
-                            <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED }}>Regeneration limit reached for today.</Typography>
+                        ? <Box sx={{ mb: 1.5, p: 1.2, borderRadius: '10px', bgcolor: '#f8f8f8', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                            <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: '#999' }}>Regeneration limit reached for today.</Typography>
                           </Box>
                         : <Button fullWidth onClick={() => { setRegenError(''); setRegenModal(true); }}
-                            sx={{ mb: 1.5, bgcolor: 'rgba(255,80,80,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,80,80,0.2)', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1 }}>
+                            sx={{ mb: 1.5, bgcolor: '#FFF3F3', color: '#d32f2f', border: '1px solid #FFCDD2', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.1 }}>
                             Regenerate ({regenLeft} left)
                           </Button>
                     )}
 
-                    {/* Mark as posted */}
+                    {/* I've posted this */}
                     <Button fullWidth disabled={isPosted || marking} onClick={() => handleMarkAsPosted(todaysPost._id)}
-                      sx={{ bgcolor: isPosted ? `${GBRI}18` : 'rgba(255,255,255,0.04)', color: isPosted ? GBRI : MUTED, border: `1px solid ${isPosted ? `${GBRI}40` : BORD}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3, '&:hover:not(:disabled)': { bgcolor: `${GREEN}18`, color: GREEN, borderColor: `${GREEN}45` } }}>
-                      {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Marked as posted' : 'Mark as posted'}
+                      sx={{ bgcolor: isPosted ? '#E8F5E9' : '#f8f8f8', color: isPosted ? '#2E7D32' : '#999', border: `1px solid ${isPosted ? '#C8E6C9' : '#e5e7eb'}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3, '&:hover:not(:disabled)': { bgcolor: '#E8F5E9', color: GREEN, borderColor: '#C8E6C9' } }}>
+                      {marking ? <CircularProgress size={16} sx={{ color: GREEN }} /> : isPosted ? '✓ Posted' : "I've posted this"}
                     </Button>
                   </>
                 ) : (
-                  /* No post for this day */
                   <Box sx={{ py: 2.5, textAlign: 'center' }}>
-                    <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: TEXT, mb: 0.5 }}>
-                      {categories[slotIdx] || 'Social Post'}
+                    <Typography sx={{ fontFamily: FONT, fontSize: '14px', fontWeight: 700, color: '#333', mb: 0.5 }}>
+                      {categories[slotIdx] || 'Social post'}
                     </Typography>
-                    <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: MUTED, mb: 2.5 }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: '12px', color: '#999', mb: 2.5 }}>
                       {weekLimitHit ? "You've used all 4 posts this week." : "No post generated for this day yet."}
                     </Typography>
                     {!weekLimitHit && !isPastDate && (
                       <Button onClick={() => handleGenerate(selectedDate)}
-                        sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', px: 3, py: 1.3, boxShadow: `0 4px 18px ${GREEN}44` }}>
-                        Generate post ✦
+                        sx={{ bgcolor: GREEN, color: '#fff', borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontWeight: 700, fontSize: '14px', px: 3, py: 1.3 }}>
+                        Generate post
                       </Button>
                     )}
                     {isPastDate && (
-                      <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: MUTED }}>
+                      <Typography sx={{ fontFamily: MONO, fontSize: '11px', color: '#999' }}>
                         Posts can only be generated from today onwards.
                       </Typography>
                     )}
                   </Box>
                 )}
               </Box>
-            </Box>
           </motion.div>
         </AnimatePresence>
       </Box>
@@ -928,14 +932,14 @@ export default function SocialContent() {
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: '16px' }}>✦</Typography>
-            <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '14px', color: TEXT }}>Special Request</Typography>
+            <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: '14px', color: '#333' }}>Special request</Typography>
           </Box>
-          <Box sx={{ px: 1.2, py: 0.3, borderRadius: '20px', bgcolor: specialPost ? `${GREEN}18` : 'rgba(255,255,255,0.06)', border: `1px solid ${specialPost ? `${GREEN}35` : BORD}` }}>
-            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: specialPost ? GREEN : MUTED }}>{specialPost ? '1/1 this week' : '0/1 this week'}</Typography>
+          <Box sx={{ px: 1.2, py: 0.3, borderRadius: '20px', bgcolor: specialPost ? '#E8F5E9' : '#f8f8f8', border: `1px solid ${specialPost ? '#C8E6C9' : '#e5e7eb'}` }}>
+            <Typography sx={{ fontFamily: MONO, fontSize: '10px', color: specialPost ? GREEN : '#999' }}>{specialPost ? '1/1 this week' : '0/1 this week'}</Typography>
           </Box>
         </Box>
 
-        <Box sx={{ bgcolor: CARD, borderRadius: '20px', border: `1px solid ${BORD}`, overflow: 'hidden' }}>
+        <Box sx={{ bgcolor: '#fff', borderRadius: '20px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
           {generatingSpecial && (
             <Box sx={{ height: 3 }}>
               <motion.div animate={{ width: `${specialProgress}%` }} transition={{ duration: 0.5 }}
@@ -949,7 +953,7 @@ export default function SocialContent() {
             </Box>
           ) : (
             <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 3 }}>
-              <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: MUTED, textAlign: 'center', lineHeight: 1.6 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: '13px', color: '#999', textAlign: 'center', lineHeight: 1.6 }}>
                 Write your own brief — a promotion, event, or anything specific to your pharmacy.
               </Typography>
             </Box>
@@ -995,8 +999,8 @@ export default function SocialContent() {
               )}
 
               <Button fullWidth disabled={specialPost.status === 'posted'} onClick={() => handleMarkAsPosted(specialPost._id)}
-                sx={{ bgcolor: specialPost.status === 'posted' ? `${GBRI}18` : 'rgba(255,255,255,0.04)', color: specialPost.status === 'posted' ? GBRI : MUTED, border: `1px solid ${specialPost.status === 'posted' ? `${GBRI}40` : BORD}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3 }}>
-                {specialPost.status === 'posted' ? '✓ Marked as posted' : 'Mark as posted'}
+                sx={{ bgcolor: specialPost.status === 'posted' ? '#E8F5E9' : '#f8f8f8', color: specialPost.status === 'posted' ? '#2E7D32' : '#999', border: `1px solid ${specialPost.status === 'posted' ? '#C8E6C9' : '#e5e7eb'}`, borderRadius: '12px', textTransform: 'none', fontFamily: FONT, fontSize: '13px', fontWeight: 600, py: 1.3 }}>
+                {specialPost.status === 'posted' ? '✓ Posted' : "I've posted this"}
               </Button>
             </Box>
           )}
@@ -1012,7 +1016,7 @@ export default function SocialContent() {
         </Box>
       </Box>
 
-      <LockedSection />
+      {/* Pro features section removed — don't tease paying subscribers */}
 
       {/* Special Request Modal */}
       {specialModalOpen && (
