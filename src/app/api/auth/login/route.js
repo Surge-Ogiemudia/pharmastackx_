@@ -14,10 +14,15 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Email or phone number and password are required.' }, { status: 400 });
   }
 
-  // Find user by either email or phone number
+  // Find user by either email or phone number (handling optional '+' prefix)
   const query = email 
     ? { email: email.toLowerCase() } 
-    : { phoneNumber };
+    : { 
+        $or: [
+          { phoneNumber: phoneNumber },
+          { phoneNumber: phoneNumber.startsWith('+') ? phoneNumber.slice(1) : `+${phoneNumber}` }
+        ]
+      };
     
   const user = await User.findOne(query);
   
@@ -40,7 +45,15 @@ export async function POST(req) {
   // Create a response object to return user data
   const response = NextResponse.json({
     message: "Login successful",
-    user: { name: user.name, email: user.email, role: user.role }
+    user: { 
+      id: user._id.toString(),
+      name: user.name || user.businessName || user.username, 
+      email: user.email, 
+      role: user.role,
+      pharmacyId: user.pharmacy ? user.pharmacy.toString() : user._id.toString(),
+      businessName: user.businessName,
+      slug: user.slug
+    }
   });
 
   const cookieDomain = process.env.NODE_ENV === 'production' ? '.psx.ng' : undefined;
