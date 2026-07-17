@@ -274,10 +274,10 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
                 <Box sx={{ content: '""', position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
                 
                 <Typography sx={{ fontFamily: 'var(--font-fraunces), serif', fontSize: '26px', fontWeight: 900, textAlign: 'center', zIndex: 1, letterSpacing: '-0.5px' }}>
-                  Pharmacies: Automate your inventory
+                  Pharmacies: Your unified operating system
                 </Typography>
                 <Typography sx={{ fontSize: '14px', textAlign: 'center', color: 'rgba(159,225,203,0.9)', mb: 2, zIndex: 1, maxWidth: '450px', lineHeight: 1.6 }}>
-                  Download the Synkk Desktop Client to securely connect your local POS database or CSV to PharmaStackX in real-time.
+                  Download the PharmaStackX Terminal to seamlessly manage your POS, EMR, storefront, and sync your inventory in real-time.
                 </Typography>
                 
                 <Button
@@ -299,7 +299,7 @@ export default function PremiumLanding({ onSearchClick, onPharmacistClick, user,
                     transition: 'all 0.2s'
                   }}
                 >
-                  Download Synkk for Windows
+                  Download Terminal for Windows
                 </Button>
               </Box>
 
