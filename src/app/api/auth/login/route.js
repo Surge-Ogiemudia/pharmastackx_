@@ -8,16 +8,21 @@ const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 export async function POST(req) {
   await dbConnect();
-  const { email, password } = await req.json();
+  const { email, phoneNumber, password } = await req.json();
 
-  if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
+  if ((!email && !phoneNumber) || !password) {
+    return NextResponse.json({ error: 'Email or phone number and password are required.' }, { status: 400 });
   }
 
-  const user = await User.findOne({ email: email.toLowerCase() });
+  // Find user by either email or phone number
+  const query = email 
+    ? { email: email.toLowerCase() } 
+    : { phoneNumber };
+    
+  const user = await User.findOne(query);
   
   if (!user) {
-    return NextResponse.json({ error: 'No account found with this email.' }, { status: 404 }); 
+    return NextResponse.json({ error: 'No account found with these credentials.' }, { status: 404 }); 
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -38,12 +43,15 @@ export async function POST(req) {
     user: { name: user.name, email: user.email, role: user.role }
   });
 
+  const cookieDomain = process.env.NODE_ENV === 'production' ? '.psx.ng' : undefined;
+
   // Set the session token as a secure, HttpOnly cookie
   response.cookies.set('session_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
     path: '/', // Available to all paths
+    domain: cookieDomain,
   });
 
   // Set a non-httpOnly cookie for the frontend to have an optimistic role hint
@@ -52,6 +60,7 @@ export async function POST(req) {
     secure: process.env.NODE_ENV === 'production',
     maxAge: 60 * 60 * 24 * 7,
     path: '/',
+    domain: cookieDomain,
   });
 
   return response;
