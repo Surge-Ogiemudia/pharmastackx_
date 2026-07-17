@@ -58,6 +58,7 @@ export async function POST(req) {
     id: user._id.toString(),
     name: user.name || user.businessName || user.username, 
     email: user.email, 
+    phoneNumber: user.phoneNumber,
     role: user.role,
     pharmacyId: user.pharmacy ? user.pharmacy.toString() : user._id.toString(),
     businessName: user.businessName,
