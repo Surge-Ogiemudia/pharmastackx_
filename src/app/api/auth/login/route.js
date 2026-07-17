@@ -54,17 +54,20 @@ export async function POST(req) {
 
   // --- Start of The Fix ---
   // Create a response object to return user data
+  const userObj = { 
+    id: user._id.toString(),
+    name: user.name || user.businessName || user.username, 
+    email: user.email, 
+    role: user.role,
+    pharmacyId: user.pharmacy ? user.pharmacy.toString() : user._id.toString(),
+    businessName: user.businessName,
+    slug: user.slug
+  };
+
   const response = NextResponse.json({
-    message: "Login successful",
-    user: { 
-      id: user._id.toString(),
-      name: user.name || user.businessName || user.username, 
-      email: user.email, 
-      role: user.role,
-      pharmacyId: user.pharmacy ? user.pharmacy.toString() : user._id.toString(),
-      businessName: user.businessName,
-      slug: user.slug
-    }
+    message: 'Login successful',
+    user: userObj,
+    token: token
   });
 
   const cookieDomain = process.env.NODE_ENV === 'production' ? '.psx.ng' : undefined;
