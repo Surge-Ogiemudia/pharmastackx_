@@ -79,6 +79,60 @@ export async function POST(req) {
     });
 
     await newUser.save();
+
+    // --- PROVISIONING HOOK START ---
+    if (finalRole === 'pharmacy') {
+      try {
+        const mongoose = require('mongoose');
+        const db = mongoose.connection.db;
+
+        // 1. Create POS Pharmacy
+        await db.collection('pharmacies').insertOne({
+          _id: newUser._id,
+          pharmacyName: businessName,
+          slug: slug,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // 2. Create Default Branch
+        await db.collection('branches').insertOne({
+          pharmacyId: newUser._id,
+          branchName: 'Main Branch',
+          location: businessAddress,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // 3. Create Default Store
+        await db.collection('stores').insertOne({
+          pharmacyId: newUser._id,
+          storeName: 'Main Bulk Store',
+          location: businessAddress,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // 4. Provision EMR via API
+        const emrUrl = process.env.NODE_ENV === 'production' ? 'https://emr.psx.ng' : 'http://localhost:3002';
+        fetch(`${emrUrl}/api/provision`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer psx-internal-key-123'
+          },
+          body: JSON.stringify({
+            id: newUser._id.toString(),
+            name: businessName,
+            slug: slug
+          }),
+        }).catch(err => console.error('Failed to provision EMR:', err));
+        
+      } catch (provisionErr) {
+        console.error('Provisioning error:', provisionErr);
+      }
+    }
+    // --- PROVISIONING HOOK END ---
     
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
     const protocol = req.headers.get('x-forwarded-proto') || 'https';
