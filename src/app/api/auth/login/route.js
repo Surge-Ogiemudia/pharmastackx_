@@ -14,15 +14,26 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Email or phone number and password are required.' }, { status: 400 });
   }
 
-  // Find user by either email or phone number (handling optional '+' prefix)
+  // Normalize phone number to catch common local vs international formats
+  let phoneVariants = [phoneNumber];
+  if (phoneNumber) {
+    let cleanPhone = phoneNumber.replace(/\D/g, ''); // Remove spaces, +, etc
+    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+    if (cleanPhone.startsWith('234')) cleanPhone = cleanPhone.substring(3);
+
+    phoneVariants = [
+      phoneNumber,           // exact typed
+      cleanPhone,            // base digits (8157788101)
+      `0${cleanPhone}`,      // local format (08157788101)
+      `234${cleanPhone}`,    // intl without + (2348157788101)
+      `+234${cleanPhone}`,   // intl with + (+2348157788101)
+    ];
+  }
+
+  // Find user by either email or phone number (handling multiple phone formats)
   const query = email 
     ? { email: email.toLowerCase() } 
-    : { 
-        $or: [
-          { phoneNumber: phoneNumber },
-          { phoneNumber: phoneNumber.startsWith('+') ? phoneNumber.slice(1) : `+${phoneNumber}` }
-        ]
-      };
+    : { phoneNumber: { $in: phoneVariants } };
     
   const user = await User.findOne(query);
   
