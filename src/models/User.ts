@@ -66,6 +66,18 @@ export interface IUser extends Document {
   lastSyncTime?: Date;
   encryptedWebPosData?: string;
   appVersion?: string;
+  // Which terminal tabs (web + desktop) this pharmacy has chosen to show. Keyed by
+  // module id (pos, emr, dispensary, orders, source, staff); a missing key means
+  // "on" (default), so old accounts with no saved preferences still see everything.
+  terminalModules?: {
+    psxWeb?: boolean;
+    pos?: boolean;
+    emr?: boolean;
+    dispensary?: boolean;
+    orders?: boolean;
+    source?: boolean;
+    staff?: boolean;
+  };
 }
 
 // The schema defines the blueprint for the database
@@ -144,6 +156,15 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   lastSyncTime: { type: Date },
   encryptedWebPosData: { type: String },
   appVersion: { type: String },
+  terminalModules: {
+    psxWeb: { type: Boolean },
+    pos: { type: Boolean },
+    emr: { type: Boolean },
+    dispensary: { type: Boolean },
+    orders: { type: Boolean },
+    source: { type: Boolean },
+    staff: { type: Boolean },
+  },
 });
 
 // This line creates the model
