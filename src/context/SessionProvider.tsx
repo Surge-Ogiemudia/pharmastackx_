@@ -86,8 +86,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     
     // 2. Clear role cookie and localStorage immediately
     if (typeof window !== 'undefined') {
+      // Clear with domain so it matches the cookie set during login
+      document.cookie = 'psx_user_role=; path=/; domain=.psx.ng; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      // Also clear without domain in case one was set at current host scope
       document.cookie = 'psx_user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       localStorage.removeItem('psx_cached_user');
+      // Clear Synkk terminal profile so the terminal gate also logs out
+      localStorage.removeItem('psx-profile');
     }
 
     // 3. Fire-and-forget API logout
