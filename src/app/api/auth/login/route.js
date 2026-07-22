@@ -61,6 +61,18 @@ export async function POST(req) {
   );
 
   // --- Start of The Fix ---
+  let businessName = user.businessName;
+  let slug = user.slug;
+
+  // If user is staff, fetch their pharmacy's businessName and slug
+  if (user.role !== 'pharmacy' && user.pharmacy) {
+    const pharmacyUser = await User.findById(user.pharmacy).select('businessName slug').lean();
+    if (pharmacyUser) {
+      businessName = pharmacyUser.businessName || businessName;
+      slug = pharmacyUser.slug || slug;
+    }
+  }
+
   // Create a response object to return user data
   const userObj = { 
     id: user._id.toString(),
@@ -69,8 +81,8 @@ export async function POST(req) {
     phoneNumber: user.phoneNumber,
     role: user.role,
     pharmacyId: user.pharmacy ? user.pharmacy.toString() : user._id.toString(),
-    businessName: user.businessName,
-    slug: user.slug
+    businessName: businessName,
+    slug: slug
   };
 
   const response = NextResponse.json({
