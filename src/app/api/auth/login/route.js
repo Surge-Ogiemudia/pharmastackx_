@@ -35,7 +35,7 @@ export async function POST(req) {
     ? { email: email.toLowerCase() } 
     : { phoneNumber: { $in: phoneVariants } };
     
-  const user = await User.findOne(query);
+  const user = await User.findOne(query).lean();
   
   if (!user) {
     return NextResponse.json({ error: 'No account found with these credentials.' }, { status: 404 }); 
@@ -46,8 +46,16 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Incorrect password. Please try again.' }, { status: 401 });
   }
 
+  const resolvedName = user.name || user.staffName || user.fullName || user.businessName || user.username;
+
   const token = jwt.sign(
-    { userId: user._id, role: user.role, email: user.email, pharmacyId: user.pharmacy },
+    { 
+      userId: user._id, 
+      role: user.role, 
+      email: user.email, 
+      pharmacyId: user.pharmacy,
+      name: resolvedName
+    },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -56,7 +64,7 @@ export async function POST(req) {
   // Create a response object to return user data
   const userObj = { 
     id: user._id.toString(),
-    name: user.name || user.businessName || user.username, 
+    name: resolvedName, 
     email: user.email, 
     phoneNumber: user.phoneNumber,
     role: user.role,
