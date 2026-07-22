@@ -48,30 +48,32 @@ export async function POST(req) {
 
   const resolvedName = user.name || user.staffName || user.fullName || user.businessName || user.username;
 
+  // --- Start of The Fix ---
+  // Try to find the most accurate business name for this user (even if they are an admin, they might have used username)
+  let businessName = user.businessName || user.name || user.fullName || user.username;
+  let slug = user.slug;
+
+  // If user is staff, fetch their pharmacy's businessName and slug
+  if (user.role !== 'pharmacy' && user.pharmacy) {
+    const pharmacyUser = await User.findById(user.pharmacy).select('businessName name fullName username slug').lean();
+    if (pharmacyUser) {
+      businessName = pharmacyUser.businessName || pharmacyUser.name || pharmacyUser.fullName || pharmacyUser.username || businessName;
+      slug = pharmacyUser.slug || slug;
+    }
+  }
+
   const token = jwt.sign(
     { 
       userId: user._id, 
       role: user.role, 
       email: user.email, 
-      pharmacyId: user.pharmacy,
-      name: resolvedName
+      pharmacyId: user.pharmacy ? user.pharmacy.toString() : undefined,
+      name: resolvedName,
+      businessName: businessName
     },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
-
-  // --- Start of The Fix ---
-  let businessName = user.businessName;
-  let slug = user.slug;
-
-  // If user is staff, fetch their pharmacy's businessName and slug
-  if (user.role !== 'pharmacy' && user.pharmacy) {
-    const pharmacyUser = await User.findById(user.pharmacy).select('businessName slug').lean();
-    if (pharmacyUser) {
-      businessName = pharmacyUser.businessName || businessName;
-      slug = pharmacyUser.slug || slug;
-    }
-  }
 
   // Create a response object to return user data
   const userObj = { 
