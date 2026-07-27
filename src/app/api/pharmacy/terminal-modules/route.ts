@@ -69,7 +69,7 @@ export async function PUT(req: Request) {
     const payload = jwt.verify(sessionToken.value, JWT_SECRET) as { userId: string };
     const body = await req.json();
 
-    const allowedKeys = ['pos', 'emr', 'dispensary', 'orders', 'source', 'staff'];
+    const allowedKeys = ['psxWeb', 'pos', 'emr', 'dispensary', 'orders', 'source', 'staff'];
     const terminalModules: Record<string, boolean> = {};
     for (const key of allowedKeys) {
       if (typeof body[key] === 'boolean') terminalModules[key] = body[key];
