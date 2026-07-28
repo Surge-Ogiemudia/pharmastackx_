@@ -34,6 +34,22 @@ export async function POST(req: NextRequest) {
 
     // Save to the database
     user.encryptedWebPosData = encryptedBlob;
+
+    // Extract domain from url
+    let domain = url;
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      domain = parsed.hostname;
+    } catch (_) {}
+
+    if (!user.synkkMeta) {
+      user.synkkMeta = {};
+    }
+    user.synkkMeta.posMethod = 'web';
+    user.synkkMeta.posDomain = domain;
+    user.synkkMeta.authStatus = 'valid';
+    user.synkkMeta.authLastChecked = new Date();
+
     await user.save();
 
     return NextResponse.json({ 
