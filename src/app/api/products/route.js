@@ -85,7 +85,7 @@ export async function GET(req) {
       ];
 
       const countPipeline = [...pipeline, { $count: "total" }];
-      const resultsPipeline = [...pipeline, { $sort: { inStockSort: 1, completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
+      const resultsPipeline = [...pipeline, { $sort: { inStockSort: 1, quantity: -1, completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
 
       const countResult = await Product.aggregate(countPipeline);
       totalProducts = countResult.length > 0 ? countResult[0].total : 0;
