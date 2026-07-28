@@ -78,6 +78,23 @@ export interface IUser extends Document {
     source?: boolean;
     staff?: boolean;
   };
+  synkkMeta?: {
+    posMethod?: string;
+    posName?: string;
+    posDomain?: string;
+    authStatus?: string;
+    authLastChecked?: Date;
+    extractionPath?: Array<{
+      action?: string;
+      url?: string;
+      method?: string;
+      selector?: string;
+      label?: string;
+      timestamp?: Date;
+    }>;
+    cloudSyncSchedule?: string;
+    lastSyncResult?: string;
+  };
 }
 
 // The schema defines the blueprint for the database
@@ -164,6 +181,23 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     orders: { type: Boolean },
     source: { type: Boolean },
     staff: { type: Boolean },
+  },
+  synkkMeta: {
+    posMethod: { type: String },
+    posName: { type: String },
+    posDomain: { type: String },
+    authStatus: { type: String, default: 'unchecked' },
+    authLastChecked: { type: Date },
+    extractionPath: [{
+      action: { type: String },
+      url: { type: String },
+      method: { type: String },
+      selector: { type: String },
+      label: { type: String },
+      timestamp: { type: Date }
+    }],
+    cloudSyncSchedule: { type: String, default: 'off' },
+    lastSyncResult: { type: String },
   },
 });
 
