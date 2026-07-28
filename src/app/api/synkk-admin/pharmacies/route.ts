@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     await dbConnect();
 
     const users = await User.find({ 
-      slug: { $exists: true, $ne: null, $ne: '' } 
+      slug: { $exists: true, $nin: [null, ''] } 
     }).select('businessName slug lastSyncTime lastSyncTier appVersion encryptedWebPosData synkkMeta').lean();
 
     const pharmacyList = await Promise.all(users.map(async (user: any) => {
