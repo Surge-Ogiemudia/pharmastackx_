@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import SynkkLog from '@/models/SynkkLog';
@@ -14,12 +15,13 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     // 1. Check Admin Auth
-    const token = req.cookies.get('session_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session_token')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
     let decoded: any;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
