@@ -29,8 +29,7 @@ export async function GET(req: Request) {
     await dbConnect();
 
     const users = await User.find({ 
-      role: { $in: ['pharmacy', 'pharmacist'] }, 
-      slug: { $exists: true, $ne: null } 
+      slug: { $exists: true, $ne: null, $ne: '' } 
     }).select('businessName slug lastSyncTime lastSyncTier appVersion encryptedWebPosData synkkMeta').lean();
 
     const pharmacyList = await Promise.all(users.map(async (user: any) => {
