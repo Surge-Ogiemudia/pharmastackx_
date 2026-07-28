@@ -79,13 +79,14 @@ export async function GET(req) {
                 { $cond: [{ $and: ['$info', { $ne: ['$info', ''] }] }, 1, 0] }
               ]
             },
-            inStockSort: { $cond: [{ $gt: ['$quantity', 0] }, 0, 1] }
+            inStockSort: { $cond: [{ $gt: ['$quantity', 0] }, 0, 1] },
+            priceScore: { $cond: [{ $gte: ['$amount', 250] }, 1, 0] }
           }
         },
       ];
 
       const countPipeline = [...pipeline, { $count: "total" }];
-      const resultsPipeline = [...pipeline, { $sort: { inStockSort: 1, quantity: -1, completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
+      const resultsPipeline = [...pipeline, { $sort: { inStockSort: 1, priceScore: -1, quantity: -1, completenessScore: -1, _id: 1 } }, { $skip: skip }, { $limit: limit }];
 
       const countResult = await Product.aggregate(countPipeline);
       totalProducts = countResult.length > 0 ? countResult[0].total : 0;
