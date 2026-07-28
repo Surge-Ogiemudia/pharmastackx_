@@ -1,27 +1,28 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import SynkkLog from '@/models/SynkkLog';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 export async function GET(req: Request) {
   try {
-    const cookies = req.headers.get('cookie') || '';
-    const match = cookies.match(/session_token=([^;]+)/);
-    const token = match ? match[1] : null;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session_token')?.value;
 
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: No session token found' }, { status: 401 });
     }
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as any;
       if (decoded.role !== 'admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        return NextResponse.json({ error: 'Forbidden: Requires admin role' }, { status: 403 });
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error('JWT Verify Error:', e.message);
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
