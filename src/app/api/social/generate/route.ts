@@ -32,7 +32,8 @@ export async function POST(req: Request) {
       extraTokens: 0
     };
 
-    const daysSinceReset = (now.getTime() - new Date(socialTokens.lastTokenReset).getTime()) / (1000 * 3600 * 24);
+    const lastReset = socialTokens.lastTokenReset ? new Date(socialTokens.lastTokenReset) : now;
+    const daysSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 3600 * 24);
     if (daysSinceReset >= 7) {
       socialTokens.weeklyTokens = 4;
       socialTokens.lastTokenReset = now;
