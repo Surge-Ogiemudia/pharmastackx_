@@ -69,7 +69,26 @@ export async function POST(req: Request) {
 
     const randomSeed = Math.floor(Math.random() * 1000000);
 
-    const createAiImageUrl = (promptText: string, seed: number) => {
+    const createAiImageUrl = async (promptText: string, seed: number) => {
+      if (apiKey) {
+        try {
+          const enrichedPrompt = `Design a high-end, premium quality social media graphic design advertisement for a pharmacy. It should look like a professional Canva template or agency design. The composition should be visually stunning and ready for Instagram. Context: ${promptText}`;
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: enrichedPrompt }] }] })
+          });
+          const data = await response.json();
+          const base64Data = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          const mimeType = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/jpeg';
+          
+          if (base64Data) {
+            return `data:${mimeType};base64,${base64Data}`;
+          }
+        } catch (err) {
+          console.error('Gemini Image API Error:', err);
+        }
+      }
       const sanitized = encodeURIComponent(`high end studio graphic design, photorealistic, 8k resolution, minimalist commercial product advertising, ${promptText}`);
       return `https://image.pollinations.ai/prompt/${sanitized}?width=1080&height=1080&seed=${seed}&nologo=true`;
     };
@@ -121,9 +140,9 @@ Guidelines:
             ? aiData.imagePrompts 
             : [`sleek medical product advertisement for ${businessName}`];
 
-          imageUrls = promptsArray.map((promptStr: string, idx: number) => 
+          imageUrls = await Promise.all(promptsArray.map((promptStr: string, idx: number) => 
             createAiImageUrl(promptStr, randomSeed + idx)
-          );
+          ));
 
           if (Array.isArray(aiData.featuredProductNames)) {
             featuredProducts = products
@@ -143,12 +162,12 @@ Guidelines:
     // Fallback template logic if Gemini API call fails or key missing
     if (!caption) {
       const featured = products[0] || { itemName: 'Health Supplement', amount: 2500 };
-      postTitle = `🌿 ${businessName} Featured Spotlight`;
-      caption = `✨ Priority Healthcare at ${businessName}!\n\n` +
-        `Discover genuine medicines and wellness essentials available today.\n\n` +
-        `🛒 Order online now: https://${storeUrl}`;
+      postTitle = 'Store Highlight';
+      caption = `Looking for the best ${featured.itemName}? We have it in stock for just ₦${featured.amount}!\n\n` +
+          `Discover genuine medicines and wellness essentials available today.\n\n` +
+          `🛒 Order online now: https://${storeUrl}`;
       hashtags = ['#PharmacyCare', '#HealthLiving', `#${pharmacy_slug}`];
-      imageUrls = [createAiImageUrl(`pharmaceutical product display on modern green counter`, randomSeed)];
+      imageUrls = [await createAiImageUrl(`pharmaceutical product display on modern green counter`, randomSeed)];
       featuredProducts = [{ name: featured.itemName, price: featured.amount, image: featured.imageUrl }];
     }
 
