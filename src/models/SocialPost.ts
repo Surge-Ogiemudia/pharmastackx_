@@ -2,7 +2,8 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ISocialPost extends Document {
   pharmacySlug: string;
-  pillar: 'wellness' | 'education' | 'pairs' | 'spotlight' | 'custom';
+  pillar: string;
+  topic?: string;
   title?: string;
   caption: string;
   imageUrls: string[];
@@ -13,6 +14,7 @@ export interface ISocialPost extends Document {
     price: number;
     image?: string;
   }>;
+  featuredProductIds?: mongoose.Types.ObjectId[];
   tokenCost: number;
   createdAt: Date;
 }
@@ -20,11 +22,8 @@ export interface ISocialPost extends Document {
 const SocialPostSchema: Schema = new Schema<ISocialPost>(
   {
     pharmacySlug: { type: String, required: true, index: true },
-    pillar: { 
-      type: String, 
-      enum: ['wellness', 'education', 'pairs', 'spotlight', 'custom'],
-      required: true 
-    },
+    pillar: { type: String, required: true, default: 'auto' },
+    topic: { type: String },
     title: { type: String },
     caption: { type: String, required: true },
     imageUrls: { type: [String], default: [] },
@@ -37,6 +36,7 @@ const SocialPostSchema: Schema = new Schema<ISocialPost>(
         image: { type: String }
       }
     ],
+    featuredProductIds: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
     tokenCost: { type: Number, default: 1 }
   },
   { timestamps: true }

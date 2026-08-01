@@ -62,6 +62,13 @@ export interface IUser extends Document {
     lastTokenReset?: Date;
     extraTokens?: number;
   };
+  brandContext?: {
+    tone?: string;
+    audience?: string;
+    visualStyle?: string;
+    location?: string;
+    personality?: string;
+  };
   webPushSubscription?: {
     endpoint: string;
     expirationTime?: number | null;
@@ -210,6 +217,13 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     weeklyTokens: { type: Number, default: 4 },
     lastTokenReset: { type: Date, default: Date.now },
     extraTokens: { type: Number, default: 0 },
+  },
+  brandContext: {
+    tone: { type: String },
+    audience: { type: String },
+    visualStyle: { type: String },
+    location: { type: String },
+    personality: { type: String },
   },
 });
 
