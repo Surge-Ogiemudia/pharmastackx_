@@ -199,6 +199,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     cloudSyncSchedule: { type: String, default: 'off' },
     lastSyncResult: { type: String },
   },
+  socialTokens: {
+    weeklyTokens: { type: Number, default: 4 },
+    lastTokenReset: { type: Date, default: Date.now },
+    extraTokens: { type: Number, default: 0 },
+  },
 });
 
 // This line creates the model
