@@ -82,6 +82,7 @@ export interface IUser extends Document {
     orders?: boolean;
     source?: boolean;
     staff?: boolean;
+    socialAi?: boolean;
   };
   synkkMeta?: {
     posMethod?: string;
@@ -186,6 +187,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     orders: { type: Boolean },
     source: { type: Boolean },
     staff: { type: Boolean },
+    socialAi: { type: Boolean },
   },
   synkkMeta: {
     posMethod: { type: String },
