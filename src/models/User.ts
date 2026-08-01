@@ -57,6 +57,11 @@ export interface IUser extends Document {
     description?: string;
   }>;
   hasSetupBrandKit?: boolean;
+  socialTokens?: {
+    weeklyTokens?: number;
+    lastTokenReset?: Date;
+    extraTokens?: number;
+  };
   webPushSubscription?: {
     endpoint: string;
     expirationTime?: number | null;
