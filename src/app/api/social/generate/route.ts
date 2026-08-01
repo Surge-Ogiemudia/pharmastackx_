@@ -5,6 +5,9 @@ import Product from '@/models/Product';
 import SocialPost from '@/models/SocialPost';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Gemini image generation can take 15-30s; Vercel's default is 10s
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
@@ -85,8 +88,8 @@ export async function POST(req: Request) {
           if (base64Data) {
             return `data:${mimeType};base64,${base64Data}`;
           }
-        } catch (err) {
-          console.error('Gemini Image API Error:', err);
+        } catch (err: any) {
+          console.error('Gemini Image API Error:', err?.message || err);
         }
       }
       const sanitized = encodeURIComponent(`high end studio graphic design, photorealistic, 8k resolution, minimalist commercial product advertising, ${promptText}`);
@@ -95,7 +98,7 @@ export async function POST(req: Request) {
 
     if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const candidateModels = ['gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-flash-latest'];
+      const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
       const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
 
