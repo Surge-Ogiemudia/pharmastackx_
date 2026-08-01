@@ -75,16 +75,12 @@ export async function POST(req: Request) {
     };
 
     if (apiKey) {
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ 
-          model: 'gemini-2.0-flash',
-          generationConfig: { responseMimeType: 'application/json' }
-        });
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
-        const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
+      const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
 
-        const systemPrompt = `You are an elite Social Media Manager & Graphic Designer for a Nigerian Pharmacy named "${businessName}". 
+      const systemPrompt = `You are an elite Social Media Manager & Graphic Designer for a Nigerian Pharmacy named "${businessName}". 
 Store URL: https://${storeUrl}
 Selected Content Pillar: "${pillar}"
 User Custom Instruction: "${customPrompt || 'None'}"
@@ -106,30 +102,41 @@ Guidelines:
 - Keep the tone warm, authoritative, medical yet accessible.
 - Emphasize real-life value and genuine products available at ${businessName}.`;
 
-        const result = await model.generateContent(systemPrompt);
-        const jsonText = result.response.text();
-        const aiData = JSON.parse(jsonText);
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({ 
+            model: modelName,
+            generationConfig: { responseMimeType: 'application/json' }
+          });
 
-        postTitle = aiData.title || `${pillar.toUpperCase()} Highlight`;
-        caption = aiData.caption || `Discover quality healthcare products at ${businessName}! Visit https://${storeUrl}`;
-        hashtags = aiData.hashtags || ['#Health', '#Pharmacy', `#${pharmacy_slug}`];
+          const result = await model.generateContent(systemPrompt);
+          const jsonText = result.response.text();
+          const aiData = JSON.parse(jsonText);
 
-        const promptsArray = Array.isArray(aiData.imagePrompts) && aiData.imagePrompts.length > 0 
-          ? aiData.imagePrompts 
-          : [`sleek medical product advertisement for ${businessName}`];
+          postTitle = aiData.title || `${pillar.toUpperCase()} Highlight`;
+          caption = aiData.caption || `Discover quality healthcare products at ${businessName}! Visit https://${storeUrl}`;
+          hashtags = aiData.hashtags || ['#Health', '#Pharmacy', `#${pharmacy_slug}`];
 
-        imageUrls = promptsArray.map((promptStr: string, idx: number) => 
-          createAiImageUrl(promptStr, randomSeed + idx)
-        );
+          const promptsArray = Array.isArray(aiData.imagePrompts) && aiData.imagePrompts.length > 0 
+            ? aiData.imagePrompts 
+            : [`sleek medical product advertisement for ${businessName}`];
 
-        if (Array.isArray(aiData.featuredProductNames)) {
-          featuredProducts = products
-            .filter(p => aiData.featuredProductNames.includes(p.itemName))
-            .map(p => ({ name: p.itemName, price: p.amount, image: p.imageUrl }));
+          imageUrls = promptsArray.map((promptStr: string, idx: number) => 
+            createAiImageUrl(promptStr, randomSeed + idx)
+          );
+
+          if (Array.isArray(aiData.featuredProductNames)) {
+            featuredProducts = products
+              .filter(p => aiData.featuredProductNames.includes(p.itemName))
+              .map(p => ({ name: p.itemName, price: p.amount, image: p.imageUrl }));
+          }
+
+          // Successfully generated with modelName! Break loop.
+          break;
+
+        } catch (geminiError: any) {
+          console.error(`Gemini API Error with model ${modelName}:`, geminiError.message);
         }
-
-      } catch (geminiError) {
-        console.error('Gemini API Error, falling back to smart templates:', geminiError);
       }
     }
 
