@@ -151,12 +151,15 @@ export async function POST(req: Request) {
     }
 
     // Deduct Tokens
-    if (socialTokens.weeklyTokens >= tokenCost) {
-      socialTokens.weeklyTokens -= tokenCost;
+    const currentWeekly = socialTokens.weeklyTokens ?? 4;
+    const currentExtra = socialTokens.extraTokens ?? 0;
+
+    if (currentWeekly >= tokenCost) {
+      socialTokens.weeklyTokens = currentWeekly - tokenCost;
     } else {
-      const remainder = tokenCost - socialTokens.weeklyTokens;
+      const remainder = tokenCost - currentWeekly;
       socialTokens.weeklyTokens = 0;
-      socialTokens.extraTokens = Math.max(0, (socialTokens.extraTokens || 0) - remainder);
+      socialTokens.extraTokens = Math.max(0, currentExtra - remainder);
     }
 
     user.socialTokens = socialTokens;
