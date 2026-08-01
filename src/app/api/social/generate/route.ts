@@ -52,102 +52,96 @@ export async function POST(req: Request) {
     // Fetch Products from pharmacy's inventory for contextual generation
     const products = await Product.find({ slug: pharmacy_slug, isPublished: true, amount: { $gt: 0 } })
       .sort({ quantity: -1, amount: -1 })
-      .limit(20)
+      .limit(15)
       .lean();
 
     const businessName = user.businessName || 'Our Pharmacy';
     const storeUrl = `${pharmacy_slug}.psx.ng`;
 
+    // Connect to Google Gemini API
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
     let postTitle = '';
     let caption = '';
     let hashtags: string[] = [];
     let imageUrls: string[] = [];
     let featuredProducts: Array<{ name: string; price: number; image?: string }> = [];
 
-    // Helper to generate image URL via high quality Pollinations AI endpoint
-    const createAiImageUrl = (prompt: string, seed: number) => {
-      const sanitized = encodeURIComponent(`high quality pharmacy product photo, ${prompt}, realistic medical style`);
+    const randomSeed = Math.floor(Math.random() * 1000000);
+
+    const createAiImageUrl = (promptText: string, seed: number) => {
+      const sanitized = encodeURIComponent(`high end studio graphic design, photorealistic, 8k resolution, minimalist commercial product advertising, ${promptText}`);
       return `https://image.pollinations.ai/prompt/${sanitized}?width=1080&height=1080&seed=${seed}&nologo=true`;
     };
 
-    const randomSeed = Math.floor(Math.random() * 1000000);
+    if (apiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-1.5-flash',
+          generationConfig: { responseMimeType: 'application/json' }
+        });
 
-    if (pillar === 'wellness') {
-      const featured = products[Math.floor(Math.random() * Math.min(products.length, 5))];
-      postTitle = '🌿 Daily Wellness Boost';
-      const prodName = featured ? featured.itemName : 'Multivitamins & Skincare';
-      const prodPrice = featured ? `₦${featured.amount.toLocaleString()}` : '';
+        const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
 
-      caption = `✨ Prioritize your health today with ${businessName}!\n\n` +
-        `Nourish your body and stay energized all week long. Whether you're upgrading your daily skincare routine or boosting your immune system, we've got you covered.\n\n` +
-        (featured ? `Featured: ${prodName} (${prodPrice})\n\n` : '') +
-        `🛒 Order directly online for fast delivery: https://${storeUrl}`;
+        const systemPrompt = `You are an elite Social Media Manager & Graphic Designer for a Nigerian Pharmacy named "${businessName}". 
+Store URL: https://${storeUrl}
+Selected Content Pillar: "${pillar}"
+User Custom Instruction: "${customPrompt || 'None'}"
 
-      hashtags = ['#WellnessJourney', '#HealthyLiving', '#PharmacyCare', '#SelfCareNigeria', `#${pharmacy_slug}`];
-      imageUrls = [createAiImageUrl(`skincare and wellness supplement bottle on a clean minimalist pharmacy counter`, randomSeed)];
-      if (featured) featuredProducts.push({ name: featured.itemName, price: featured.amount, image: featured.imageUrl });
+Available Top In-Stock Products in Pharmacy Inventory:
+${inventorySummary || 'General Pharmaceuticals and Skincare'}
 
-    } else if (pillar === 'education') {
-      // 3-slide Carousel
-      const featured = products[0] || { itemName: 'Essential Medications' };
-      postTitle = '📚 3 Myths vs Facts About Your Medications';
+Generate a JSON object matching this schema strictly:
+{
+  "title": "Short catchy post title with emoji",
+  "caption": "Engaging, professional, highly relatable social media caption formatted with line breaks, emojis, and clear CTA to shop at https://${storeUrl}",
+  "hashtags": ["#Hashtag1", "#Hashtag2", "#Hashtag3"],
+  "imagePrompts": ["Detailed visual prompt describing a premium 8k graphic design advert image for slide 1"],
+  "featuredProductNames": ["Exact product name from inventory if applicable"]
+}
 
-      caption = `💡 Health Tip of the Week from ${businessName}!\n\n` +
-        `Slide 1: MYTH - "Taking higher doses of pain relievers works faster."\nFACT: Overdosing leads to organ strain. Always adhere to prescribed dosages!\n\n` +
-        `Slide 2: MYTH - "You can stop antibiotics as soon as you feel better."\nFACT: Stopping early creates drug resistance. Always complete your course!\n\n` +
-        `Slide 3: Need reliable advice or genuine pharmaceuticals?\n` +
-        `Visit our store or order online: https://${storeUrl}`;
+Guidelines:
+- If pillar is "education", provide 3 slides content in caption and 3 distinct imagePrompts for a 3-slide carousel.
+- Keep the tone warm, authoritative, medical yet accessible.
+- Emphasize real-life value and genuine products available at ${businessName}.`;
 
-      hashtags = ['#HealthTips', '#PharmacyEducation', '#AskYourPharmacist', '#StayInformed', `#${pharmacy_slug}`];
-      imageUrls = [
-        createAiImageUrl(`infographic slide 1, medicine myth vs fact, medical aesthetic`, randomSeed),
-        createAiImageUrl(`infographic slide 2, antibiotic awareness, clean medical banner`, randomSeed + 1),
-        createAiImageUrl(`infographic slide 3, friendly pharmacist advising patient in modern pharmacy`, randomSeed + 2),
-      ];
+        const result = await model.generateContent(systemPrompt);
+        const jsonText = result.response.text();
+        const aiData = JSON.parse(jsonText);
 
-    } else if (pillar === 'pairs') {
-      const prod1 = products[0] || { itemName: 'Vitamin C Supplement', amount: 1500 };
-      const prod2 = products[1] || { itemName: 'Immune Support Zinc', amount: 2000 };
+        postTitle = aiData.title || `${pillar.toUpperCase()} Highlight`;
+        caption = aiData.caption || `Discover quality healthcare products at ${businessName}! Visit https://${storeUrl}`;
+        hashtags = aiData.hashtags || ['#Health', '#Pharmacy', `#${pharmacy_slug}`];
 
-      postTitle = '🤝 The Ultimate Immunity Pair';
+        const promptsArray = Array.isArray(aiData.imagePrompts) && aiData.imagePrompts.length > 0 
+          ? aiData.imagePrompts 
+          : [`sleek medical product advertisement for ${businessName}`];
 
-      caption = `🔥 Power Duo for Your Health at ${businessName}!\n\n` +
-        `Combine ${prod1.itemName} (₦${prod1.amount.toLocaleString()}) with ${prod2.itemName} (₦${prod2.amount.toLocaleString()}) for maximum absorption and total wellness protection.\n\n` +
-        `Get both together today at: https://${storeUrl}`;
+        imageUrls = promptsArray.map((promptStr: string, idx: number) => 
+          createAiImageUrl(promptStr, randomSeed + idx)
+        );
 
-      hashtags = ['#ProductPairing', '#ImmunityCombo', '#HealthDuo', '#PharmacyDeals', `#${pharmacy_slug}`];
-      imageUrls = [createAiImageUrl(`two complementary pharmacy products side by side, clean studio lighting`, randomSeed)];
-      featuredProducts = [
-        { name: prod1.itemName, price: prod1.amount, image: prod1.imageUrl },
-        { name: prod2.itemName, price: prod2.amount, image: prod2.imageUrl }
-      ];
+        if (Array.isArray(aiData.featuredProductNames)) {
+          featuredProducts = products
+            .filter(p => aiData.featuredProductNames.includes(p.itemName))
+            .map(p => ({ name: p.itemName, price: p.amount, image: p.imageUrl }));
+        }
 
-    } else if (pillar === 'spotlight') {
-      const featured = products[Math.floor(Math.random() * Math.min(products.length, 10))] || { itemName: 'Essential Health Product', amount: 2500 };
+      } catch (geminiError) {
+        console.error('Gemini API Error, falling back to smart templates:', geminiError);
+      }
+    }
 
-      postTitle = `🎯 Product Spotlight: ${featured.itemName}`;
-
-      caption = `📦 NOW IN STOCK at ${businessName}!\n\n` +
-        `Name: ${featured.itemName}\n` +
-        `Price: ₦${featured.amount.toLocaleString()}\n` +
-        `Status: In Stock & Ready for Immediate Delivery 🚀\n\n` +
-        `Tap the link to order now: https://${storeUrl}`;
-
-      hashtags = ['#NowInStock', '#PharmacySpotlight', '#GenuineDrugs', '#FastDelivery', `#${pharmacy_slug}`];
-      imageUrls = [createAiImageUrl(`professional commercial product photo of ${featured.itemName} on glowing display stand`, randomSeed)];
+    // Fallback template logic if Gemini API call fails or key missing
+    if (!caption) {
+      const featured = products[0] || { itemName: 'Health Supplement', amount: 2500 };
+      postTitle = `🌿 ${businessName} Featured Spotlight`;
+      caption = `✨ Priority Healthcare at ${businessName}!\n\n` +
+        `Discover genuine medicines and wellness essentials available today.\n\n` +
+        `🛒 Order online now: https://${storeUrl}`;
+      hashtags = ['#PharmacyCare', '#HealthLiving', `#${pharmacy_slug}`];
+      imageUrls = [createAiImageUrl(`pharmaceutical product display on modern green counter`, randomSeed)];
       featuredProducts = [{ name: featured.itemName, price: featured.amount, image: featured.imageUrl }];
-
-    } else {
-      // Custom Prompt
-      const promptText = customPrompt || 'General health announcement';
-      postTitle = '✍️ Custom Announcement';
-
-      caption = `📣 Announcement from ${businessName}\n\n` +
-        `${promptText}\n\n` +
-        `Visit us online at https://${storeUrl} or stop by our store!`;
-
-      hashtags = ['#PharmacyUpdate', '#CommunityPharmacy', `#${pharmacy_slug}`];
-      imageUrls = [createAiImageUrl(`custom announcement banner for pharmacy, ${promptText}`, randomSeed)];
     }
 
     // Deduct Tokens
