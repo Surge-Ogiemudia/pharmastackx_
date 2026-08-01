@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
     if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const candidateModels = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+      const candidateModels = ['gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-flash-latest'];
 
       const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
 
