@@ -72,6 +72,7 @@ export async function POST(req: Request) {
     // Connect to Google Gemini API
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
     let postTitle = '';
+    let generatedTopic = '';
     let caption = '';
     let hashtags: string[] = [];
     let imageUrls: string[] = [];
@@ -158,7 +159,7 @@ Guidelines:
           const aiData = JSON.parse(jsonText);
 
           postTitle = aiData.title || `${pillar.toUpperCase()} Highlight`;
-          const generatedTopic = aiData.topic || postTitle;
+          generatedTopic = aiData.topic || postTitle;
           caption = aiData.caption || `Discover quality healthcare products at ${businessName}! Visit https://${storeUrl}`;
           hashtags = aiData.hashtags || ['#Health', '#Pharmacy', `#${pharmacy_slug}`];
 
