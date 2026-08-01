@@ -59,6 +59,13 @@ export async function POST(req: Request) {
       .limit(15)
       .lean();
 
+    // Fetch recent posts for anti-repetition
+    const recentPosts = await SocialPost.find({ pharmacySlug: pharmacy_slug })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .lean();
+    const recentTopics = recentPosts.map((p) => p.topic || p.title).filter(Boolean);
+
     const businessName = user.businessName || 'Our Pharmacy';
     const storeUrl = `${pharmacy_slug}.psx.ng`;
 
@@ -102,10 +109,24 @@ export async function POST(req: Request) {
 
       const inventorySummary = products.map(p => `- ${p.itemName} (Price: ₦${p.amount})`).join('\n');
 
-      const systemPrompt = `You are an elite Social Media Manager & Graphic Designer for a Nigerian Pharmacy named "${businessName}". 
+      const brandTone = user.brandContext?.tone || 'Warm, authoritative, medical yet accessible';
+      const brandAudience = user.brandContext?.audience || 'General pharmacy customers';
+      const brandVisuals = user.brandContext?.visualStyle || 'Clean, premium Canva-style agency design';
+      
+      const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+      const systemPrompt = `You are the dedicated creative director and Social Media Manager for a Nigerian Pharmacy named "${businessName}".
 Store URL: https://${storeUrl}
-Selected Content Pillar: "${pillar}"
+Target Audience: ${brandAudience}
+Brand Tone/Voice: ${brandTone}
+Visual Identity: ${brandVisuals}
+
+Today is ${dayName}.
+Selected Content Strategy: "${pillar}"
 User Custom Instruction: "${customPrompt || 'None'}"
+
+CRITICAL ANTI-REPETITION RULE: 
+You MUST NOT repeat these topics that were covered in the last 3 posts: ${recentTopics.join(', ') || 'None'}.
 
 Available Top In-Stock Products in Pharmacy Inventory:
 ${inventorySummary || 'General Pharmaceuticals and Skincare'}
@@ -113,16 +134,17 @@ ${inventorySummary || 'General Pharmaceuticals and Skincare'}
 Generate a JSON object matching this schema strictly:
 {
   "title": "Short catchy post title with emoji",
-  "caption": "Engaging, professional, highly relatable social media caption formatted with line breaks, emojis, and clear CTA to shop at https://${storeUrl}",
+  "topic": "A 2-3 word summary of the exact specific topic of this post (e.g. 'Malaria Prevention', 'Vitamin C Spotlight')",
+  "caption": "Engaging, highly relatable social media caption written strictly in the Brand Tone. Use line breaks, emojis, and clear CTA to shop at https://${storeUrl}",
   "hashtags": ["#Hashtag1", "#Hashtag2", "#Hashtag3"],
-  "imagePrompts": ["Detailed visual prompt describing a premium 8k graphic design advert image for slide 1"],
+  "imagePrompts": ["Detailed visual prompt describing a premium 8k graphic design advert image that strictly follows the Visual Identity."],
   "featuredProductNames": ["Exact product name from inventory if applicable"]
 }
 
 Guidelines:
-- If pillar is "education", provide 3 slides content in caption and 3 distinct imagePrompts for a 3-slide carousel.
-- Keep the tone warm, authoritative, medical yet accessible.
-- Emphasize real-life value and genuine products available at ${businessName}.`;
+- If strategy is "education" or carousel, provide 3 distinct imagePrompts.
+- Emphasize real-life value and genuine products available at ${businessName}.
+- Keep it highly relevant to the Nigerian context.`;
 
       for (const modelName of candidateModels) {
         try {
@@ -136,12 +158,13 @@ Guidelines:
           const aiData = JSON.parse(jsonText);
 
           postTitle = aiData.title || `${pillar.toUpperCase()} Highlight`;
+          const generatedTopic = aiData.topic || postTitle;
           caption = aiData.caption || `Discover quality healthcare products at ${businessName}! Visit https://${storeUrl}`;
           hashtags = aiData.hashtags || ['#Health', '#Pharmacy', `#${pharmacy_slug}`];
 
           const promptsArray = Array.isArray(aiData.imagePrompts) && aiData.imagePrompts.length > 0 
             ? aiData.imagePrompts 
-            : [`sleek medical product advertisement for ${businessName}`];
+            : [`sleek medical product advertisement for ${businessName}, ${brandVisuals}`];
 
           imageUrls = await Promise.all(promptsArray.map((promptStr: string, idx: number) => 
             createAiImageUrl(promptStr, randomSeed + idx)
@@ -189,16 +212,23 @@ Guidelines:
     user.socialTokens = socialTokens;
     await user.save();
 
+    // Extract ObjectIds for featured products
+    const featuredProductIds = products
+      .filter(p => featuredProducts.some(fp => fp.name === p.itemName))
+      .map(p => p._id);
+
     // Save Social Post
     const newPost = await SocialPost.create({
       pharmacySlug: pharmacy_slug,
       pillar,
+      topic: generatedTopic || postTitle,
       title: postTitle,
       caption,
       imageUrls,
       hashtags,
       productLink: `https://${storeUrl}`,
       featuredProducts,
+      featuredProductIds,
       tokenCost
     });
 
