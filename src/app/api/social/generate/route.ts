@@ -3,6 +3,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import Product from '@/models/Product';
 import SocialPost from '@/models/SocialPost';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ 
-          model: 'gemini-1.5-flash',
+          model: 'gemini-2.5-flash',
           generationConfig: { responseMimeType: 'application/json' }
         });
 
