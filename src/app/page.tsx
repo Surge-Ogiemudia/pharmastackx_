@@ -457,14 +457,16 @@ useEffect(() => {
     }
   }, [isLoading, detailedUser]);
 
-  // Polling for active requests
+  // Polling for active requests (throttled to 30s and only when page is visible)
+  const userId = user?._id || user?.id;
   useEffect(() => {
-    if (!normalizedUser) {
-        setActiveRequest(null);
-        return;
+    if (!userId) {
+      setActiveRequest(null);
+      return;
     }
 
     const checkActiveRequest = async () => {
+      if (document.hidden) return; // Skip polling when backgrounded/hidden
       try {
         // Optimized: only fetch the most recent active request for the overlay
         const res = await fetch('/api/requests?activeOnly=true&limit=1');
@@ -496,9 +498,9 @@ useEffect(() => {
     };
 
     checkActiveRequest();
-    const interval = setInterval(checkActiveRequest, 5000); // Poll every 5 seconds for active quotes
+    const interval = setInterval(checkActiveRequest, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
-  }, [normalizedUser]);
+  }, [userId]);
   
 
   const handleViewLatestRequest = async () => {

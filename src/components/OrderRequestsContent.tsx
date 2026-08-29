@@ -361,7 +361,7 @@ const OrderRequestsContent: React.FC<OrderRequestsContentProps> = ({ onRespond }
     })();
 
     return () => cleanup?.();
-  }, [user, selectedRequestId]);
+  }, [(user as any)?.stateOfPractice || (user as any)?.state, selectedRequestId]);
 
   const calculateDistance = (patientCoords?: [number, number]) => {
     if (!pharmacistCoords || !patientCoords) return null;
