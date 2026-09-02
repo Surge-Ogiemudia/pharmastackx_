@@ -1,5 +1,6 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
+import PMSCredential from '@/models/PMSCredential';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -16,7 +17,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
     }
 
-    // Direct password match fallback
     let isMatch = (user.password === password);
     if (!isMatch && user.password) {
       try {
@@ -31,6 +31,22 @@ export async function POST(req: Request) {
 
     const pharmacyId = String(user._id);
     const pharmacyName = user.businessName || user.username || user.slug || 'My Pharmacy';
+
+    // INSTANTLY REGISTER THE CONNECTION
+    // This ensures the pharmacy appears in the Admin Dashboard drop-down immediately upon login!
+    await PMSCredential.findOneAndUpdate(
+      { pharmacyId },
+      { 
+        $setOnInsert: { 
+          pharmacyId, 
+          pmsName: 'Connecting...', 
+          pmsUrl: '', 
+          username: '', 
+          password: '' 
+        } 
+      },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({
       success: true,
