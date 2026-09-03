@@ -5,6 +5,7 @@ export interface IExtensionInventoryItem {
   name: string;
   qty: number;
   price: number;
+  extra?: Record<string, any>;
 }
 
 export interface IExtensionInventory extends Document {
@@ -16,7 +17,13 @@ export interface IExtensionInventory extends Document {
 const ExtensionInventorySchema: Schema = new Schema({
   pharmacyId: { type: String, required: true, index: true },
   lastSynced: { type: Date, default: Date.now },
-  items: [{ sn: String, name: String, qty: Number, price: Number }]
-});
+  items: [{
+    sn: String,
+    name: String,
+    qty: Number,
+    price: Number,
+    extra: { type: Schema.Types.Mixed, default: {} }
+  }]
+}, { strict: false });
 
 export default mongoose.models.ExtensionInventory || mongoose.model<IExtensionInventory>('ExtensionInventory', ExtensionInventorySchema);

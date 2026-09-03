@@ -189,39 +189,62 @@ export default function ExtensionDashboardPage() {
               No inventory synced yet.
             </div>
           ) : (
-            data.inventory.map((inv: any) => (
-              <div key={inv._id} style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '12px' }}>
-                  <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {pharmacyMap.get(inv.pharmacyId) || inv.pharmacyId}</span>
-                  <span style={{ color: '#64748b' }}>
-                    Synced: {new Date(inv.lastSynced).toLocaleTimeString()} • <strong style={{ color: '#00d4aa' }}>{inv.items?.length || 0} items</strong>
-                  </span>
-                </div>
+            data.inventory.map((inv: any) => {
+              const extraKeys: string[] = [];
+              if (inv.items && Array.isArray(inv.items)) {
+                inv.items.forEach((item: any) => {
+                  if (item.extra && typeof item.extra === 'object') {
+                    Object.keys(item.extra).forEach(k => {
+                      if (!extraKeys.includes(k)) extraKeys.push(k);
+                    });
+                  }
+                });
+              }
 
-                <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: '6px' }}>
-                  <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                    <thead style={{ backgroundColor: '#1e293b', position: 'sticky', top: 0, zIndex: 1 }}>
-                      <tr>
-                        <th style={{ padding: '6px', textAlign: 'center', color: '#94a3b8', width: '45px' }}>S/N</th>
-                        <th style={{ padding: '6px', textAlign: 'left', color: '#94a3b8' }}>Item Name</th>
-                        <th style={{ padding: '6px', textAlign: 'center', color: '#94a3b8', width: '60px' }}>Qty</th>
-                        <th style={{ padding: '6px', textAlign: 'right', color: '#94a3b8', width: '90px' }}>Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inv.items.map((i: any, idx: number) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
-                          <td style={{ padding: '6px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
-                          <td style={{ padding: '6px', color: '#e2e8f0' }}>{i.name}</td>
-                          <td style={{ padding: '6px', textAlign: 'center', color: '#94a3b8' }}>{i.qty}</td>
-                          <td style={{ padding: '6px', textAlign: 'right', color: '#00d4aa' }}>₦{typeof i.price === 'number' ? i.price.toLocaleString() : i.price}</td>
+              return (
+                <div key={inv._id} style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '12px' }}>
+                    <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {pharmacyMap.get(inv.pharmacyId) || inv.pharmacyId}</span>
+                    <span style={{ color: '#64748b' }}>
+                      Synced: {new Date(inv.lastSynced).toLocaleTimeString()} • <strong style={{ color: '#00d4aa' }}>{inv.items?.length || 0} items</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <thead style={{ backgroundColor: '#1e293b', position: 'sticky', top: 0, zIndex: 1 }}>
+                        <tr>
+                          <th style={{ padding: '6px', textAlign: 'center', color: '#94a3b8', width: '45px' }}>S/N</th>
+                          <th style={{ padding: '6px', textAlign: 'left', color: '#94a3b8' }}>Item Name</th>
+                          {extraKeys.map(k => (
+                            <th key={k} style={{ padding: '6px', textAlign: 'left', color: '#38bdf8', textTransform: 'capitalize' }}>
+                              {k}
+                            </th>
+                          ))}
+                          <th style={{ padding: '6px', textAlign: 'center', color: '#94a3b8', width: '60px' }}>Qty</th>
+                          <th style={{ padding: '6px', textAlign: 'right', color: '#94a3b8', width: '90px' }}>Price</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {inv.items.map((i: any, idx: number) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
+                            <td style={{ padding: '6px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
+                            <td style={{ padding: '6px', color: '#e2e8f0', fontWeight: 500 }}>{i.name}</td>
+                            {extraKeys.map(k => (
+                              <td key={k} style={{ padding: '6px', color: '#cbd5e1' }}>
+                                {(i.extra && i.extra[k] !== undefined && i.extra[k] !== '') ? String(i.extra[k]) : '-'}
+                              </td>
+                            ))}
+                            <td style={{ padding: '6px', textAlign: 'center', color: '#94a3b8' }}>{i.qty}</td>
+                            <td style={{ padding: '6px', textAlign: 'right', color: '#00d4aa' }}>₦{typeof i.price === 'number' ? i.price.toLocaleString() : i.price}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
