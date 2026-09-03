@@ -18,30 +18,65 @@ export async function POST(req: Request) {
       return parseFloat(cleaned) || 0;
     };
 
-        const normalizedItems = rows.map((r: any) => {
+    const normalizedItems = rows.map((r: any) => {
       if (Array.isArray(r)) {
+        let sn = String(r[0] || '');
+        let name = String(r[1] || '');
+        let qty = parseNum(r[2]);
+        let price = parseNum(r[3]);
+
+        // If name looks empty or is a dash, pick the first meaningful string column
+        if (!name || name === '-' || name === 'Unknown Item') {
+          const textCandidate = r.find((cell: any) => typeof cell === 'string' && cell.trim().length > 1 && isNaN(Number(cell)));
+          if (textCandidate) name = textCandidate;
+        }
+
         return {
-          sn: String(r[0] || ''),
-          name: String(r[1] || 'Unknown Item'),
-          qty: parseNum(r[2]),
-          price: parseNum(r[3])
+          sn: sn !== '-' ? sn : '',
+          name: name || 'Item',
+          qty: qty || 0,
+          price: price || 0
         };
       }
       return {
         sn: String(r.sn || r.id || r.sku || ''),
-        name: String(r.name || r.item || r.product || 'Unknown Item'),
+        name: String(r.name || r.item || r.product || 'Item'),
         qty: parseNum(r.qty || r.quantity || r.stock),
         price: parseNum(r.price || r.amount || r.cost)
       };
     });
 
-    // Each sync creates a new historical snapshot — never overwrites old ones
-    const record = new ExtensionInventory({
-      pharmacyId,
-      lastSynced: new Date(),
-      items: normalizedItems
-    });
-    await record.save();
+    // Drop legacy unique index if it exists so multiple snapshots can be stored
+    try {
+      await ExtensionInventory.collection.dropIndex('pharmacyId_1');
+    } catch (e) {
+      // index already dropped or does not exist
+    }
+
+    let record;
+    try {
+      record = new ExtensionInventory({
+        pharmacyId,
+        lastSynced: new Date(),
+        items: normalizedItems
+      });
+      await record.save();
+    } catch (err: any) {
+      if (err.code === 11000) {
+        // Fallback to updating latest document if MongoDB unique index hasn't dropped yet
+        record = await ExtensionInventory.findOneAndUpdate(
+          { pharmacyId },
+          { 
+            pharmacyId,
+            lastSynced: new Date(),
+            items: normalizedItems
+          },
+          { upsert: true, returnDocument: 'after' }
+        );
+      } else {
+        throw err;
+      }
+    }
 
     return NextResponse.json({
       success: true,
