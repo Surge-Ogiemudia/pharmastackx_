@@ -35,14 +35,25 @@ export async function POST(req: Request) {
           sn: sn !== '-' ? sn : '',
           name: name || 'Item',
           qty: qty || 0,
-          price: price || 0
+          price: price || 0,
+          extra: {}
         };
       }
+
+      let extra = r.extra && typeof r.extra === 'object' ? { ...r.extra } : {};
+      const standardKeys = new Set(['sn', 'id', 'sku', 'name', 'item', 'product', 'qty', 'quantity', 'stock', 'price', 'amount', 'cost', 'extra', '_id']);
+      for (const [k, v] of Object.entries(r)) {
+        if (!standardKeys.has(k.toLowerCase()) && v !== undefined && v !== null && v !== '') {
+          extra[k] = v;
+        }
+      }
+
       return {
         sn: String(r.sn || r.id || r.sku || ''),
         name: String(r.name || r.item || r.product || 'Item'),
         qty: parseNum(r.qty || r.quantity || r.stock),
-        price: parseNum(r.price || r.amount || r.cost)
+        price: parseNum(r.price || r.amount || r.cost),
+        extra: extra
       };
     });
 
