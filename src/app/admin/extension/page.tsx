@@ -254,11 +254,27 @@ export default function ExtensionDashboardPage() {
             <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', margin: 0 }}>
               🔍 Search Demand & Stockout Radar
             </h2>
-            {data.searches && data.searches.length > 0 && (
-              <span style={{ fontSize: '11px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px' }}>
-                {data.searches.filter((s: any) => s.resultCount === 0).length} Unmet Demands
-              </span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {data.searches && data.searches.length > 0 && (
+                <>
+                  <span style={{ fontSize: '11px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px' }}>
+                    {data.searches.filter((s: any) => s.resultCount === 0).length} Unmet Demands
+                  </span>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Clear search records?')) {
+                        await fetch('/api/extension/record-search?all=true', { method: 'DELETE' });
+                        loadDashboardData(selectedPharmacyIdRef.current);
+                      }
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '11px', padding: '2px 4px' }}
+                    title="Clear search radar"
+                  >
+                    ✕ Clear
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {(!data.searches || data.searches.length === 0) ? (
@@ -283,7 +299,7 @@ export default function ExtensionDashboardPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ fontWeight: 600, fontSize: '14px', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          "{s.query}"
+                          {s.query}
                         </span>
                         {isOutOfStock ? (
                           <span style={{ fontSize: '10px', backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
