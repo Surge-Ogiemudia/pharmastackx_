@@ -1,6 +1,6 @@
 export default function PrivacyPolicy() {
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif', lineHeight: '1.6', color: '#333' }}>
+    <div style={{ maxWidth: '800px', margin: '140px auto 60px auto', padding: '20px', fontFamily: 'sans-serif', lineHeight: '1.6', color: '#333' }}>
       <h1 style={{ color: '#0f172a' }}>PharmastackX Privacy Policy</h1>
       <p><em>Last updated: September 2026</em></p>
       
