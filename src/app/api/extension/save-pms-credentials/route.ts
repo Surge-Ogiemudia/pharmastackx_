@@ -22,16 +22,20 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
+    // Build the update object — only include fields that have real values
+    // This prevents a later call with empty username/password from erasing previously saved credentials
+    const updateFields: any = {
+      pharmacyId,
+      lastUpdated: new Date()
+    };
+    if (cleanName) updateFields.pmsName = cleanName;
+    if (pmsUrl) updateFields.pmsUrl = pmsUrl;
+    if (username) updateFields.username = username;
+    if (password) updateFields.password = password;
+
     const creds = await PMSCredential.findOneAndUpdate(
       { pharmacyId },
-      { 
-        pharmacyId,
-        pmsName: cleanName || 'Web PMS',
-        pmsUrl,
-        username,
-        password,
-        lastUpdated: new Date()
-      },
+      { $set: updateFields },
       { upsert: true, returnDocument: 'after' }
     );
 
