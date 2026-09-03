@@ -150,7 +150,7 @@ export default function ExtensionDashboardPage() {
                       Branch: {pharmacyMap.get(s.pharmacyId) || s.pharmacyId}
                     </span>
                     <span style={{ backgroundColor: 'rgba(56,189,248,0.1)', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', marginLeft: '6px' }}>
-                      💻 {s.terminalId || 'Terminal-1'}
+                      💻 {s.terminalId || 'Counter 1'}
                     </span>
                   </div>
                   <span style={{ color: '#64748b', fontSize: '12px' }}>
@@ -314,7 +314,7 @@ export default function ExtensionDashboardPage() {
                       <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', gap: '8px' }}>
                         <span>{pharmacyMap.get(s.pharmacyId) || s.pharmacyId}</span>
                         <span>•</span>
-                        <span>{s.terminalId || 'Terminal-1'}</span>
+                        <span>{s.terminalId || 'Counter 1'}</span>
                       </div>
                     </div>
                     <span style={{ color: '#64748b', fontSize: '11px', whiteSpace: 'nowrap' }}>
