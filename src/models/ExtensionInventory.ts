@@ -14,7 +14,7 @@ export interface IExtensionInventory extends Document {
 }
 
 const ExtensionInventorySchema: Schema = new Schema({
-  pharmacyId: { type: String, required: true, unique: true, index: true },
+  pharmacyId: { type: String, required: true, index: true },
   lastSynced: { type: Date, default: Date.now },
   items: [{ sn: String, name: String, qty: Number, price: Number }]
 });

@@ -18,22 +18,30 @@ export async function POST(req: Request) {
       return parseFloat(cleaned) || 0;
     };
 
-    const normalizedItems = rows.map((r: any) => ({
-      sn: String(r.sn || r.id || r.sku || ''),
-      name: String(r.name || r.item || r.product || 'Unknown Item'),
-      qty: parseNum(r.qty || r.quantity || r.stock),
-      price: parseNum(r.price || r.amount || r.cost)
-    }));
+        const normalizedItems = rows.map((r: any) => {
+      if (Array.isArray(r)) {
+        return {
+          sn: String(r[0] || ''),
+          name: String(r[1] || 'Unknown Item'),
+          qty: parseNum(r[2]),
+          price: parseNum(r[3])
+        };
+      }
+      return {
+        sn: String(r.sn || r.id || r.sku || ''),
+        name: String(r.name || r.item || r.product || 'Unknown Item'),
+        qty: parseNum(r.qty || r.quantity || r.stock),
+        price: parseNum(r.price || r.amount || r.cost)
+      };
+    });
 
-    const record = await ExtensionInventory.findOneAndUpdate(
-      { pharmacyId },
-      { 
-        pharmacyId,
-        lastSynced: new Date(),
-        items: normalizedItems
-      },
-      { upsert: true, returnDocument: 'after' }
-    );
+    // Each sync creates a new historical snapshot — never overwrites old ones
+    const record = new ExtensionInventory({
+      pharmacyId,
+      lastSynced: new Date(),
+      items: normalizedItems
+    });
+    await record.save();
 
     return NextResponse.json({
       success: true,
