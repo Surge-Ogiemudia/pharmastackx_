@@ -60,3 +60,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    await dbConnect();
+    const { searchParams } = new URL(req.url);
+    const pharmacyId = searchParams.get('pharmacyId');
+    const all = searchParams.get('all');
+
+    if (all === 'true') {
+      await ExtensionSearch.deleteMany({});
+      return NextResponse.json({ success: true, message: 'All search records cleared' });
+    }
+
+    if (pharmacyId) {
+      await ExtensionSearch.deleteMany({ pharmacyId });
+      return NextResponse.json({ success: true, message: `Searches cleared for ${pharmacyId}` });
+    }
+
+    // Default: delete test placeholders
+    await ExtensionSearch.deleteMany({ query: { $in: ['Lonart DS', 'Augmentin 1g Tablets'] } });
+    return NextResponse.json({ success: true, message: 'Test placeholders cleared' });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
