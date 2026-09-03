@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function ExtensionDashboardPage() {
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
@@ -8,6 +8,9 @@ export default function ExtensionDashboardPage() {
   const [data, setData] = useState<any>({ sales: [], inventory: [], pmsInfo: null, networkLogsCount: 0 });
   const [loading, setLoading] = useState(true);
   const [showPass, setShowPass] = useState(false);
+
+  // Ref always holds the LATEST selectedPharmacyId — safe to use inside intervals
+  const selectedPharmacyIdRef = useRef('');
 
   async function loadPharmacies() {
     try {
@@ -38,13 +41,16 @@ export default function ExtensionDashboardPage() {
     loadPharmacies();
     loadDashboardData('');
     const interval = setInterval(() => {
-      loadDashboardData(selectedPharmacyId);
+      // Always read from ref — never the stale closure
+      loadDashboardData(selectedPharmacyIdRef.current);
+      loadPharmacies();
     }, 4000);
     return () => clearInterval(interval);
   }, []);
 
   const handleSelectPharmacy = (id: string) => {
     setSelectedPharmacyId(id);
+    selectedPharmacyIdRef.current = id; // Keep ref in sync so interval sees the latest
     loadDashboardData(id);
   };
 
