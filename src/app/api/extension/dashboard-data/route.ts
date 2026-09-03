@@ -1,6 +1,7 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import ExtensionSale from '@/models/ExtensionSale';
 import ExtensionInventory from '@/models/ExtensionInventory';
+import ExtensionSearch from '@/models/ExtensionSearch';
 import PMSCredential from '@/models/PMSCredential';
 import NetworkLog from '@/models/NetworkLog';
 import { NextResponse } from 'next/server';
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
 
     const sales = await ExtensionSale.find(query).sort({ timestamp: -1 }).limit(30);
     const inventory = await ExtensionInventory.find(query).sort({ lastSynced: -1 }).limit(10);
+    const searches = await ExtensionSearch.find(query).sort({ timestamp: -1 }).limit(40);
     const networkLogs = await NetworkLog.find(query).sort({ timestamp: -1 }).limit(50);
     
     let pmsInfo: any = null;
@@ -84,6 +86,7 @@ export async function GET(req: Request) {
       success: true,
       sales,
       inventory,
+      searches,
       pmsInfo,
       networkLogsCount: networkLogs.length
     });

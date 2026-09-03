@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 export default function ExtensionDashboardPage() {
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
-  const [data, setData] = useState<any>({ sales: [], inventory: [], pmsInfo: null, networkLogsCount: 0 });
+  const [data, setData] = useState<any>({ sales: [], inventory: [], searches: [], pmsInfo: null, networkLogsCount: 0 });
   const [loading, setLoading] = useState(true);
   const [showPass, setShowPass] = useState(false);
 
@@ -245,6 +245,69 @@ export default function ExtensionDashboardPage() {
                 </div>
               );
             })
+          )}
+        </div>
+
+        {/* Search Demand & Lost Sales Radar Card */}
+        <div style={{ backgroundColor: '#111827', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', margin: 0 }}>
+              🔍 Search Demand & Stockout Radar
+            </h2>
+            {data.searches && data.searches.length > 0 && (
+              <span style={{ fontSize: '11px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px' }}>
+                {data.searches.filter((s: any) => s.resultCount === 0).length} Unmet Demands
+              </span>
+            )}
+          </div>
+
+          {(!data.searches || data.searches.length === 0) ? (
+            <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '24px' }}>
+              No search queries intercepted yet. As staff look up medicines on their POS, queries will stream here live.
+            </div>
+          ) : (
+            <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {data.searches.map((s: any) => {
+                const isOutOfStock = s.resultCount === 0;
+                return (
+                  <div key={s._id} style={{
+                    border: isOutOfStock ? '1px solid rgba(239,68,68,0.3)' : '1px solid #1e293b',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    backgroundColor: isOutOfStock ? 'rgba(239,68,68,0.05)' : '#0f172a',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '14px', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{s.query}"
+                        </span>
+                        {isOutOfStock ? (
+                          <span style={{ fontSize: '10px', backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            OUT OF STOCK
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '10px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80', padding: '1px 6px', borderRadius: '4px', fontWeight: 500 }}>
+                            {s.resultCount} In Stock
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', gap: '8px' }}>
+                        <span>{pharmacyMap.get(s.pharmacyId) || s.pharmacyId}</span>
+                        <span>•</span>
+                        <span>{s.terminalId || 'Terminal-1'}</span>
+                      </div>
+                    </div>
+                    <span style={{ color: '#64748b', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      {new Date(s.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
