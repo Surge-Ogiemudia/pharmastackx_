@@ -23,6 +23,16 @@ export async function GET() {
       name: u.businessName || u.username || u.slug || 'Pharmacy Branch'
     }));
 
+    const matchedIds = users.map(u => String(u._id));
+    for (const id of allActiveIds) {
+      if (!matchedIds.includes(String(id))) {
+        formatted.push({
+          id: String(id),
+          name: `Live Branch (${String(id).slice(-6)})`
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       pharmacies: formatted

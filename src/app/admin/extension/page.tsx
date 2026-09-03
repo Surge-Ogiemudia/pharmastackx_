@@ -49,6 +49,9 @@ export default function ExtensionDashboardPage() {
   };
 
   const pmsInfo = data.pmsInfo;
+  
+  const pharmacyMap = new Map();
+  pharmacies.forEach(p => pharmacyMap.set(p.id, p.name));
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif', padding: '24px' }}>
@@ -138,7 +141,7 @@ export default function ExtensionDashboardPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div>
                     <span style={{ backgroundColor: 'rgba(0,212,170,0.1)', color: '#00d4aa', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                      Branch: {s.pharmacyId}
+                      Branch: {pharmacyMap.get(s.pharmacyId) || s.pharmacyId}
                     </span>
                     <span style={{ backgroundColor: 'rgba(56,189,248,0.1)', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', marginLeft: '6px' }}>
                       💻 {s.terminalId || 'Terminal-1'}
@@ -172,7 +175,7 @@ export default function ExtensionDashboardPage() {
         {/* Inventory Card */}
         <div style={{ backgroundColor: '#111827', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '16px' }}>
-            📦 Latest Inventory Synced
+            📦 Inventory Sync History {data.inventory.length > 0 && <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>({data.inventory.length} snapshots)</span>}
           </h2>
 
           {data.inventory.length === 0 ? (
@@ -183,7 +186,7 @@ export default function ExtensionDashboardPage() {
             data.inventory.map((inv: any) => (
               <div key={inv._id} style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px' }}>
-                  <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {inv.pharmacyId}</span>
+                  <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {pharmacyMap.get(inv.pharmacyId) || inv.pharmacyId}</span>
                   <span style={{ color: '#64748b' }}>Synced: {new Date(inv.lastSynced).toLocaleTimeString()}</span>
                 </div>
 
