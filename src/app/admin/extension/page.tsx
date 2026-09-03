@@ -8,6 +8,7 @@ export default function ExtensionDashboardPage() {
   const [data, setData] = useState<any>({ sales: [], inventory: [], searches: [], pmsInfo: null, networkLogsCount: 0 });
   const [loading, setLoading] = useState(true);
   const [showPass, setShowPass] = useState(false);
+  const [syncTriggered, setSyncTriggered] = useState(false);
 
   // Ref always holds the LATEST selectedPharmacyId — safe to use inside intervals
   const selectedPharmacyIdRef = useRef('');
@@ -180,9 +181,40 @@ export default function ExtensionDashboardPage() {
 
         {/* Inventory Card */}
         <div style={{ backgroundColor: '#111827', border: '1px solid #1e293b', borderRadius: '8px', padding: '16px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '16px' }}>
-            📦 Inventory Sync History {data.inventory.length > 0 && <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>({data.inventory.length} snapshots)</span>}
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', margin: 0 }}>
+              📦 Inventory Snapshots {data.inventory.length > 0 && <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>({data.inventory.length})</span>}
+            </h2>
+            <button
+              onClick={async () => {
+                if (!selectedPharmacyIdRef.current) {
+                  alert('Please select a pharmacy first.');
+                  return;
+                }
+                setSyncTriggered(true);
+                try {
+                  await fetch('/api/extension/request-sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pharmacyId: selectedPharmacyIdRef.current, action: 'trigger' })
+                  });
+                } catch(e) {}
+                setTimeout(() => setSyncTriggered(false), 6000);
+              }}
+              style={{
+                backgroundColor: syncTriggered ? 'rgba(34,197,94,0.2)' : 'rgba(0,212,170,0.15)',
+                color: syncTriggered ? '#4ade80' : '#00d4aa',
+                border: '1px solid rgba(0,212,170,0.3)',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {syncTriggered ? '⚡ Signal Sent to POS...' : '⚡ Request Snapshot Now'}
+            </button>
+          </div>
 
           {data.inventory.length === 0 ? (
             <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', padding: '24px' }}>
