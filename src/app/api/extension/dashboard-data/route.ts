@@ -14,10 +14,13 @@ export async function GET(req: Request) {
     let pharmacyId = searchParams.get('pharmacyId');
 
     if (pharmacyId && !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+      const escapeRegex = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedId = escapeRegex(pharmacyId);
+      
       const user = await User.findOne({ 
         $or: [
-          { slug: { $regex: new RegExp(`^${pharmacyId}$`, 'i') } },
-          { businessName: { $regex: new RegExp(`^${pharmacyId}$`, 'i') } }
+          { slug: { $regex: new RegExp(`^${escapedId}$`, 'i') } },
+          { businessName: { $regex: new RegExp(`^${escapedId}$`, 'i') } }
         ]
       });
       if (user) {
