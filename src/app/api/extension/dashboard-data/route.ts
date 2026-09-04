@@ -46,7 +46,6 @@ export async function GET(req: Request) {
     if (desktopSlug) {
       const products = await Product.find({ slug: desktopSlug, source: 'synkk' })
         .sort({ updatedAt: -1 })
-        .limit(100) // Show up to 100 recent products
         .lean();
         
       if (products.length > 0) {
