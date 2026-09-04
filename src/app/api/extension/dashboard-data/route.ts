@@ -53,7 +53,7 @@ export async function GET(req: Request) {
         desktopInventory = [{
           _id: 'desktop_sync_pseudo_batch',
           pharmacyId: pharmacyId,
-          lastSynced: products[0].updatedAt || new Date(),
+          lastSynced: (products[0] as any).updatedAt || new Date(),
           type: 'desktop_sync',
           items: products.map((p: any) => ({
             name: p.itemName,
