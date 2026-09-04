@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     // We only capture a sample up to 1000 items per chunk so we don't blow up the document limit
     if (updates.length > 0) {
       await ExtensionInventory.create({
-        pharmacyId: pharmacyUser._id.toString(),
+        pharmacyId: String((pharmacyUser as any)._id),
         lastSynced: new Date(),
         items: updates.slice(0, 1000).map((u: any) => ({
           name: u.item_name,
