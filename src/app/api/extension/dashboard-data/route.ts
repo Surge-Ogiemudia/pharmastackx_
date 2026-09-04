@@ -46,16 +46,22 @@ export async function GET(req: Request) {
     if (desktopSlug) {
       const products = await Product.find({ slug: desktopSlug, source: 'synkk' })
         .sort({ updatedAt: -1 })
-        .limit(10)
+        .limit(100) // Show up to 100 recent products
         .lean();
         
-      desktopInventory = products.map((p: any) => ({
-        itemName: p.itemName,
-        price: p.amount,
-        quantity: p.quantity,
-        lastSynced: p.updatedAt,
-        type: 'desktop_sync'
-      }));
+      if (products.length > 0) {
+        desktopInventory = [{
+          _id: 'desktop_sync_pseudo_batch',
+          pharmacyId: pharmacyId,
+          lastSynced: products[0].updatedAt || new Date(),
+          type: 'desktop_sync',
+          items: products.map((p: any) => ({
+            name: p.itemName,
+            price: p.amount,
+            qty: p.quantity
+          }))
+        }];
+      }
     }
 
     // Merge both inventories
