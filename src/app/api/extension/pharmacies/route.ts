@@ -3,6 +3,7 @@ import User from '@/models/User';
 import ExtensionInventory from '@/models/ExtensionInventory';
 import ExtensionSale from '@/models/ExtensionSale';
 import PMSCredential from '@/models/PMSCredential';
+import Product from '@/models/Product';
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 
@@ -15,12 +16,17 @@ export async function GET() {
   try {
     await dbConnect();
 
-    // Find all pharmacy IDs that have synced inventory, sales, or PMS credentials
+    // 1. Web POS Users
     const activeInvIds = await ExtensionInventory.distinct('pharmacyId');
     const activeSaleIds = await ExtensionSale.distinct('pharmacyId');
     const activeCredIds = await PMSCredential.distinct('pharmacyId');
 
-    const allActiveIds = Array.from(new Set([...activeInvIds, ...activeSaleIds, ...activeCredIds]));
+    // 2. Desktop Sync Users (identified by having products with source 'synkk')
+    const activeDesktopSlugs = await Product.distinct('slug', { source: 'synkk' });
+    const desktopUsers = await User.find({ slug: { $in: activeDesktopSlugs } }).select('_id');
+    const activeDesktopIds = desktopUsers.map(u => String(u._id));
+
+    const allActiveIds = Array.from(new Set([...activeInvIds, ...activeSaleIds, ...activeCredIds, ...activeDesktopIds]));
 
     // Only query User collection with valid ObjectIds — skip placeholders like "DEFAULT"
     const validObjectIds = allActiveIds.filter(id => isValidObjectId(String(id)));
