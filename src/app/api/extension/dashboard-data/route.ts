@@ -4,13 +4,26 @@ import ExtensionInventory from '@/models/ExtensionInventory';
 import ExtensionSearch from '@/models/ExtensionSearch';
 import PMSCredential from '@/models/PMSCredential';
 import NetworkLog from '@/models/NetworkLog';
+import User from '@/models/User';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
   try {
     await dbConnect();
     const { searchParams } = new URL(req.url);
-    const pharmacyId = searchParams.get('pharmacyId');
+    let pharmacyId = searchParams.get('pharmacyId');
+
+    if (pharmacyId && !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+      const user = await User.findOne({ 
+        $or: [
+          { slug: { $regex: new RegExp(`^${pharmacyId}$`, 'i') } },
+          { businessName: { $regex: new RegExp(`^${pharmacyId}$`, 'i') } }
+        ]
+      });
+      if (user) {
+        pharmacyId = String(user._id);
+      }
+    }
 
     const query = pharmacyId ? { pharmacyId } : {};
 
