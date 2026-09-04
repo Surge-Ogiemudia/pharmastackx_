@@ -1,6 +1,7 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import Product from '@/models/Product';
 import RejectedProduct from '@/models/RejectedProduct';
+import ExtensionInventory from '@/models/ExtensionInventory';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import { classifyProducts } from '@/lib/classificationEngine';
@@ -129,6 +130,20 @@ export async function POST(req: Request) {
       { slug: actual_slug },
       { $set: userUpdateFields }
     );
+
+    // 7. Create a visual snapshot for the Admin Dashboard (ExtensionInventory)
+    // We only capture a sample up to 1000 items per chunk so we don't blow up the document limit
+    if (updates.length > 0) {
+      await ExtensionInventory.create({
+        pharmacyId: pharmacyUser._id.toString(),
+        lastSynced: new Date(),
+        items: updates.slice(0, 1000).map((u: any) => ({
+          name: u.item_name,
+          qty: u.quantity,
+          price: u.amount
+        }))
+      });
+    }
 
     return NextResponse.json({
       success: true,
