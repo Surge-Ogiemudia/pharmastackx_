@@ -40,13 +40,16 @@ export async function GET(req: Request) {
 
   try {
     const payload = jwt.verify(sessionToken.value, JWT_SECRET) as { userId: string };
-    const user = await User.findById(payload.userId).select('terminalModules').lean();
+    const user = await User.findById(payload.userId).select('terminalModules allowedModules').lean();
 
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404, headers });
     }
 
-    return NextResponse.json({ terminalModules: user.terminalModules || {} }, { status: 200, headers });
+    return NextResponse.json({
+      terminalModules: user.terminalModules || {},
+      allowedModules: (user as any).allowedModules || {}
+    }, { status: 200, headers });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401, headers });
