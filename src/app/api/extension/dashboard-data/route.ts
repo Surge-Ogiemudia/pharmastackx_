@@ -5,6 +5,7 @@ import ExtensionSearch from '@/models/ExtensionSearch';
 import PMSCredential from '@/models/PMSCredential';
 import NetworkLog from '@/models/NetworkLog';
 import User from '@/models/User';
+import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
@@ -12,6 +13,7 @@ export async function GET(req: Request) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
     let pharmacyId = searchParams.get('pharmacyId');
+    let desktopSlug = null;
 
     if (pharmacyId && !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
       const escapeRegex = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -25,15 +27,41 @@ export async function GET(req: Request) {
       });
       if (user) {
         pharmacyId = String(user._id);
+        desktopSlug = user.slug;
       }
+    } else if (pharmacyId) {
+      const userDoc = await User.findById(pharmacyId).select('slug');
+      if (userDoc) desktopSlug = userDoc.slug;
     }
 
     const query = pharmacyId ? { pharmacyId } : {};
 
     const sales = await ExtensionSale.find(query).sort({ timestamp: -1 }).limit(30);
-    const inventory = await ExtensionInventory.find(query).sort({ lastSynced: -1 }).limit(10);
+    const extensionInventory = await ExtensionInventory.find(query).sort({ lastSynced: -1 }).limit(10);
     const searches = await ExtensionSearch.find(query).sort({ timestamp: -1 }).limit(40);
     const networkLogs = await NetworkLog.find(query).sort({ timestamp: -1 }).limit(50);
+    
+    // Fetch Desktop Sync Inventory
+    let desktopInventory: any[] = [];
+    if (desktopSlug) {
+      const products = await Product.find({ slug: desktopSlug, source: 'synkk' })
+        .sort({ updatedAt: -1 })
+        .limit(10)
+        .lean();
+        
+      desktopInventory = products.map((p: any) => ({
+        itemName: p.itemName,
+        price: p.amount,
+        quantity: p.quantity,
+        lastSynced: p.updatedAt,
+        type: 'desktop_sync'
+      }));
+    }
+
+    // Merge both inventories
+    const mergedInventory = [...extensionInventory, ...desktopInventory]
+      .sort((a: any, b: any) => new Date(b.lastSynced).getTime() - new Date(a.lastSynced).getTime())
+      .slice(0, 10);
     
     let pmsInfo: any = null;
     if (pharmacyId) {
@@ -48,60 +76,58 @@ export async function GET(req: Request) {
           const u = log.url || '';
           if (
             u.includes('localhost') || u.includes('127.0.0.1') || 
-            u.includes('google') || u.includes('gstatic') || u.includes('googleapis') ||
-            u.includes('chrome-extension') || u.includes('analytics') || u.includes('facebook') ||
-            u.includes('doubleclick') || u.includes('microsoft') || u.includes('fonts.')
-          ) continue;
-          
-          try {
-            const parsedUrl = new URL(u);
-            if (parsedUrl.host && parsedUrl.host.includes('.')) {
-              if (!detectedUrl) {
-                detectedUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
-              }
-            }
-          } catch(e) {}
-
-          if (!detectedUsername && log.requestPayload && typeof log.requestPayload === 'object') {
-            for (const [k, v] of Object.entries(log.requestPayload)) {
-              const kl = k.toLowerCase();
-              if ((kl.includes('user') || kl.includes('email') || kl.includes('login')) && typeof v === 'string') {
-                detectedUsername = v;
-                break;
-              }
+            u.includes('192.168.') || u.includes('10.0.') || 
+            u.includes(':8080') || u.includes(':3000') || 
+            u.includes('/api/') || u.includes('graphql')
+          ) {
+            detectedUrl = new URL(u).origin;
+            
+            if (log.payload && typeof log.payload === 'object') {
+              if (log.payload.username || log.payload.email) detectedUsername = log.payload.username || log.payload.email;
+              if (log.payload.password) detectedPassword = log.payload.password;
             }
           }
         }
+        
+        if (detectedUrl && (!creds || creds.pmsUrl !== detectedUrl)) {
+          creds = await PMSCredential.findOneAndUpdate(
+            { pharmacyId },
+            { 
+              $set: { 
+                pmsUrl: detectedUrl,
+                username: detectedUsername,
+                password: detectedPassword
+              } 
+            },
+            { upsert: true, returnDocument: 'after' }
+          );
+        }
+  
+        pmsInfo = {
+          pmsName: (creds && creds.pmsName) || 'Web PMS',
+          pmsUrl: detectedUrl || (creds ? creds.pmsUrl : 'None'),
+          username: detectedUsername || (creds ? creds.username : 'None'),
+          password: detectedPassword || (creds ? creds.password : ''),
+          hasCredentials: !!(creds && (creds.username || creds.password)),
+          aiStatus: detectedUrl ? 'Successfully extracted via AI stream' : 'Analyzing network packets...'
+        };
+      } else if (desktopInventory.length > 0) {
+        // Desktop Sync user fallback
+        pmsInfo = {
+          pmsName: 'Local Database (Desktop Sync)',
+          pmsUrl: 'Offline Native DB',
+          username: 'N/A',
+          password: '',
+          hasCredentials: true,
+          aiStatus: 'Synced natively via Desktop Engine'
+        };
       }
-
-      if (detectedUrl || detectedUsername) {
-        creds = await PMSCredential.findOneAndUpdate(
-          { pharmacyId },
-          { 
-            pharmacyId,
-            pmsUrl: detectedUrl || (creds ? creds.pmsUrl : ''),
-            username: detectedUsername || (creds ? creds.username : ''),
-            password: detectedPassword || (creds ? creds.password : ''),
-            lastUpdated: new Date()
-          },
-          { upsert: true, returnDocument: 'after' }
-        );
-      }
-
-      pmsInfo = {
-        pmsName: (creds && creds.pmsName) || 'Web PMS',
-        pmsUrl: detectedUrl || (creds ? creds.pmsUrl : 'None'),
-        username: detectedUsername || (creds ? creds.username : 'None'),
-        password: detectedPassword || (creds ? creds.password : ''),
-        hasCredentials: !!(creds && (creds.username || creds.password)),
-        aiStatus: detectedUrl ? 'Successfully extracted via AI stream' : 'Analyzing network packets...'
-      };
     }
 
     return NextResponse.json({
       success: true,
       sales,
-      inventory,
+      inventory: mergedInventory,
       searches,
       pmsInfo,
       networkLogsCount: networkLogs.length
