@@ -91,6 +91,19 @@ export interface IUser extends Document {
     staff?: boolean;
     socialAi?: boolean;
   };
+  // Admin-controlled hard locks. If a key is false, the module is completely
+  // blocked regardless of the pharmacy's own terminalModules preference.
+  allowedModules?: {
+    psxWeb?: boolean;
+    pos?: boolean;
+    emr?: boolean;
+    dispensary?: boolean;
+    orders?: boolean;
+    source?: boolean;
+    staff?: boolean;
+    socialAi?: boolean;
+    synkk?: boolean;
+  };
   synkkMeta?: {
     posMethod?: string;
     posName?: string;
@@ -195,6 +208,17 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     source: { type: Boolean },
     staff: { type: Boolean },
     socialAi: { type: Boolean },
+  },
+  allowedModules: {
+    psxWeb: { type: Boolean },
+    pos: { type: Boolean },
+    emr: { type: Boolean },
+    dispensary: { type: Boolean },
+    orders: { type: Boolean },
+    source: { type: Boolean },
+    staff: { type: Boolean },
+    socialAi: { type: Boolean },
+    synkk: { type: Boolean },
   },
   synkkMeta: {
     posMethod: { type: String },
