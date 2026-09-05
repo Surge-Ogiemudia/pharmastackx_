@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     // Group by pharmacy slug to fetch contact info efficiently
     const pharmacySlugs = [...new Set(matchingProducts.map(p => p.slug))];
     const pharmacies = await User.find({ slug: { $in: pharmacySlugs } })
-      .select('businessName slug state address phoneNumber businessCoordinates')
+      .select('businessName slug state city businessAddress phoneNumber businessCoordinates')
       .lean();
 
     const pharmacyMap = pharmacies.reduce((acc, p) => {
@@ -81,11 +81,23 @@ export async function GET(req: NextRequest) {
         );
         distanceValue = distKm;
         
+        let distPart = '';
+        let durationPart = '';
+
         if (distKm < 1) {
-          distanceText = `${Math.round(distKm * 1000)}m away`;
+          const meters = Math.max(50, Math.round(distKm * 1000));
+          distPart = `${meters}m away`;
+          const walkMins = Math.max(1, Math.ceil(distKm * 12)); // ~5 km/h average walking speed
+          durationPart = `~${walkMins} min${walkMins > 1 ? 's' : ''} walk`;
         } else {
-          distanceText = `${distKm.toFixed(1)}km away`;
+          distPart = `${distKm.toFixed(1)} km away`;
+          const driveMins = Math.max(2, Math.ceil((distKm / 30) * 60)); // ~30 km/h city transit speed
+          durationPart = `~${driveMins} mins drive`;
         }
+
+        distanceText = `${distPart} (${durationPart})`;
+      } else if (pharmacy?.state || pharmacy?.city) {
+        distanceText = [pharmacy.city, pharmacy.state].filter(Boolean).join(', ');
       }
 
       return {
@@ -95,9 +107,11 @@ export async function GET(req: NextRequest) {
         qty: p.quantity,
         distanceValue,
         pharmacy: pharmacy ? {
-          name: pharmacy.businessName,
+          name: pharmacy.businessName || pharmacy.slug,
+          slug: pharmacy.slug,
           state: pharmacy.state,
-          address: pharmacy.address,
+          city: pharmacy.city,
+          businessAddress: pharmacy.businessAddress || pharmacy.address || (pharmacy.city ? `${pharmacy.city}, ${pharmacy.state || ''}` : pharmacy.state) || 'Address not listed',
           phoneNumber: pharmacy.phoneNumber,
           distanceText
         } : null
