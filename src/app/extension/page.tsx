@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, MapPin, AlertCircle, ShoppingCart, RefreshCw, ExternalLink, X, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Search, MapPin, AlertCircle, ShoppingCart, RefreshCw, ExternalLink, X, CheckCircle2, ChevronRight, LogOut } from 'lucide-react';
 
 function ExtensionContent() {
   const searchParams = useSearchParams();
@@ -136,6 +136,14 @@ function ExtensionContent() {
     }, 1200);
   };
 
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to sign out of this pharmacy terminal?')) {
+      if (typeof window !== 'undefined' && window.parent) {
+        window.parent.postMessage({ type: 'EXTENSION_LOGOUT' }, '*');
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#0b0f17] text-slate-100 font-sans select-none overflow-hidden relative">
       
@@ -154,7 +162,7 @@ function ExtensionContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-white/5 text-[10px] font-semibold text-slate-400">
             💻 {terminalId}
           </span>
@@ -164,6 +172,13 @@ function ExtensionContent() {
             className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
+          </button>
+          <button 
+            onClick={handleLogout}
+            title="Sign Out"
+            className="p-1.5 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
+          >
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </header>
