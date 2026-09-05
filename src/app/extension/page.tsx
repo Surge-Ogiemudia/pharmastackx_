@@ -35,7 +35,7 @@ function ExtensionContent() {
   const [terminalId, setTerminalId] = useState<string>('Counter 1');
   const [slug, setSlug] = useState<string>('');
   const [syncCount, setSyncCount] = useState<number | null>(null);
-  const [lastSyncText, setLastSyncText] = useState<string>('Synced just now');
+  const [lastSyncText, setLastSyncText] = useState<string>('just now');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Settings Menu & Modal State
@@ -83,7 +83,7 @@ function ExtensionContent() {
         if (e.data.pharmacyName) setPharmacyName(e.data.pharmacyName);
         if (e.data.terminalId) setTerminalId(e.data.terminalId);
         if (e.data.syncCount !== undefined) setSyncCount(e.data.syncCount);
-        if (e.data.lastSyncText) setLastSyncText(e.data.lastSyncText);
+        if (e.data.lastSyncText) setLastSyncText(e.data.lastSyncText.replace('Synced ', ''));
       }
       if (e.data && (e.data.type === 'PSX_ORDER_DONE' || e.data === 'PSX_CHECKOUT_COMPLETED')) {
         setCheckoutUrl(null);
@@ -195,7 +195,7 @@ function ExtensionContent() {
         }
         setTimeout(() => {
           setIsSyncing(false);
-          setLastSyncText('Synced just now');
+          setLastSyncText('just now');
         }, 1200);
       }
     });
@@ -250,61 +250,55 @@ function ExtensionContent() {
   return (
     <div className="flex flex-col h-screen w-full bg-[#0b0f17] text-slate-100 font-sans select-none overflow-hidden relative">
       
-      {/* Top Header Bar */}
-      <header className="flex items-center justify-between px-3.5 py-2.5 bg-[#111827] border-b border-white/10 shrink-0 z-20">
+      {/* Sleek Minimal Top Header Bar */}
+      <header className="flex items-center justify-between px-3.5 py-3 bg-[#111827] border-b border-white/10 shrink-0 z-20">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-sky-600 flex items-center justify-center font-black text-xs text-slate-950 shadow-md shrink-0">
             {pharmacyName.substring(0, 3).toUpperCase()}
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="font-bold text-xs text-white truncate max-w-[150px]">{pharmacyName}</span>
-            <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+            <span className="font-bold text-[13px] text-white truncate max-w-[145px] leading-tight">
+              {pharmacyName}
+            </span>
+            <span className="text-[10px] text-emerald-400 flex items-center gap-1.5 font-medium mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live Sync Active
+              Active · Synced {lastSyncText}
             </span>
           </div>
         </div>
 
         {/* Header Actions */}
         <div className="flex items-center gap-1.5 shrink-0 relative" ref={settingsMenuRef}>
-          <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-white/5 text-[10px] font-semibold text-slate-400">
+          <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-white/5 text-[10.5px] font-semibold text-slate-400">
             💻 {terminalId}
           </span>
-          
-          <button 
-            onClick={promptForceSync}
-            title="Force Sync Inventory"
-            className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
-          </button>
 
           {/* Settings Menu Trigger */}
           <button 
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            title="Terminal Settings & Diagnostics"
-            className={`p-1.5 rounded transition ${isSettingsOpen ? 'bg-slate-800 text-emerald-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+            title="Settings & Diagnostics"
+            className={`p-1.5 rounded-lg transition ${isSettingsOpen ? 'bg-slate-800 text-emerald-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
 
           {/* Settings Dropdown Menu */}
           {isSettingsOpen && (
-            <div className="absolute top-full right-0 mt-1.5 w-48 bg-[#161f30] border border-white/10 rounded-xl shadow-2xl py-1.5 z-40 animate-in fade-in slide-in-from-top-1 duration-150 divide-y divide-white/5">
-              <button
-                onClick={promptRelinkPOS}
-                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition"
-              >
-                <Link2 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Re-link POS Portal</span>
-              </button>
-
+            <div className="absolute top-full right-0 mt-2 w-48 bg-[#161f30] border border-white/10 rounded-xl shadow-2xl py-1.5 z-40 animate-in fade-in slide-in-from-top-1 duration-150 divide-y divide-white/5">
               <button
                 onClick={promptForceSync}
                 className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Force Stock Sync</span>
+                <span>Force Sync Stock</span>
+              </button>
+
+              <button
+                onClick={promptRelinkPOS}
+                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition"
+              >
+                <Link2 className="w-3.5 h-3.5 text-sky-400" />
+                <span>Re-link POS Setup</span>
               </button>
 
               <button
@@ -320,36 +314,7 @@ function ExtensionContent() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
-        
-        {/* Sync Status Banner Card */}
-        <div className="bg-[#161f30] border border-white/5 rounded-xl p-3 relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-500"></div>
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-slate-200">Catalog Health</span>
-            <span className="text-emerald-400 font-bold">
-              {syncCount !== null ? `${syncCount.toLocaleString()} items` : 'Live Synced'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span>{lastSyncText}</span>
-            <div className="flex items-center gap-2">
-              <span 
-                onClick={promptRelinkPOS} 
-                className="text-slate-400 hover:text-sky-300 cursor-pointer text-[10.5px]"
-              >
-                Re-link ⚙️
-              </span>
-              <span>·</span>
-              <span 
-                onClick={promptForceSync} 
-                className="text-sky-400 hover:underline cursor-pointer flex items-center gap-0.5 font-medium"
-              >
-                Sync ↻
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
 
         {/* Success Toast Banner */}
         {orderSuccessMsg && (
@@ -364,21 +329,10 @@ function ExtensionContent() {
           </div>
         )}
 
-        {/* Sourcing Section Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-              <Search className="w-3.5 h-3.5 text-emerald-400" />
-              B2B Stock Sourcing
-            </h3>
-            <p className="text-[10px] text-slate-400">Procure out-of-stock items nearby</p>
-          </div>
-        </div>
-
         {/* Search Input Box */}
         <form onSubmit={handleSearch} className="relative">
-          <div className="flex items-center bg-[#161f30] border border-white/10 rounded-xl px-3 py-1.5 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-400/20 transition">
-            <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+          <div className="flex items-center bg-[#161f30] border border-white/10 rounded-xl px-3 py-2 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-400/20 transition">
+            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input 
               ref={searchInputRef}
               type="text"
@@ -394,7 +348,7 @@ function ExtensionContent() {
               <button 
                 type="button" 
                 onClick={() => { setQuery(''); setHasSearched(false); }}
-                className="text-slate-500 hover:text-white mr-1.5 text-xs"
+                className="text-slate-500 hover:text-white mr-2 text-xs"
               >
                 ✕
               </button>
@@ -402,7 +356,7 @@ function ExtensionContent() {
             <button 
               type="submit" 
               disabled={loading}
-              className="px-2.5 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-[11px] rounded-lg transition shrink-0"
+              className="px-3 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs rounded-lg transition shrink-0"
             >
               {loading ? '...' : 'Find'}
             </button>
@@ -428,7 +382,7 @@ function ExtensionContent() {
         {/* Results List */}
         <div className="space-y-2.5">
           {loading ? (
-            <div className="py-8 text-center text-slate-400 text-xs animate-pulse flex flex-col items-center gap-2">
+            <div className="py-12 text-center text-slate-400 text-xs animate-pulse flex flex-col items-center gap-2">
               <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
               Searching neighboring inventory...
             </div>
@@ -474,18 +428,18 @@ function ExtensionContent() {
               );
             })
           ) : hasSearched ? (
-            <div className="p-6 text-center bg-[#161f30]/60 border border-dashed border-white/10 rounded-xl text-slate-400 flex flex-col items-center gap-1.5">
-              <AlertCircle className="w-6 h-6 text-slate-500 mb-1" />
+            <div className="p-8 text-center bg-[#161f30]/60 border border-dashed border-white/10 rounded-2xl text-slate-400 flex flex-col items-center gap-2">
+              <AlertCircle className="w-7 h-7 text-slate-500" />
               <p className="font-semibold text-xs text-slate-300">No stock found nearby</p>
-              <p className="text-[10px] text-slate-500 max-w-[220px]">
+              <p className="text-[11px] text-slate-500 max-w-[240px] leading-relaxed">
                 No neighboring pharmacies currently have confirmed stock for "{query}".
               </p>
             </div>
           ) : (
-            <div className="p-6 text-center bg-[#161f30]/40 border border-dashed border-white/10 rounded-xl text-slate-400 flex flex-col items-center gap-1.5">
-              <span className="text-2xl mb-1">💊</span>
+            <div className="p-8 text-center bg-[#161f30]/40 border border-dashed border-white/10 rounded-2xl text-slate-400 flex flex-col items-center gap-2">
+              <span className="text-3xl mb-0.5">💊</span>
               <p className="font-semibold text-xs text-slate-300">Search Neighbor Inventory</p>
-              <p className="text-[10px] text-slate-500 max-w-[220px]">
+              <p className="text-[11px] text-slate-500 max-w-[240px] leading-relaxed">
                 Type any drug name above to find verified nearby stock with real-time ETA and wholesale pricing.
               </p>
             </div>
