@@ -1,8 +1,33 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, MapPin, AlertCircle, ShoppingCart, RefreshCw, ExternalLink, X, CheckCircle2, ChevronRight, LogOut } from 'lucide-react';
+import { 
+  Search, 
+  MapPin, 
+  AlertCircle, 
+  ShoppingCart, 
+  RefreshCw, 
+  ExternalLink, 
+  X, 
+  CheckCircle2, 
+  ChevronRight, 
+  Settings, 
+  LogOut, 
+  Link2, 
+  AlertTriangle, 
+  Info 
+} from 'lucide-react';
+
+interface ConfirmModalState {
+  isOpen: boolean;
+  title: string;
+  description: string;
+  consequences: string[];
+  confirmLabel: string;
+  confirmVariant: 'danger' | 'warning' | 'primary';
+  onConfirm: () => void;
+}
 
 function ExtensionContent() {
   const searchParams = useSearchParams();
@@ -12,6 +37,18 @@ function ExtensionContent() {
   const [syncCount, setSyncCount] = useState<number | null>(null);
   const [lastSyncText, setLastSyncText] = useState<string>('Synced just now');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Settings Menu & Modal State
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
+    isOpen: false,
+    title: '',
+    description: '',
+    consequences: [],
+    confirmLabel: '',
+    confirmVariant: 'primary',
+    onConfirm: () => {}
+  });
 
   // Search & Sourcing State
   const [query, setQuery] = useState('');
@@ -27,6 +64,7 @@ function ExtensionContent() {
   const [orderSuccessMsg, setOrderSuccessMsg] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const paramPharm = searchParams?.get('pharmacy');
@@ -57,6 +95,17 @@ function ExtensionContent() {
     window.addEventListener('message', handleShellMessage);
     return () => window.removeEventListener('message', handleShellMessage);
   }, [searchParams]);
+
+  // Click outside to close settings
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Autocomplete debounce
   useEffect(() => {
@@ -125,23 +174,77 @@ function ExtensionContent() {
     setCheckoutUrl(url);
   };
 
-  const handleForceSync = () => {
-    setIsSyncing(true);
-    if (typeof window !== 'undefined' && window.parent) {
-      window.parent.postMessage({ type: 'TRIGGER_FORCE_SYNC' }, '*');
-    }
-    setTimeout(() => {
-      setIsSyncing(false);
-      setLastSyncText('Synced just now');
-    }, 1200);
+  // Trigger Force Sync (with confirmation)
+  const promptForceSync = () => {
+    setIsSettingsOpen(false);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Force Stock Reconciliation?',
+      description: 'This triggers an immediate catalog scrape and cloud sync from your open Web POS tab.',
+      consequences: [
+        'Ensure your POS Inventory / Products page is open in another tab.',
+        'This updates your live cloud catalog with current on-shelf stock counts.'
+      ],
+      confirmLabel: 'Force Sync Now',
+      confirmVariant: 'primary',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setIsSyncing(true);
+        if (typeof window !== 'undefined' && window.parent) {
+          window.parent.postMessage({ type: 'TRIGGER_FORCE_SYNC' }, '*');
+        }
+        setTimeout(() => {
+          setIsSyncing(false);
+          setLastSyncText('Synced just now');
+        }, 1200);
+      }
+    });
   };
 
-  const handleLogout = () => {
-    if (confirm('Are you sure you want to sign out of this pharmacy terminal?')) {
-      if (typeof window !== 'undefined' && window.parent) {
-        window.parent.postMessage({ type: 'EXTENSION_LOGOUT' }, '*');
+  // Trigger Re-link POS (with confirmation)
+  const promptRelinkPOS = () => {
+    setIsSettingsOpen(false);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Re-link Web POS Setup?',
+      description: 'You are about to re-run the POS URL detection and table training wizard.',
+      consequences: [
+        'Live background sync will be paused until the new POS setup is confirmed.',
+        'Choose this if your POS website address changed or table layout updated.',
+        'You will be guided through a 2-step portal link & table scan.'
+      ],
+      confirmLabel: 'Proceed to Re-link',
+      confirmVariant: 'warning',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        if (typeof window !== 'undefined' && window.parent) {
+          window.parent.postMessage({ type: 'EXTENSION_RELINK_POS' }, '*');
+        }
       }
-    }
+    });
+  };
+
+  // Trigger Logout (with confirmation)
+  const promptLogout = () => {
+    setIsSettingsOpen(false);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Sign Out of Terminal?',
+      description: 'You are disconnecting this Chrome counter terminal from your pharmacy account.',
+      consequences: [
+        'Live inventory & sales sync will STOP immediately for this till counter.',
+        'You will LOSE the ability to search and procure out-of-stock medicines.',
+        'You will need your pharmacy login credentials to reconnect.'
+      ],
+      confirmLabel: 'Sign Out & Disconnect',
+      confirmVariant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        if (typeof window !== 'undefined' && window.parent) {
+          window.parent.postMessage({ type: 'EXTENSION_LOGOUT' }, '*');
+        }
+      }
+    });
   };
 
   return (
@@ -162,24 +265,57 @@ function ExtensionContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Header Actions */}
+        <div className="flex items-center gap-1.5 shrink-0 relative" ref={settingsMenuRef}>
           <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-white/5 text-[10px] font-semibold text-slate-400">
             💻 {terminalId}
           </span>
+          
           <button 
-            onClick={handleForceSync}
+            onClick={promptForceSync}
             title="Force Sync Inventory"
             className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
+
+          {/* Settings Menu Trigger */}
           <button 
-            onClick={handleLogout}
-            title="Sign Out"
-            className="p-1.5 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            title="Terminal Settings & Diagnostics"
+            className={`p-1.5 rounded transition ${isSettingsOpen ? 'bg-slate-800 text-emerald-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <Settings className="w-3.5 h-3.5" />
           </button>
+
+          {/* Settings Dropdown Menu */}
+          {isSettingsOpen && (
+            <div className="absolute top-full right-0 mt-1.5 w-48 bg-[#161f30] border border-white/10 rounded-xl shadow-2xl py-1.5 z-40 animate-in fade-in slide-in-from-top-1 duration-150 divide-y divide-white/5">
+              <button
+                onClick={promptRelinkPOS}
+                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition"
+              >
+                <Link2 className="w-3.5 h-3.5 text-sky-400" />
+                <span>Re-link POS Portal</span>
+              </button>
+
+              <button
+                onClick={promptForceSync}
+                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Force Stock Sync</span>
+              </button>
+
+              <button
+                onClick={promptLogout}
+                className="w-full px-3 py-2 text-left text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out Terminal</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -197,12 +333,21 @@ function ExtensionContent() {
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-400">
             <span>{lastSyncText}</span>
-            <span 
-              onClick={handleForceSync} 
-              className="text-sky-400 hover:underline cursor-pointer flex items-center gap-0.5 font-medium"
-            >
-              Sync ↻
-            </span>
+            <div className="flex items-center gap-2">
+              <span 
+                onClick={promptRelinkPOS} 
+                className="text-slate-400 hover:text-sky-300 cursor-pointer text-[10.5px]"
+              >
+                Re-link ⚙️
+              </span>
+              <span>·</span>
+              <span 
+                onClick={promptForceSync} 
+                className="text-sky-400 hover:underline cursor-pointer flex items-center gap-0.5 font-medium"
+              >
+                Sync ↻
+              </span>
+            </div>
           </div>
         </div>
 
@@ -348,6 +493,61 @@ function ExtensionContent() {
         </div>
 
       </div>
+
+      {/* Confirmation & Consequence Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-xs bg-[#161f30] border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                confirmModal.confirmVariant === 'danger' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+                confirmModal.confirmVariant === 'warning' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              }`}>
+                {confirmModal.confirmVariant === 'danger' ? <AlertCircle className="w-4 h-4" /> :
+                 confirmModal.confirmVariant === 'warning' ? <AlertTriangle className="w-4 h-4" /> :
+                 <Info className="w-4 h-4" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-xs text-white">{confirmModal.title}</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{confirmModal.description}</p>
+              </div>
+            </div>
+
+            {/* Consequence Points */}
+            {confirmModal.consequences.length > 0 && (
+              <div className="bg-[#0b0f17]/80 rounded-xl p-2.5 border border-white/5 space-y-1.5">
+                {confirmModal.consequences.map((c, i) => (
+                  <p key={i} className="text-[10.5px] text-slate-300 leading-normal flex items-start gap-1.5">
+                    <span>•</span>
+                    <span>{c}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition ${
+                  confirmModal.confirmVariant === 'danger' ? 'bg-rose-600 hover:bg-rose-500 text-white' :
+                  confirmModal.confirmVariant === 'warning' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' :
+                  'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                }`}
+              >
+                {confirmModal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Slide-over Checkout Drawer */}
       <div 
