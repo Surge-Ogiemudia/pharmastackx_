@@ -18,7 +18,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const showNavbar = !isSubdomain && pathname !== '/find-medicines' && pathname !== '/product-demo' && pathname !== '/pulse' && !pathname?.startsWith('/pulse/');
+  const showNavbar = !isSubdomain && 
+    pathname !== '/find-medicines' && 
+    pathname !== '/product-demo' && 
+    pathname !== '/pulse' && 
+    !pathname?.startsWith('/pulse/') &&
+    pathname !== '/extension' &&
+    !pathname?.startsWith('/extension');
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change
