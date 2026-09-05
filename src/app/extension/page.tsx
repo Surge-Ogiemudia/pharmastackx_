@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -331,7 +331,7 @@ function ExtensionContent() {
 
         {/* Search Input Box */}
         <form onSubmit={handleSearch} className="relative">
-          <div className="flex items-center bg-[#161f30] border border-white/10 rounded-xl px-3 py-2 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-400/20 transition">
+          <div className="flex items-center bg-[#161f30] border border-white/10 rounded-xl p-1.5 pl-3 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-400/20 transition shadow-inner">
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input 
               ref={searchInputRef}
@@ -341,14 +341,14 @@ function ExtensionContent() {
                 setQuery(e.target.value);
                 setHasSearched(false);
               }}
-              placeholder="Search drug e.g. Augmentin, Paracetamol..."
-              className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+              placeholder="Search e.g. Augmentin, Paracetamol..."
+              className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none py-1 min-w-0"
             />
             {query && (
               <button 
                 type="button" 
                 onClick={() => { setQuery(''); setHasSearched(false); }}
-                className="text-slate-500 hover:text-white mr-2 text-xs"
+                className="text-slate-500 hover:text-white px-1.5 text-xs shrink-0"
               >
                 ✕
               </button>
@@ -356,7 +356,7 @@ function ExtensionContent() {
             <button 
               type="submit" 
               disabled={loading}
-              className="px-3 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs rounded-lg transition shrink-0"
+              className="h-7 px-3 bg-emerald-400 hover:bg-emerald-300 active:scale-95 text-slate-950 font-bold text-xs rounded-lg transition shrink-0 flex items-center justify-center shadow-sm"
             >
               {loading ? '...' : 'Find'}
             </button>
