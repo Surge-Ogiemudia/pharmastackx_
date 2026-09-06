@@ -122,7 +122,10 @@ export async function POST(req: Request) {
     }
 
     // 6. Update Pharmacy User with sync metadata
-    const userUpdateFields: any = { lastSyncTime: new Date() };
+    const userUpdateFields: any = { 
+      lastSyncTime: new Date(),
+      posType: 'desktop'
+    };
     if (sync_tier !== undefined) userUpdateFields.lastSyncTier = sync_tier;
     if (body.app_version) userUpdateFields.appVersion = body.app_version;
 
@@ -130,20 +133,6 @@ export async function POST(req: Request) {
       { slug: actual_slug },
       { $set: userUpdateFields }
     );
-
-    // 7. Create a visual snapshot for the Admin Dashboard (ExtensionInventory)
-    // We only capture a sample up to 1000 items per chunk so we don't blow up the document limit
-    if (updates.length > 0) {
-      await ExtensionInventory.create({
-        pharmacyId: String((pharmacyUser as any)._id),
-        lastSynced: new Date(),
-        items: updates.slice(0, 1000).map((u: any) => ({
-          name: u.item_name,
-          qty: u.quantity,
-          price: u.amount
-        }))
-      });
-    }
 
     return NextResponse.json({
       success: true,

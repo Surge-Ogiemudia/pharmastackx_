@@ -37,7 +37,11 @@ export async function GET(req: Request) {
     const query = pharmacyId ? { pharmacyId } : {};
 
     const sales = await ExtensionSale.find(query).sort({ timestamp: -1 }).limit(30);
-    const extensionInventory = await ExtensionInventory.find(query).sort({ lastSynced: -1 }).limit(10);
+    const rawExtensionInventory = await ExtensionInventory.find(query).sort({ lastSynced: -1 }).limit(10);
+    // Filter out corrupted/blank snapshots where items have no valid names
+    const extensionInventory = rawExtensionInventory.filter((inv: any) => 
+      inv.items && inv.items.length > 0 && inv.items.some((item: any) => item && item.name && String(item.name).trim().length > 0)
+    );
     const searches = await ExtensionSearch.find(query).sort({ timestamp: -1 }).limit(40);
     const networkLogs = await NetworkLog.find(query).sort({ timestamp: -1 }).limit(50);
     
@@ -63,10 +67,11 @@ export async function GET(req: Request) {
       }
     }
 
-    // Merge both inventories
-    const mergedInventory = [...extensionInventory, ...desktopInventory]
-      .sort((a: any, b: any) => new Date(b.lastSynced).getTime() - new Date(a.lastSynced).getTime())
-      .slice(0, 10);
+    // Merge both inventories — if pharmacy has active desktop sync, prioritize it over stale snapshots
+    const mergedInventory = (desktopInventory.length > 0 && pharmacyId
+      ? desktopInventory 
+      : [...extensionInventory, ...desktopInventory].sort((a: any, b: any) => new Date(b.lastSynced).getTime() - new Date(a.lastSynced).getTime())
+    ).slice(0, 10);
     
     let pmsInfo: any = null;
     let creds: any = null;

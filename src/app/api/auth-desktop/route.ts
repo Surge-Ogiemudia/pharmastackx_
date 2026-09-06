@@ -62,6 +62,7 @@ export async function POST(req: Request) {
         businessName: pharmacyName,
         phoneNumber: phone,
         slug: uniqueSlug,
+        posType: 'desktop',
         isStorePublished: true,
         canManageStore: true,
         ...(state && { state }),
@@ -131,6 +132,7 @@ export async function POST(req: Request) {
           longitude: coordinates.lng
         };
       }
+      userToUpdate.posType = 'desktop';
 
       await userToUpdate.save();
       return NextResponse.json({ success: true, slug: userToUpdate.slug, message: 'Update successful' });
