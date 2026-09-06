@@ -121,6 +121,7 @@ export interface IUser extends Document {
     cloudSyncSchedule?: string;
     lastSyncResult?: string;
   };
+  posType?: 'web-pos' | 'desktop' | 'local-app';
 }
 
 // The schema defines the blueprint for the database
@@ -249,6 +250,7 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     location: { type: String },
     personality: { type: String },
   },
+  posType: { type: String, default: null },
 });
 
 // This line creates the model

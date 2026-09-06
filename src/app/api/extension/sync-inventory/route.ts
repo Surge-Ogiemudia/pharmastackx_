@@ -1,5 +1,7 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import ExtensionInventory from '@/models/ExtensionInventory';
+import User from '@/models/User';
+import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -87,6 +89,71 @@ export async function POST(req: Request) {
       } else {
         throw err;
       }
+    }
+
+    // Resolve user to bind posType and populate storefront catalog
+    try {
+      let user = null;
+      if (/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+        user = await User.findById(pharmacyId);
+      }
+      if (!user) {
+        user = await User.findOne({
+          $or: [
+            { slug: pharmacyId },
+            { email: pharmacyId.toLowerCase() },
+            { businessName: pharmacyId }
+          ]
+        });
+      }
+
+      if (user) {
+        // Mark user connection type as web-pos in cloud state
+        await User.findByIdAndUpdate(user._id, {
+          $set: {
+            posType: 'web-pos',
+            'synkkMeta.posMethod': 'web-pos',
+            lastSyncTime: new Date()
+          }
+        });
+
+        // Bridge extension inventory into public storefront catalog
+        if (user.slug && normalizedItems.length > 0) {
+          const actual_slug = user.slug;
+          const businessName = user.businessName || user.username || 'My Pharmacy';
+
+          const bulkOps = normalizedItems
+            .filter((item: any) => item.name && item.name !== 'Item' && item.name !== '-')
+            .map((item: any) => ({
+              updateOne: {
+                filter: { itemName: item.name, slug: actual_slug },
+                update: {
+                  $set: {
+                    amount: Number(item.price) || 0,
+                    quantity: Number(item.qty) || 0,
+                    source: 'extension',
+                    classificationMethod: 'manual_override'
+                  },
+                  $setOnInsert: {
+                    itemName: item.name,
+                    businessName: businessName,
+                    slug: actual_slug,
+                    isPublished: true,
+                    POM: false,
+                    enrichmentStatus: 'pending'
+                  }
+                },
+                upsert: true
+              }
+            }));
+
+          if (bulkOps.length > 0) {
+            await Product.bulkWrite(bulkOps);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[SyncInventory] Storefront sync non-critical warning:', e);
     }
 
     return NextResponse.json({
