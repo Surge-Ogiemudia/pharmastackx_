@@ -52,19 +52,24 @@ export async function GET(req: NextRequest) {
     }).sort({ lastSynced: -1 }).lean();
 
     // 2. Check Storefront Products
-    const [productCount, lastSyncedProduct] = await Promise.all([
-      Product.countDocuments({ slug, source: { $in: ['synkk', 'extension'] } }),
+    const [desktopProductCount, extensionProductCount, lastSyncedProduct] = await Promise.all([
+      Product.countDocuments({ slug, source: 'synkk' }),
+      Product.countDocuments({ slug, source: 'extension' }),
       Product.findOne({ slug, source: { $in: ['synkk', 'extension'] } }).sort({ updatedAt: -1 }).select('updatedAt').lean(),
     ]);
+
+    const productCount = desktopProductCount + extensionProductCount;
 
     let isWebPosUser = false;
     if (user.posType === 'web-pos') {
       isWebPosUser = true;
     } else if (user.posType === 'desktop' || user.posType === 'local-app') {
       isWebPosUser = false;
-    } else if (user.synkkMeta?.posMethod === 'web-pos') {
+    } else if (desktopProductCount > 0) {
+      isWebPosUser = false;
+    } else if (user.synkkMeta?.posMethod === 'web-pos' || extensionProductCount > 0) {
       isWebPosUser = true;
-    } else if (latestExtensionInv && latestExtensionInv.items?.length > 0) {
+    } else if (latestExtensionInv && latestExtensionInv.items?.length > 0 && desktopProductCount === 0) {
       isWebPosUser = true;
     }
 
@@ -84,9 +89,9 @@ export async function GET(req: NextRequest) {
 
     // Desktop POS User
     return NextResponse.json({
-      connected: productCount > 0,
+      connected: productCount > 0 || !!user.lastSyncTime,
       itemCount: productCount,
-      lastSync: lastSyncedProduct ? (lastSyncedProduct as any).updatedAt : null,
+      lastSync: lastSyncedProduct ? (lastSyncedProduct as any).updatedAt : (user.lastSyncTime || null),
       posType: 'desktop',
       connectionType: 'desktop',
       businessName: user.businessName
