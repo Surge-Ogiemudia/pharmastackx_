@@ -6,7 +6,7 @@ export async function GET() {
   try {
     await dbConnect();
     const settings = await GlobalSettings.findOne().lean();
-    const chromeWebStoreUrl = settings?.chromeWebStoreUrl || process.env.CHROME_WEBSTORE_URL || null;
+    const chromeWebStoreUrl = (settings as any)?.chromeWebStoreUrl || process.env.CHROME_WEBSTORE_URL || null;
     return NextResponse.json({
       chromeWebStoreUrl,
       downloadZipUrl: 'https://www.psx.ng/downloads/synkk-extension.zip',
@@ -21,15 +21,15 @@ export async function GET() {
   }
 }
 
-export async function POST(req) {
+export async function POST(req: Request) {
   try {
     await dbConnect();
     const body = await req.json();
     const { chromeWebStoreUrl } = body;
     const update: any = { $set: { chromeWebStoreUrl: chromeWebStoreUrl || null } };
     const settings = await GlobalSettings.findOneAndUpdate({}, update, { upsert: true, new: true });
-    return NextResponse.json({ success: true, chromeWebStoreUrl: settings.chromeWebStoreUrl });
-  } catch (error) {
+    return NextResponse.json({ success: true, chromeWebStoreUrl: (settings as any)?.chromeWebStoreUrl || null });
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
