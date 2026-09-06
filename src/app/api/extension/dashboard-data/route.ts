@@ -67,11 +67,17 @@ export async function GET(req: Request) {
       }
     }
 
-    // Merge both inventories — if pharmacy has active desktop sync, prioritize it over stale snapshots
-    const mergedInventory = (desktopInventory.length > 0 && pharmacyId
-      ? desktopInventory 
-      : [...extensionInventory, ...desktopInventory].sort((a: any, b: any) => new Date(b.lastSynced).getTime() - new Date(a.lastSynced).getTime())
-    ).slice(0, 10);
+    // Merge inventories:
+    // extensionInventory contains all timestamped historical snapshots (newest first, sorted by lastSynced: -1).
+    // If no snapshots exist yet, fall back to desktopInventory from live products.
+    let mergedInventory = [...extensionInventory];
+    if (mergedInventory.length === 0 && desktopInventory.length > 0) {
+      mergedInventory = [...desktopInventory];
+    } else {
+      mergedInventory = mergedInventory
+        .sort((a: any, b: any) => new Date(b.lastSynced).getTime() - new Date(a.lastSynced).getTime())
+        .slice(0, 15);
+    }
     
     let pmsInfo: any = null;
     let creds: any = null;

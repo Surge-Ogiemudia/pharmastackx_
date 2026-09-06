@@ -10,12 +10,16 @@ export interface IExtensionInventoryItem {
 
 export interface IExtensionInventory extends Document {
   pharmacyId: string;
+  syncSessionId?: string;
+  source?: 'extension' | 'desktop';
   lastSynced: Date;
   items: IExtensionInventoryItem[];
 }
 
 const ExtensionInventorySchema: Schema = new Schema({
   pharmacyId: { type: String, required: true, index: true },
+  syncSessionId: { type: String, index: true },
+  source: { type: String, default: 'extension' },
   lastSynced: { type: Date, default: Date.now },
   items: [{
     sn: String,

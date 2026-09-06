@@ -134,6 +134,71 @@ export async function POST(req: Request) {
       { $set: userUpdateFields }
     );
 
+    // 7. Record Historical Inventory Snapshot for Admin View (Preserving Former Records & Newest Prevalent)
+    const sessionId = body.sync_session_id;
+    const pharmacyIdStr = String(pharmacyUser._id);
+    
+    // Map clean items with guaranteed valid names and numbers
+    const cleanItems = approvedUpdates.map((u: any) => ({
+      name: u.name || u.itemName || u.item_name || '',
+      qty: Number(u.qty ?? u.quantity ?? 0),
+      price: Number(u.price ?? u.amount ?? 0)
+    })).filter((i: any) => i.name && i.name.trim().length > 0);
+
+    if (cleanItems.length > 0) {
+      if (sessionId) {
+        // Upsert into this sync session's snapshot
+        const existingSnapshot = await ExtensionInventory.findOne({
+          pharmacyId: pharmacyIdStr,
+          syncSessionId: sessionId
+        });
+
+        if (existingSnapshot) {
+          // Append chunk items to the ongoing session snapshot
+          await ExtensionInventory.updateOne(
+            { _id: existingSnapshot._id },
+            { 
+              $push: { items: { $each: cleanItems } },
+              $set: { lastSynced: new Date() }
+            }
+          );
+        } else {
+          // Create new snapshot for this sync session
+          await ExtensionInventory.create({
+            pharmacyId: pharmacyIdStr,
+            syncSessionId: sessionId,
+            lastSynced: new Date(),
+            source: 'desktop',
+            items: cleanItems
+          });
+        }
+      } else {
+        // Fallback: merge if a snapshot was created within the last 60 seconds (same sync cycle)
+        const recentCutoff = new Date(Date.now() - 60000);
+        const recentSnapshot = await ExtensionInventory.findOne({
+          pharmacyId: pharmacyIdStr,
+          lastSynced: { $gte: recentCutoff }
+        }).sort({ lastSynced: -1 });
+
+        if (recentSnapshot) {
+          await ExtensionInventory.updateOne(
+            { _id: recentSnapshot._id },
+            { 
+              $push: { items: { $each: cleanItems } },
+              $set: { lastSynced: new Date() }
+            }
+          );
+        } else {
+          await ExtensionInventory.create({
+            pharmacyId: pharmacyIdStr,
+            lastSynced: new Date(),
+            source: 'desktop',
+            items: cleanItems
+          });
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: `Sync complete. Upserted ${upsertCount} items. Rejected ${rejectedCount} items. Removed ${deletedCount} out-of-stock items.`,
