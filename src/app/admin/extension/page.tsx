@@ -221,7 +221,7 @@ export default function ExtensionDashboardPage() {
               No inventory synced yet.
             </div>
           ) : (
-            data.inventory.map((inv: any) => {
+            data.inventory.map((inv: any, idx: number) => {
               const extraKeys: string[] = [];
               if (inv.items && Array.isArray(inv.items)) {
                 inv.items.forEach((item: any) => {
@@ -233,12 +233,31 @@ export default function ExtensionDashboardPage() {
                 });
               }
 
+              const isPrevalent = idx === 0;
+
               return (
-                <div key={inv._id} style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '12px' }}>
-                    <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {pharmacyMap.get(inv.pharmacyId) || inv.pharmacyId}</span>
+                <div key={inv._id || idx} style={{ 
+                  marginBottom: '20px',
+                  backgroundColor: isPrevalent ? 'rgba(0, 212, 170, 0.03)' : 'transparent',
+                  padding: isPrevalent ? '12px' : '8px',
+                  borderRadius: '8px',
+                  border: isPrevalent ? '1px solid rgba(0, 212, 170, 0.25)' : '1px solid #1e293b'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>Pharmacy: {pharmacyMap.get(inv.pharmacyId) || inv.pharmacyId}</span>
+                      {isPrevalent ? (
+                        <span style={{ backgroundColor: 'rgba(0, 212, 170, 0.2)', color: '#00d4aa', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, border: '1px solid rgba(0, 212, 170, 0.4)' }}>
+                          ★ Prevalent (Latest)
+                        </span>
+                      ) : (
+                        <span style={{ backgroundColor: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', border: '1px solid #334155' }}>
+                          📜 Former Record
+                        </span>
+                      )}
+                    </div>
                     <span style={{ color: '#64748b' }}>
-                      Synced: {new Date(inv.lastSynced).toLocaleTimeString()} • <strong style={{ color: '#00d4aa' }}>{inv.items?.length || 0} items</strong>
+                      Synced: {new Date(inv.lastSynced).toLocaleTimeString()} ({new Date(inv.lastSynced).toLocaleDateString()}) • <strong style={{ color: '#00d4aa' }}>{inv.items?.length || 0} items</strong>
                     </span>
                   </div>
 
