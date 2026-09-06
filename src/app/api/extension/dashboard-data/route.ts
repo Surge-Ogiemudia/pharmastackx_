@@ -69,8 +69,9 @@ export async function GET(req: Request) {
       .slice(0, 10);
     
     let pmsInfo: any = null;
+    let creds: any = null;
     if (pharmacyId) {
-      let creds = await PMSCredential.findOne({ pharmacyId });
+      creds = await PMSCredential.findOne({ pharmacyId });
       
       let detectedUrl = (creds && creds.pmsUrl) ? creds.pmsUrl : null;
       let detectedUsername = (creds && creds.username) ? creds.username : null;
@@ -129,12 +130,19 @@ export async function GET(req: Request) {
       }
     }
 
+    const isWebPos = extensionInventory.length > 0 || Boolean(creds && creds.pmsUrl && creds.pmsUrl !== 'None' && creds.pmsUrl !== 'Offline Native DB');
+    const connectionType = isWebPos ? 'web-pos' : (desktopInventory.length > 0 ? 'desktop' : 'unknown');
+
     return NextResponse.json({
       success: true,
       sales,
       inventory: mergedInventory,
+      extensionInventory,
+      desktopInventory,
       searches,
       pmsInfo,
+      isWebPos,
+      connectionType,
       networkLogsCount: networkLogs.length
     });
   } catch (error: any) {

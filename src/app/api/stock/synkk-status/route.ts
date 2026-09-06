@@ -57,9 +57,16 @@ export async function GET(req: NextRequest) {
       Product.findOne({ slug, source: { $in: ['synkk', 'extension'] } }).sort({ updatedAt: -1 }).select('updatedAt').lean(),
     ]);
 
-    const isWebPosUser = user.posType === 'web-pos' || 
-      user.synkkMeta?.posMethod === 'web-pos' || 
-      Boolean(latestExtensionInv && latestExtensionInv.items?.length > 0);
+    let isWebPosUser = false;
+    if (user.posType === 'web-pos') {
+      isWebPosUser = true;
+    } else if (user.posType === 'desktop' || user.posType === 'local-app') {
+      isWebPosUser = false;
+    } else if (user.synkkMeta?.posMethod === 'web-pos') {
+      isWebPosUser = true;
+    } else if (latestExtensionInv && latestExtensionInv.items?.length > 0) {
+      isWebPosUser = true;
+    }
 
     if (isWebPosUser) {
       const extItemCount = latestExtensionInv?.items?.length || productCount || 0;
