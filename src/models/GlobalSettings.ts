@@ -4,6 +4,7 @@ export interface IGlobalSettings extends Document {
   isActivityCentreEnabled: boolean;
   isPulseModuleEnabled: boolean;
   disabledWhatsAppStates: string[];
+  chromeWebStoreUrl?: string | null;
   updatedBy: mongoose.Types.ObjectId;
   updatedAt: Date;
 }
@@ -12,6 +13,7 @@ const GlobalSettingsSchema: Schema = new Schema({
   isActivityCentreEnabled: { type: Boolean, default: true },
   isPulseModuleEnabled: { type: Boolean, default: true },
   disabledWhatsAppStates: { type: [String], default: [] },
+  chromeWebStoreUrl: { type: String, default: null },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
