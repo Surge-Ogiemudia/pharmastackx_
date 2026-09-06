@@ -53,6 +53,10 @@ export async function POST(req: Request) {
       message: 'Login successful',
       pharmacyId: pharmacyId,
       pharmacyName: pharmacyName,
+      pharmacy: {
+        id: pharmacyId,
+        name: pharmacyName
+      },
       user: {
         id: pharmacyId,
         email: user.email,
