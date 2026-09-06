@@ -19,7 +19,7 @@ export interface IProduct extends Document {
   bulkUploadId?: mongoose.Types.ObjectId;
   itemNameVector?: number[];
   syncBatchId?: string;
-  source?: 'manual' | 'synkk' | 'pos';
+  source?: 'manual' | 'synkk' | 'pos' | 'extension';
   posProductId?: string;
   enrichmentStatus?: string; 
   classificationMethod?: 'database_match' | 'ai_classified' | 'manual_override';
@@ -41,7 +41,7 @@ const productSchema: Schema<IProduct> = new mongoose.Schema({
   expiryDate: { type: Date, default: null },
   slug: { type: String, required: false },
   syncBatchId: { type: String, required: false },
-  source: { type: String, enum: ['manual', 'synkk', 'pos'], default: 'manual' },
+  source: { type: String, enum: ['manual', 'synkk', 'pos', 'extension'], default: 'manual' },
   posProductId: { type: String, required: false, index: true },
   isPublished: { type: Boolean, default: false },
   bulkUploadId: { type: mongoose.Schema.Types.ObjectId, ref: 'BulkUpload', default: null },

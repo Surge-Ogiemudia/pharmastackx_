@@ -48,6 +48,14 @@ export async function POST(req: Request) {
       { upsert: true, new: true }
     );
 
+    // Mark user as web-pos connection type in cloud profile
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        posType: 'web-pos',
+        'synkkMeta.posMethod': 'web-pos'
+      }
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Login successful',
