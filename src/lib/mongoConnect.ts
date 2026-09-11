@@ -1,11 +1,5 @@
 import mongoose, { Mongoose } from 'mongoose';
 
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-  throw new Error('FATAL: MONGO_URI environment variable is not defined.');
-}
-
 declare global {
   var mongoose: {
     conn: Mongoose | null;
@@ -19,6 +13,12 @@ if (!cached) {
 }
 
 export async function dbConnect(): Promise<Mongoose> {
+  const MONGO_URI = process.env.MONGO_URI;
+
+  if (!MONGO_URI) {
+    throw new Error('FATAL: MONGO_URI environment variable is not defined.');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }

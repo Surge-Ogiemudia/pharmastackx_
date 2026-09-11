@@ -16,9 +16,14 @@ async function getPost(slug: string) {
 }
 
 export async function generateStaticParams() {
-    await dbConnect();
-    const posts = await Post.find({ status: 'published' }).select('slug').lean();
-    return posts.map((p: any) => ({ slug: p.slug }));
+    try {
+        await dbConnect();
+        const posts = await Post.find({ status: 'published' }).select('slug').lean();
+        return posts.map((p: any) => ({ slug: p.slug }));
+    } catch (e) {
+        console.warn('[pulse/[slug]] generateStaticParams fallback (DB offline or build-time):', e);
+        return [];
+    }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

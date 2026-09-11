@@ -26,6 +26,9 @@ export interface IOrder extends Document {
   businesses: string[]; // Names or IDs of pharmacies involved
   requestId?: mongoose.Types.ObjectId;
   quoteId?: string;
+  partnerSlug?: string;
+  partnerMarkupAmount?: number;
+  partnerSettlementStatus?: 'pending' | 'settled';
   status: 'Pending' | 'Accepted' | 'Dispatched' | 'In Transit' | 'Completed' | 'Cancelled';
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +68,13 @@ const OrderSchema: Schema<IOrder> = new Schema({
   businesses: [{ type: String }],
   requestId: { type: Schema.Types.ObjectId, ref: 'Request' },
   quoteId: { type: String },
+  partnerSlug: { type: String, index: true },
+  partnerMarkupAmount: { type: Number, default: 0 },
+  partnerSettlementStatus: { 
+    type: String, 
+    enum: ['pending', 'settled'], 
+    default: 'pending' 
+  },
   status: { 
     type: String, 
     required: true, 

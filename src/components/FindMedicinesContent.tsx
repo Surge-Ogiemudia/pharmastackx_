@@ -90,6 +90,7 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
   const isInitialLoad = useRef(true);
 
   const [pharmacyDetails, setPharmacyDetails] = useState<any>(null);
+  const [partnerDetails, setPartnerDetails] = useState<any>(null);
   const [isLoadingPharmacy, setIsLoadingPharmacy] = useState(false);
 
   const drugClasses = ['all', 'Cardiovascular', 'Diabetes', 'Antibiotic', 'Pain Relief', 'Respiratory', 'Skincare', 'Supplements'];
@@ -111,6 +112,12 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       
       const data = await response.json();
       if (data.success) {
+        if (data.partner) {
+          setPartnerDetails(data.partner);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('psx_active_partner', JSON.stringify(data.partner));
+          }
+        }
         let processed = data.data;
 
         if (search === '' && filter === 'all' && sort === 'recommended' && page === 1) {
@@ -338,12 +345,31 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
               </button>
             )}
             <div className={styles.pharmacyBrand}>
-              <div className={styles.pharmacyAvatar}>{slug && pharmacyDetails ? pharmacyDetails.businessName.charAt(0).toUpperCase() : 'PX'}</div>
+              <div 
+                className={styles.pharmacyAvatar}
+                style={partnerDetails?.primaryColor ? { background: partnerDetails.primaryColor, color: '#fff' } : {}}
+              >
+                {partnerDetails?.logoUrl ? (
+                  <img 
+                    src={partnerDetails.logoUrl} 
+                    alt={partnerDetails.name} 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} 
+                  />
+                ) : partnerDetails?.name ? (
+                  partnerDetails.name.charAt(0).toUpperCase()
+                ) : (
+                  slug && pharmacyDetails ? pharmacyDetails.businessName.charAt(0).toUpperCase() : 'PX'
+                )}
+              </div>
               <div>
-                <div className={styles.pharmacyName}>{slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog'}</div>
+                <div className={styles.pharmacyName}>
+                  {partnerDetails?.name || (slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog')}
+                </div>
                 <div className={styles.pharmacyMeta}>
                   <span className={styles.statusDot}></span>
-                  {slug && pharmacyDetails ? `Open now ${userLocation ? '· Nearby' : ''}` : 'All pharmacies active'}
+                  {partnerDetails 
+                    ? (partnerDetails.tagline || 'Verified Network Store · Fast Delivery') 
+                    : (slug && pharmacyDetails ? `Open now ${userLocation ? '· Nearby' : ''}` : 'All pharmacies active')}
                 </div>
               </div>
             </div>
@@ -647,10 +673,12 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
       {/* FOOTER */}
       <footer className={styles.footer}>
         <div className={styles.footerBrand}>
-          {slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog'}
+          {partnerDetails?.name || (slug && pharmacyDetails ? pharmacyDetails.businessName : 'PharmaStackX Catalog')}
         </div>
         <div className={styles.footerMeta}>
-          {slug && pharmacyDetails?.professionalVerificationStatus === 'approved' ? 'Verified by PCN · ' : ''}Live inventory · Instant fulfillment
+          {partnerDetails 
+            ? 'Powered by PharmaStackX Intelligent Network · Instant fulfillment' 
+            : `${slug && pharmacyDetails?.professionalVerificationStatus === 'approved' ? 'Verified by PCN · ' : ''}Live inventory · Instant fulfillment`}
         </div>
       </footer>
 

@@ -2,6 +2,7 @@
 import { dbConnect } from '../../../lib/mongoConnect';
 import Product from '@/models/Product';
 import User from '@/models/User';
+import Partner from '@/models/Partner';
 import { NextResponse } from 'next/server';
 
 
@@ -47,9 +48,24 @@ export async function GET(req) {
 
     // Build the base match query — exclude items with zero or missing price
     let query = { isPublished: true, amount: { $gt: 0 } };
+    // Check if the slug corresponds to a B2B Partner storefront
+    let partner = null;
+    let markupPct = 0;
     if (slug) {
-      query.slug = slug;
+      partner = await Partner.findOne({ slug: slug.toLowerCase(), isActive: true }).lean();
+      if (partner) {
+        markupPct = partner.markupPercentage || 18;
+        if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
+          query._id = { $in: partner.curatedProductIds };
+        } else if (partner.allowedCategories && partner.allowedCategories.length > 0) {
+          query.category = { $in: partner.allowedCategories.map(c => new RegExp(`^${c}$`, 'i')) };
+        }
+        // When it is a partner storefront, do NOT restrict to a single pharmacy's slug
+      } else {
+        query.slug = slug;
+      }
     }
+
     if (search) {
       const searchRegex = { $regex: search, $options: 'i' };
       query.$or = [
@@ -57,7 +73,7 @@ export async function GET(req) {
         { activeIngredient: searchRegex },
         { category: searchRegex }
       ];
-      if (!slug) {
+      if (!slug || partner) {
         query.$or.push({ businessName: searchRegex });
       }
     }
@@ -130,19 +146,23 @@ export async function GET(req) {
          if (!product.itemName || typeof product.amount === 'undefined') {
           throw new Error('Product record is missing required fields: itemName or amount.');
         }
+        const finalPrice = markupPct > 0 ? Math.round(product.amount * (1 + markupPct / 100)) : product.amount;
         return {
           id: product._id.toString(),
           image: product.imageUrl || 'https://via.placeholder.com/150',
           name: product.itemName,
           activeIngredients: product.activeIngredient || '',
           drugClass: product.category || 'N/A',
-          price: product.amount,
-          formattedPrice: formatPrice(product.amount),
-          pharmacy: product.businessName || 'Unknown Pharmacy',
+          price: finalPrice,
+          formattedPrice: formatPrice(finalPrice),
+          basePrice: product.amount,
+          pharmacy: partner ? partner.name : (product.businessName || 'Unknown Pharmacy'),
           pharmacyCoordinates: coordMap[product.businessName] || null,
           POM: product.POM || false,
           info: product.info,
           slug: product.slug,
+          partnerSlug: partner ? partner.slug : null,
+          isPartnerProduct: !!partner,
           stockQty: typeof product.quantity === 'number' ? product.quantity : null,
           inStock: typeof product.quantity === 'number' ? product.quantity > 0 : true,
         };
@@ -158,6 +178,14 @@ export async function GET(req) {
     return NextResponse.json({
       success: true,
       data: transformedProducts,
+      partner: partner ? {
+        name: partner.name,
+        slug: partner.slug,
+        logoUrl: partner.logoUrl,
+        primaryColor: partner.primaryColor,
+        tagline: partner.tagline,
+        markupPercentage: markupPct,
+      } : null,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalProducts / limit),
