@@ -276,6 +276,13 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       image: item.image,
     }));
 
+    const activePartnerSlug = searchParams?.get('partner') || searchParams?.get('slug') || (() => {
+      try {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('psx_active_partner') : null;
+        return stored ? JSON.parse(stored).slug : undefined;
+      } catch (e) { return undefined; }
+    })();
+
     const orderData = {
       patientName, patientAge, patientCondition,
       deliveryEmail, deliveryPhone, deliveryCity, deliveryState,
@@ -288,6 +295,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       quoteId,
       patientPhone: deliveryPhone,
       deliveryAddress,
+      partnerSlug: activePartnerSlug,
     };
     
     const result = await addOrder(orderData);

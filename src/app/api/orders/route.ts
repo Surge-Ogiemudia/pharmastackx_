@@ -3,6 +3,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import Order from '@/models/Order';
 import RequestModel from '@/models/Request.js';
 import User from '@/models/User';
+import Partner from '@/models/Partner';
 import jwt from 'jsonwebtoken';
 import { triggerNewOrder } from '@/lib/pusher';
 
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       patientName, patientAge, patientCondition,
       deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
       items, coupon, deliveryOption, orderType, businesses,
-      requestId, quoteId, sfcAmount
+      requestId, quoteId, sfcAmount, partnerSlug
     } = body;
 
     // Calculate total amount if not provided or to verify
@@ -102,6 +103,23 @@ export async function POST(req: NextRequest) {
         const qty = Number(item.qty) || 0;
         return sum + (price * qty);
     }, 0);
+
+    let partnerMarkupAmount = 0;
+    let resolvedPartnerSlug = partnerSlug;
+    if (partnerSlug) {
+      try {
+        const partner = await Partner.findOne({ slug: partnerSlug.toLowerCase(), isActive: true });
+        if (partner) {
+          resolvedPartnerSlug = partner.slug;
+          partnerMarkupAmount = Math.round(totalAmount * ((partner.markupPercentage || 18) / 100));
+          await Partner.findByIdAndUpdate(partner._id, {
+            $inc: { payoutBalance: partnerMarkupAmount }
+          });
+        }
+      } catch (pErr) {
+        console.error('[Orders] Partner lookup/credit error:', pErr);
+      }
+    }
 
     const orderData = {
       user: session.userId,
@@ -114,6 +132,9 @@ export async function POST(req: NextRequest) {
       sfcAmount: sfcAmount || 0,
       requestId: (requestId && requestId.length === 24) ? requestId : undefined,
       quoteId,
+      partnerSlug: resolvedPartnerSlug,
+      partnerMarkupAmount,
+      partnerSettlementStatus: 'pending',
       status: 'Pending'
     };
 
