@@ -230,17 +230,46 @@ export default function FindMedicinesContent({
     const fetchPharmacy = async () => {
       setIsLoadingPharmacy(true);
       try {
-        const res = await fetch(`/api/pharmacies/${slug}`);
+        // 1. Check partner status first so partners never trigger a false 404
+        try {
+          const partnerRes = await fetch(`/api/partner?slug=${encodeURIComponent(slug)}`);
+          if (partnerRes.ok) {
+            const pData = await partnerRes.json();
+            if (pData.success && pData.partner) {
+              setPartnerDetails(pData.partner);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('psx_active_partner', JSON.stringify(pData.partner));
+              }
+              return;
+            }
+          }
+        } catch (pErr) {
+          console.error('Error fetching partner:', pErr);
+        }
+
+        // 2. Query pharmacy database
+        const res = await fetch(`/api/pharmacies/${encodeURIComponent(slug)}`);
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.pharmacy) {
             setPharmacyDetails(data.pharmacy);
-          } else {
-             // Subdomain does not match a valid pharmacy
-             window.location.href = 'https://psx.ng';
+            if (data.partner) {
+              setPartnerDetails(data.partner);
+            }
+            return;
           }
-        } else {
-             window.location.href = 'https://psx.ng';
+        }
+
+        // 3. Only redirect if this was an actual pharmacy subdomain on psx.ng that failed
+        if (typeof window !== 'undefined') {
+          const h = window.location.hostname;
+          const isSub = ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && 
+                        !h.startsWith('www.') && 
+                        !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
+          const isPartnerRoute = window.location.pathname.startsWith('/p/');
+          if (isSub && !isPartnerRoute) {
+            window.location.href = 'https://psx.ng';
+          }
         }
       } catch (err) {
         console.error('Error fetching pharmacy', err);
