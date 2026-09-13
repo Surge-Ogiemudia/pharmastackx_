@@ -719,7 +719,8 @@ function DashboardContent() {
                         onClick={async () => {
                           if (confirm('Clear all curated items from your shelf?')) {
                             setCuratedProducts([]);
-                            await persistCuratedIds([]);
+                            setProductMarkups({});
+                            await persistCuratedAndMarkups([], {});
                             showToast('Shelf cleared');
                           }
                         }}
