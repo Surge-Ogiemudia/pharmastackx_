@@ -568,7 +568,7 @@ function DashboardContent() {
                   Drag & Drop Medicines onto your Storefront Shelf
                 </h2>
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Browse or search through <strong className="text-white">41,000+ real medicines</strong> from verified PharmaStackX pharmacies. Drag any product tile directly into your virtual shelf on the right (or tap <span className="text-rose-400 font-semibold">+ Add to Shelf</span>) to sell on <span className="font-mono text-rose-300">/p/{slug}</span>.
+                  Browse or search through <strong className="text-white">{totalCatalogProducts > 0 ? `${totalCatalogProducts.toLocaleString()} real medicines` : 'thousands of real medicines'}</strong> from verified PharmaStackX pharmacies. Drag any product tile directly into your virtual shelf on the right (or tap <span className="text-rose-400 font-semibold">+ Add to Shelf</span>) to sell on <span className="font-mono text-rose-300">/p/{slug}</span>.
                 </p>
               </div>
 
@@ -618,7 +618,7 @@ function DashboardContent() {
                       type="text"
                       value={catalogSearch}
                       onChange={(e) => setCatalogSearch(e.target.value)}
-                      placeholder="Search 41,000+ medicines (e.g. Postpill, Panadol, Pregnacare, Amox, Ibuprofen)..."
+                      placeholder={totalCatalogProducts > 0 ? `Search ${totalCatalogProducts.toLocaleString()} medicines (e.g. Postpill, Panadol, Pregnacare, Amox)...` : "Search medicines by brand or active ingredient..."}
                       className="w-full pl-10 pr-10 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
                     />
                     {catalogSearch && (
