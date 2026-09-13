@@ -6,7 +6,25 @@ import { useSearchParams } from 'next/navigation';
 function DashboardContent() {
   const searchParams = useSearchParams();
   const initialSlug = searchParams?.get('slug') || 'bubblegum';
+  const resetTokenParam = searchParams?.get('resetToken') || '';
   const [slug, setSlug] = useState(initialSlug);
+
+  // Auth & Session state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  // Password Reset state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetToken, setResetToken] = useState(resetTokenParam);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetModalError, setResetModalError] = useState('');
+  const [sendingResetLink, setSendingResetLink] = useState(false);
+  const [resetLinkSentMsg, setResetLinkSentMsg] = useState('');
 
   const [partner, setPartner] = useState<any>(null);
   const [stats, setStats] = useState<any>({
@@ -20,7 +38,7 @@ function DashboardContent() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'branding' | 'pricing'>('catalog');
+  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'branding' | 'pricing' | 'security'>('catalog');
 
   // Curated Catalog & Drag-and-Drop state
   const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
@@ -85,6 +103,135 @@ function DashboardContent() {
       setLoading(false);
     }
   }, []);
+
+  const checkAuth = useCallback(async (targetSlug: string) => {
+    setCheckingAuth(true);
+    try {
+      const res = await fetch(`/api/partner/auth?slug=${encodeURIComponent(targetSlug)}`);
+      const data = await res.json();
+      if (data.authenticated) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    } finally {
+      setCheckingAuth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAuth(slug);
+    fetchPartnerData(slug);
+  }, [slug, checkAuth, fetchPartnerData]);
+
+  useEffect(() => {
+    if (resetTokenParam) {
+      setResetToken(resetTokenParam);
+      setShowResetModal(true);
+    }
+  }, [resetTokenParam]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    setLoginError('');
+    try {
+      const res = await fetch('/api/partner/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', slug, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsAuthenticated(true);
+        setLoginPassword('');
+        fetchPartnerData(slug);
+        showToast('Dashboard unlocked successfully!');
+      } else {
+        setLoginError(data.error || 'Incorrect password');
+      }
+    } catch (err: any) {
+      setLoginError(err.message || 'Login failed');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/partner/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout', slug }),
+      });
+    } catch {}
+    setIsAuthenticated(false);
+    showToast('Logged out of partner portal');
+  };
+
+  const handleSendResetLink = async () => {
+    if (!contactEmail.trim()) {
+      showToast('Please enter and save your email address first', 'error');
+      return;
+    }
+    setSendingResetLink(true);
+    setResetLinkSentMsg('');
+    try {
+      const res = await fetch('/api/partner/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'forgot-password', slug, email: contactEmail }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetLinkSentMsg(data.message || 'Password reset link sent to your email!');
+        showToast('Reset link dispatched! Check your email.');
+      } else {
+        showToast(data.error || 'Failed to send reset link', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error sending link', 'error');
+    } finally {
+      setSendingResetLink(false);
+    }
+  };
+
+  const handleConfirmResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setResetModalError('Password must be at least 6 characters long');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetModalError('Passwords do not match');
+      return;
+    }
+    setResettingPassword(true);
+    setResetModalError('');
+    try {
+      const res = await fetch('/api/partner/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset-password', slug, token: resetToken, newPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Password changed successfully! You are now logged in.');
+        setShowResetModal(false);
+        setIsAuthenticated(true);
+        window.history.replaceState({}, '', `/partner-dashboard?slug=${slug}`);
+        fetchPartnerData(slug);
+      } else {
+        setResetModalError(data.error || 'Failed to reset password');
+      }
+    } catch (err: any) {
+      setResetModalError(err.message || 'Network error');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
 
   const searchMasterCatalog = useCallback(async (searchQuery: string, categoryFilter: string = 'all', pageNum: number = 1, append: boolean = false) => {
     if (append) {
@@ -252,6 +399,137 @@ function DashboardContent() {
   const sampleProfit = Math.round(sampleBase * (markupPercentage / 100));
   const sampleTotal = sampleBase + sampleProfit;
 
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-sm font-medium text-slate-500">Checking Partner Access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 relative overflow-hidden">
+        {/* RESET PASSWORD MODAL IF TRIGGERED BY TOKEN */}
+        {showResetModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-200 space-y-5">
+              <div className="text-center space-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl mx-auto mb-2">
+                  🔑
+                </div>
+                <h3 className="text-xl font-extrabold text-slate-900">Change Your Password</h3>
+                <p className="text-xs text-slate-500">Enter your new secure password for {name || 'the partner portal'}.</p>
+              </div>
+
+              {resetModalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600 font-medium text-center">
+                  {resetModalError}
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmResetPassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-type new password..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(false)}
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resettingPassword || !newPassword || !confirmPassword}
+                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer disabled:opacity-50"
+                  >
+                    {resettingPassword ? 'Saving...' : 'Set New Password ✓'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-2xl border border-slate-100 space-y-6 text-center">
+          <div 
+            className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-white font-bold text-2xl shadow-lg overflow-hidden bg-rose-500"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {logoUrl ? (
+              <img src={logoUrl} alt={name} className="w-full h-full object-contain p-2" />
+            ) : (
+              name.charAt(0).toUpperCase() || 'P'
+            )}
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900">{name || 'Partner Portal'}</h2>
+            <p className="text-xs text-slate-500 mt-1">Enter your partner password to access your dashboard</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            {loginError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600 font-medium text-center">
+                {loginError}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Partner Password</label>
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Enter password..."
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loggingIn || !loginPassword}
+              className="w-full py-3 bg-slate-900 hover:bg-rose-600 text-white text-sm font-bold rounded-xl shadow-lg transition cursor-pointer disabled:opacity-50"
+            >
+              {loggingIn ? 'Unlocking Dashboard...' : 'Unlock Partner Dashboard 🔐'}
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-slate-100">
+            <p className="text-[11px] text-slate-400">
+              Protected by PharmaStackX Enterprise Terminal Security
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -321,14 +599,22 @@ function DashboardContent() {
             >
               Visit Storefront ↗
             </a>
+            <button
+              onClick={handleLogout}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-semibold rounded-xl border border-slate-200 transition cursor-pointer flex items-center gap-1.5"
+              title="Log out of partner portal"
+            >
+              <span>🔒</span>
+              <span>Log Out</span>
+            </button>
           </div>
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 border-t border-slate-100 overflow-x-auto">
           <button
             onClick={() => setActiveTab('orders')}
-            className={`py-4 text-sm font-semibold border-b-2 transition ${
+            className={`py-4 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
               activeTab === 'orders' 
                 ? 'border-rose-500 text-rose-600' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -338,7 +624,7 @@ function DashboardContent() {
           </button>
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`py-4 text-sm font-semibold border-b-2 transition ${
+            className={`py-4 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
               activeTab === 'catalog' 
                 ? 'border-rose-500 text-rose-600' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -348,7 +634,7 @@ function DashboardContent() {
           </button>
           <button
             onClick={() => setActiveTab('branding')}
-            className={`py-4 text-sm font-semibold border-b-2 transition ${
+            className={`py-4 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
               activeTab === 'branding' 
                 ? 'border-rose-500 text-rose-600' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -358,13 +644,23 @@ function DashboardContent() {
           </button>
           <button
             onClick={() => setActiveTab('pricing')}
-            className={`py-4 text-sm font-semibold border-b-2 transition ${
+            className={`py-4 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
               activeTab === 'pricing' 
                 ? 'border-rose-500 text-rose-600' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             💰 Markup & Pricing ({markupPercentage}%)
+          </button>
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`py-4 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'security' 
+                ? 'border-rose-500 text-rose-600' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            🔑 Password & Access
           </button>
         </div>
       </header>
@@ -1124,7 +1420,145 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* TAB 5: PASSWORD & ACCESS */}
+        {activeTab === 'security' && (
+          <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Account Email & Password</h2>
+              <p className="text-xs text-slate-500">Manage your partner portal credentials and secure password recovery</p>
+            </div>
+
+            {/* REGISTERED EMAIL CARD */}
+            <div className="space-y-3 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Account Email Address</label>
+                <p className="text-xs text-slate-500">This email receives your password reset links and account notices.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="e.g. business@bubblegum.health"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                />
+                <button
+                  onClick={() => handleSaveSettings({ slug, contactEmail })}
+                  disabled={saving}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Email'}
+                </button>
+              </div>
+            </div>
+
+            {/* CHANGE PASSWORD REQUEST CARD */}
+            <div className="space-y-4 p-6 rounded-2xl border border-slate-200 bg-white">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span>🔑 Change Your Password</span>
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  To change your password, click the button below. We will send a secure one-time password reset link to <strong className="text-slate-800">{contactEmail || 'your registered email'}</strong>.
+                </p>
+              </div>
+
+              {resetLinkSentMsg && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 space-y-1">
+                  <p className="font-bold">✉️ Reset Link Dispatched!</p>
+                  <p>{resetLinkSentMsg}</p>
+                </div>
+              )}
+
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <button
+                  onClick={handleSendResetLink}
+                  disabled={sendingResetLink || !contactEmail.trim()}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {sendingResetLink ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Sending Reset Link...
+                    </>
+                  ) : (
+                    'Send Password Reset Link ✉️'
+                  )}
+                </button>
+
+                <p className="text-[11px] text-slate-400">
+                  Link expires in 1 hour after request.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {/* RESET PASSWORD MODAL IF OPEN INSIDE DASHBOARD */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl mx-auto mb-2">
+                🔑
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Change Your Password</h3>
+              <p className="text-xs text-slate-500">Enter your new secure password for {name || 'the partner portal'}.</p>
+            </div>
+
+            {resetModalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600 font-medium text-center">
+                {resetModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmResetPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 6 characters..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-type new password..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword || !newPassword || !confirmPassword}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer disabled:opacity-50"
+                >
+                  {resettingPassword ? 'Saving...' : 'Set New Password ✓'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
