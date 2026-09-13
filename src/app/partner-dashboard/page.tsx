@@ -20,7 +20,7 @@ function DashboardContent() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'branding' | 'pricing' | 'payouts'>('catalog');
+  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'branding' | 'pricing'>('catalog');
 
   // Curated Catalog & Drag-and-Drop state
   const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
@@ -311,7 +311,7 @@ function DashboardContent() {
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            📦 Orders & Deliveries ({orders.length})
+            📦 Orders & Settlements ({orders.length})
           </button>
           <button
             onClick={() => setActiveTab('catalog')}
@@ -343,16 +343,6 @@ function DashboardContent() {
           >
             💰 Markup & Pricing ({markupPercentage}%)
           </button>
-          <button
-            onClick={() => setActiveTab('payouts')}
-            className={`py-4 text-sm font-semibold border-b-2 transition ${
-              activeTab === 'payouts' 
-                ? 'border-rose-500 text-rose-600' 
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            🏦 Bank Details (T+1 Settlement)
-          </button>
         </div>
       </header>
 
@@ -375,106 +365,165 @@ function DashboardContent() {
             <p className="text-xs text-slate-500 mt-1">At {markupPercentage}% Partner Cut</p>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-br from-rose-50 to-white">
-            <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Pending T+1 Payout</p>
+            <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Accrued Settlement Balance</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">₦{(stats.pendingPayout || 0).toLocaleString()}</p>
-            <p className="text-xs text-rose-600 mt-1 font-medium">Settles to your bank tomorrow</p>
+            <p className="text-xs text-rose-600 mt-1 font-medium">Payable upon request / cycle</p>
           </div>
         </div>
 
-        {/* TAB 1: ORDERS & DELIVERIES FEED */}
+        {/* TAB 1: ORDERS & SETTLEMENTS */}
         {activeTab === 'orders' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Recent Customer Orders</h2>
-                <p className="text-xs text-slate-500">Live feed of orders placed on your storefront</p>
+          <div className="space-y-6">
+            {/* SETTLEMENT BANK DETAILS CARD */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>🏦 Settlement & Payout Account</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">Corporate bank account where your profit balance will be remitted</p>
+                </div>
+                <button
+                  onClick={() => handleSaveSettings({
+                    slug,
+                    bankDetails: { bankName, accountNumber, accountName }
+                  })}
+                  disabled={saving}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow transition cursor-pointer disabled:opacity-50 self-start sm:self-auto"
+                >
+                  {saving ? 'Saving...' : 'Save Bank Account'}
+                </button>
               </div>
-              <button 
-                onClick={() => fetchPartnerData(slug)} 
-                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
-              >
-                Refresh Orders 🔄
-              </button>
-            </div>
 
-            {orders.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <div className="text-4xl">🛒</div>
-                <h3 className="text-base font-semibold text-slate-800">No orders yet</h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  When patients order from your storefront (<span className="font-mono text-xs text-rose-600">/p/{slug}</span>), they will show up here instantly with delivery status and your profit cut.
-                </p>
-                <div className="pt-2">
-                  <button 
-                    onClick={copyStoreUrl}
-                    className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-xl shadow transition"
-                  >
-                    Share Storefront Link
-                  </button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Bank Name</label>
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    placeholder="e.g. Zenith Bank / GTBank"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Account Number (10 Digits)</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
+                    placeholder="0123456789"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Account Name</label>
+                  <input
+                    type="text"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    placeholder="e.g. Bubblegum Health Ltd"
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-400 border-b border-slate-100">
-                    <tr>
-                      <th className="px-6 py-4">Order ID & Date</th>
-                      <th className="px-6 py-4">Patient / Destination</th>
-                      <th className="px-6 py-4">Items Summary</th>
-                      <th className="px-6 py-4">Total Paid</th>
-                      <th className="px-6 py-4">Your Profit (₦)</th>
-                      <th className="px-6 py-4">Delivery Status</th>
-                      <th className="px-6 py-4">Settlement</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {orders.map((o) => (
-                      <tr key={o.id} className="hover:bg-slate-50/60 transition">
-                        <td className="px-6 py-4">
-                          <p className="font-mono text-xs font-semibold text-slate-800">#{o.id.slice(-6).toUpperCase()}</p>
-                          <p className="text-[11px] text-slate-400">
-                            {new Date(o.date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-slate-900">{o.patientName || 'Confidential'}</p>
-                          <p className="text-xs text-slate-400">{[o.deliveryCity, o.deliveryState].filter(Boolean).join(', ') || 'Lagos'}</p>
-                        </td>
-                        <td className="px-6 py-4 max-w-xs truncate text-xs" title={o.itemsSummary}>
-                          {o.itemsSummary || `${o.itemsCount} item(s)`}
-                        </td>
-                        <td className="px-6 py-4 font-semibold text-slate-900">
-                          ₦{(o.totalAmount || 0).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-emerald-600">
-                          +₦{(o.partnerProfit || 0).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                            o.status === 'Completed' || o.status === 'Dispatched'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : o.status === 'Cancelled'
-                              ? 'bg-rose-100 text-rose-700'
-                              : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {o.status || 'Pending'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            o.settlementStatus === 'settled'
-                              ? 'bg-slate-100 text-slate-600'
-                              : 'bg-rose-50 text-rose-600'
-                          }`}>
-                            {o.settlementStatus === 'settled' ? 'Settled ✓' : 'T+1 Pending'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            </div>
+
+            {/* ORDERS TABLE CARD */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Recent Customer Orders</h2>
+                  <p className="text-xs text-slate-500">Live feed of orders placed on your storefront and profit cuts</p>
+                </div>
+                <button 
+                  onClick={() => fetchPartnerData(slug)} 
+                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                >
+                  Refresh Orders 🔄
+                </button>
               </div>
-            )}
+
+              {orders.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <div className="text-4xl">🛒</div>
+                  <h3 className="text-base font-semibold text-slate-800">No orders yet</h3>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto">
+                    When patients order from your storefront (<span className="font-mono text-xs text-rose-600">/p/{slug}</span>), they will show up here instantly with delivery status and your profit cut.
+                  </p>
+                  <div className="pt-2">
+                    <button 
+                      onClick={copyStoreUrl}
+                      className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-xl shadow transition"
+                    >
+                      Share Storefront Link
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-400 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4">Order ID & Date</th>
+                        <th className="px-6 py-4">Patient / Destination</th>
+                        <th className="px-6 py-4">Items Summary</th>
+                        <th className="px-6 py-4">Total Paid</th>
+                        <th className="px-6 py-4">Your Profit (₦)</th>
+                        <th className="px-6 py-4">Delivery Status</th>
+                        <th className="px-6 py-4">Settlement</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.map((o) => (
+                        <tr key={o.id} className="hover:bg-slate-50/60 transition">
+                          <td className="px-6 py-4">
+                            <p className="font-mono text-xs font-semibold text-slate-800">#{o.id.slice(-6).toUpperCase()}</p>
+                            <p className="text-[11px] text-slate-400">
+                              {new Date(o.date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="font-medium text-slate-900">{o.patientName || 'Confidential'}</p>
+                            <p className="text-xs text-slate-400">{[o.deliveryCity, o.deliveryState].filter(Boolean).join(', ') || 'Lagos'}</p>
+                          </td>
+                          <td className="px-6 py-4 max-w-xs truncate text-xs" title={o.itemsSummary}>
+                            {o.itemsSummary || `${o.itemsCount} item(s)`}
+                          </td>
+                          <td className="px-6 py-4 font-semibold text-slate-900">
+                            ₦{(o.totalAmount || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 font-bold text-emerald-600">
+                            +₦{(o.partnerProfit || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                              o.status === 'Completed' || o.status === 'Dispatched'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : o.status === 'Cancelled'
+                                ? 'bg-rose-100 text-rose-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {o.status || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              o.settlementStatus === 'settled'
+                                ? 'bg-slate-100 text-slate-600'
+                                : 'bg-rose-50 text-rose-600'
+                            }`}>
+                              {o.settlementStatus === 'settled' ? 'Settled ✓' : 'Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1046,69 +1095,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* TAB 4: BANK DETAILS (T+1 SETTLEMENT) */}
-        {activeTab === 'payouts' && (
-          <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Bank Account for T+1 Payouts</h2>
-              <p className="text-xs text-slate-500">Provide your corporate bank account details where your daily accumulated profit will be remitted</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Bank Name</label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="e.g. Zenith Bank / GTBank / Access Bank"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Account Number (10 Digits)</label>
-                <input
-                  type="text"
-                  maxLength={10}
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
-                  placeholder="0123456789"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Account Name</label>
-                <input
-                  type="text"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="e.g. Bubblegum Health Ltd"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 space-y-1">
-              <p className="font-bold">🔒 T+1 Next-Day Settlement Schedule</p>
-              <p>Customer payments are aggregated and settled directly into this account on a T+1 (next business day) schedule after delivery confirmation.</p>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => handleSaveSettings({
-                  slug,
-                  bankDetails: { bankName, accountNumber, accountName }
-                })}
-                disabled={saving}
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl shadow transition cursor-pointer disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Bank Details'}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
