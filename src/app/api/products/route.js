@@ -58,7 +58,13 @@ export async function GET(req) {
         if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
           query._id = { $in: partner.curatedProductIds };
         } else if (partner.allowedCategories && partner.allowedCategories.length > 0) {
-          query.category = { $in: partner.allowedCategories.map(c => new RegExp(`^${c}$`, 'i')) };
+          const categoryRegexes = partner.allowedCategories.map(c => new RegExp(`^${c}$`, 'i'));
+          const keywords = ['postpill', 'contracept', 'levonorgestrel', 'condom', 'pregnancy', 'folic', 'ibuprofen', 'paracetamol', 'panadol', 'vitamin'];
+          const nameRegexes = keywords.map(k => new RegExp(k, 'i'));
+          query.$or = [
+            { category: { $in: categoryRegexes } },
+            ...nameRegexes.map(r => ({ itemName: r }))
+          ];
         }
         // When it is a partner storefront, do NOT restrict to a single pharmacy's slug
       } else {
@@ -68,13 +74,24 @@ export async function GET(req) {
 
     if (search) {
       const searchRegex = { $regex: search, $options: 'i' };
-      query.$or = [
+      const searchConditions = [
         { itemName: searchRegex },
         { activeIngredient: searchRegex },
         { category: searchRegex }
       ];
       if (!slug || partner) {
-        query.$or.push({ businessName: searchRegex });
+        searchConditions.push({ businessName: searchRegex });
+      }
+
+      if (query.$or) {
+        const existingOr = query.$or;
+        delete query.$or;
+        query.$and = [
+          { $or: existingOr },
+          { $or: searchConditions }
+        ];
+      } else {
+        query.$or = searchConditions;
       }
     }
     if (drugClass && drugClass !== 'all') {
