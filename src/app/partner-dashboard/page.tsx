@@ -58,6 +58,7 @@ function DashboardContent() {
   const [name, setName] = useState('');
   const [tagline, setTagline] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#F43F5E');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -399,6 +400,57 @@ function DashboardContent() {
   const copyStoreUrl = () => {
     navigator.clipboard.writeText(storeUrl);
     showToast('Storefront link copied to clipboard!');
+  };
+
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image must be smaller than 5MB', 'error');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/partner/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setLogoUrl(data.url);
+        // Automatically save new logo to database
+        await handleSaveSettings({
+          slug,
+          name,
+          tagline,
+          logoUrl: data.url,
+          primaryColor,
+          contactEmail,
+          contactPhone,
+          markupPercentage,
+          productMarkups,
+          bankDetails: {
+            bankName,
+            accountNumber,
+            accountName,
+          },
+        });
+        showToast('Logo uploaded and saved successfully!');
+      } else {
+        showToast(data.error || 'Failed to upload logo', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error uploading logo', 'error');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
   };
 
   // Sample markup math for preview
@@ -1287,16 +1339,59 @@ function DashboardContent() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Logo Image URL</label>
-                <input
-                  type="text"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono text-xs"
-                  placeholder="https://..."
-                />
-                <p className="text-[11px] text-slate-400">Direct link to your transparent PNG logo (hosted on your CDN/S3/Vercel)</p>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700">Storefront Logo</label>
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
+                  <div className="w-20 h-20 rounded-xl border border-slate-200 bg-white flex items-center justify-center p-2 overflow-hidden shrink-0 shadow-xs">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Store logo" className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <span className="text-[11px] text-slate-400 font-medium text-center">No Logo</span>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-xs ${uploadingLogo ? 'opacity-60 pointer-events-none' : ''}`}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        {uploadingLogo ? 'Uploading...' : (logoUrl ? 'Change Logo Image' : 'Upload Logo from Device')}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          onChange={handleLogoFileUpload}
+                          className="hidden"
+                          disabled={uploadingLogo}
+                        />
+                      </label>
+                      {logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl('')}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors border border-rose-200"
+                        >
+                          Remove Logo
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">Upload a PNG, JPG, WebP, or SVG from your device.</p>
+                  </div>
+                </div>
+
+                <details className="text-xs text-slate-500 pt-1">
+                  <summary className="cursor-pointer hover:text-slate-700 font-medium select-none">Or enter image URL manually</summary>
+                  <div className="pt-2">
+                    <input
+                      type="text"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </details>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
