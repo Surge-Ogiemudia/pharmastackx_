@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useCart } from '../contexts/CartContext';
 import QRCode from 'qrcode';
 import { event } from '../lib/gtag';
@@ -40,20 +40,55 @@ const haversineDistance = (coords1: { lat: number; lon: number }, coords2: { lat
   return R * c;
 };
 
-export default function FindMedicinesContent({ setView, initialQuery }: { setView?: (view: string) => void; initialQuery?: string }) {
+export default function FindMedicinesContent({ 
+  setView, 
+  initialQuery,
+  partnerSlug 
+}: { 
+  setView?: (view: string) => void; 
+  initialQuery?: string;
+  partnerSlug?: string;
+}) {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const urlSlug = searchParams?.get('slug') || '';
-  const [slug, setSlug] = useState(urlSlug);
+  const pathname = usePathname();
+
+  const resolveInitialSlug = () => {
+    if (partnerSlug) return partnerSlug.toLowerCase().trim();
+    const urlSlug = searchParams?.get('slug');
+    if (urlSlug) return urlSlug.toLowerCase().trim();
+    if (typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/^\/p\/([^/?#]+)/);
+      if (match) return decodeURIComponent(match[1]).toLowerCase().trim();
+    }
+    return '';
+  };
+
+  const [slug, setSlug] = useState(resolveInitialSlug);
 
   useEffect(() => {
+    if (partnerSlug && partnerSlug.toLowerCase().trim() !== slug) {
+      setSlug(partnerSlug.toLowerCase().trim());
+      return;
+    }
+    const currentUrlSlug = searchParams?.get('slug');
+    if (currentUrlSlug && currentUrlSlug.toLowerCase().trim() !== slug) {
+      setSlug(currentUrlSlug.toLowerCase().trim());
+      return;
+    }
     if (typeof window !== 'undefined' && !slug) {
+      const pathnameMatch = window.location.pathname.match(/^\/p\/([^/?#]+)/);
+      if (pathnameMatch) {
+        setSlug(decodeURIComponent(pathnameMatch[1]).toLowerCase().trim());
+        return;
+      }
       const hostname = window.location.hostname;
       const isSubdomain = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && !hostname.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
       if (isSubdomain) {
         setSlug(hostname.split('.')[0]);
       }
     }
-  }, [slug]);
+  }, [partnerSlug, searchParams, slug]);
 
   const [medicines, setMedicines] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -376,7 +411,10 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
           </div>
           <div className={styles.headerActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button 
-              onClick={() => setView?.('orders')}
+              onClick={() => {
+                if (setView) setView('orders');
+                else router.push('/orders');
+              }}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '36px', height: '36px', borderRadius: '50%',
@@ -401,9 +439,24 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
         <div className={styles.heroGlow}></div>
         <div className={styles.heroInner}>
           <div className={styles.heroText}>
-            <div className={styles.heroEyebrow}>{slug ? 'Verified pharmacy · psx.ng' : 'Search across all verified pharmacies'}</div>
-            <h1 className={styles.heroTitle}>Your medicine,<br/><em>found.</em></h1>
-            <p className={styles.heroSub}>Browse real-time inventory. Every medicine synced live. Order for pickup or delivery.</p>
+            <div className={styles.heroEyebrow}>
+              {partnerDetails 
+                ? 'Official Partner Store · Verified & Discreet' 
+                : (slug ? 'Verified pharmacy · psx.ng' : 'Search across all verified pharmacies')}
+            </div>
+            <h1 className={styles.heroTitle}>
+              {partnerDetails ? (
+                <>Reproductive wellness,<br/><em>delivered discreetly.</em></>
+              ) : (
+                <>Your medicine,<br/><em>found.</em></>
+              )}
+            </h1>
+            <p className={styles.heroSub}>
+              {partnerDetails
+                ? `${partnerDetails.name} network catalog. Quality assured, confidential delivery to your doorstep.`
+                : 'Browse real-time inventory. Every medicine synced live. Order for pickup or delivery.'
+              }
+            </p>
           </div>
           {qrCodeDataUrl && (
             <div className={styles.qrCard}>
@@ -828,7 +881,11 @@ export default function FindMedicinesContent({ setView, initialQuery }: { setVie
                 className={styles.checkoutBtn}
                 onClick={() => {
                   setIsCartOpen(false);
-                  setView?.('confirmOrder');
+                  if (setView) {
+                    setView('confirmOrder');
+                  } else {
+                    router.push(slug ? `/?view=confirmOrder&slug=${encodeURIComponent(slug)}` : '/?view=confirmOrder');
+                  }
                 }}
             >
                 Proceed to checkout →

@@ -24,7 +24,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     pathname !== '/pulse' && 
     !pathname?.startsWith('/pulse/') &&
     pathname !== '/extension' &&
-    !pathname?.startsWith('/extension');
+    !pathname?.startsWith('/extension') &&
+    !pathname?.startsWith('/p/') &&
+    pathname !== '/partner-dashboard';
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change

@@ -47,18 +47,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Handle direct partner path: /p/[partner-slug]
-  if (pathname.startsWith('/p/')) {
-    const partnerSlug = pathname.replace('/p/', '').split('/')[0].trim();
-    if (partnerSlug) {
-      console.log(`[Middleware] Partner direct route hit: /p/${partnerSlug}. Rewriting to /?slug=${partnerSlug}&view=findMedicines`);
-      url.pathname = '/';
-      url.searchParams.set('slug', partnerSlug);
-      url.searchParams.set('view', 'findMedicines');
-      return NextResponse.rewrite(url);
-    }
-  }
-  
   
   const sessionToken = request.cookies.get('session_token')?.value;
 
@@ -111,7 +99,6 @@ export const config = {
      * - Static assets and Next.js internal files
      */
     '/',
-    '/p/:path*',
     '/admin/:path*',
     '/business/:path*',
     '/delivery-agents/:path*',

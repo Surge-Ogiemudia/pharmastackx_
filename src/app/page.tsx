@@ -85,7 +85,9 @@ export default function HomePage() {
     const v = searchParams?.get('view');
     if (searchParams?.get('requestId')) return 'orderMedicines';
     if (v) return v;
+    if (searchParams?.get('slug')) return 'findMedicines';
     if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/p/')) return 'findMedicines';
       const h = window.location.hostname;
       const isSub = ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && !h.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
       if (isSub) return 'findMedicines';
@@ -853,7 +855,7 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: 0, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
             <Box sx={{ flexGrow: 1 }}>
-              <FindMedicinesContent setView={setView} />
+              <FindMedicinesContent setView={setView} partnerSlug={searchParams?.get('slug') || undefined} />
             </Box>
           </Box>
         );
