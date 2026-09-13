@@ -128,6 +128,13 @@ export default function FindMedicinesContent({
   const [partnerDetails, setPartnerDetails] = useState<any>(null);
   const [isLoadingPharmacy, setIsLoadingPharmacy] = useState(false);
 
+  const shouldHideStockCount = Boolean(
+    partnerDetails?.hideStockCount || 
+    partnerDetails?.slug?.toLowerCase() === 'bubblegum' || 
+    partnerSlug?.toLowerCase() === 'bubblegum' || 
+    slug?.toLowerCase() === 'bubblegum'
+  );
+
   const drugClasses = ['all', 'Cardiovascular', 'Diabetes', 'Antibiotic', 'Pain Relief', 'Respiratory', 'Skincare', 'Supplements'];
 
   const fetchMedicines = useCallback(debounce(async (page: number, search: string, filter: string, sort: string) => {
@@ -701,7 +708,7 @@ export default function FindMedicinesContent({
                         {medicine.stockQty !== null && medicine.stockQty === 0 && (
                           <div className={styles.outOfStock}>Out of stock</div>
                         )}
-                        {medicine.stockQty !== null && medicine.stockQty > 0 && medicine.stockQty <= 10 && (
+                        {!shouldHideStockCount && medicine.stockQty !== null && medicine.stockQty > 0 && medicine.stockQty <= 10 && (
                           <div className={styles.lowStock}>Only {medicine.stockQty} left</div>
                         )}
 
@@ -812,8 +819,11 @@ export default function FindMedicinesContent({
                 </div>
                 <div style={{ flex: 1, background: '#f8f8f8', borderRadius: 12, padding: '12px 16px' }}>
                   <div style={{ fontSize: 11, color: '#999', marginBottom: 2 }}>Stock</div>
-                  <div style={{ fontSize: 20, fontWeight: 600, color: selectedProduct.stockQty > 0 ? '#2E7D32' : '#d32f2f' }}>
-                    {selectedProduct.stockQty != null ? (selectedProduct.stockQty > 0 ? `${selectedProduct.stockQty} available` : 'Out of stock') : 'In stock'}
+                  <div style={{ fontSize: 20, fontWeight: 600, color: (selectedProduct.stockQty > 0 || selectedProduct.inStock) ? '#2E7D32' : '#d32f2f' }}>
+                    {shouldHideStockCount
+                      ? (selectedProduct.inStock || (selectedProduct.stockQty != null && selectedProduct.stockQty > 0) ? 'In stock' : 'Out of stock')
+                      : (selectedProduct.stockQty != null ? (selectedProduct.stockQty > 0 ? `${selectedProduct.stockQty} available` : 'Out of stock') : 'In stock')
+                    }
                   </div>
                 </div>
               </div>
