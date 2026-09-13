@@ -824,9 +824,9 @@ export default function FindMedicinesContent({
                 </div>
               )}
 
-              {selectedProduct.businessName && (
+              {selectedProduct.businessName && (!partnerDetails || selectedProduct.businessName === partnerDetails.name) && (
                 <div style={{ fontSize: 13, color: '#666', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 16 }}>&#127978;</span> {selectedProduct.businessName}
+                  <span style={{ fontSize: 16 }}>&#127978;</span> {partnerDetails ? partnerDetails.name : selectedProduct.businessName}
                 </div>
               )}
 

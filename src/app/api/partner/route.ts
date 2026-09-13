@@ -58,22 +58,30 @@ export async function GET(req: NextRequest) {
 
     // Fetch curated products details if present
     let curatedProducts: any[] = [];
+    const productMarkupsMap = partner.productMarkups instanceof Map 
+      ? Object.fromEntries(partner.productMarkups)
+      : (partner.productMarkups || {});
+
     if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
       const rawProducts = await Product.find({ _id: { $in: partner.curatedProductIds } })
         .select('_id itemName amount quantity businessName category imageUrl activeIngredient POM info')
         .lean();
-      curatedProducts = rawProducts.map((p: any) => ({
-        id: String(p._id),
-        name: p.itemName,
-        amount: p.amount,
-        quantity: p.quantity,
-        pharmacy: p.businessName,
-        category: p.category,
-        image: p.imageUrl || 'https://via.placeholder.com/150',
-        activeIngredients: p.activeIngredient || '',
-        POM: p.POM || false,
-        info: p.info || '',
-      }));
+      curatedProducts = rawProducts.map((p: any) => {
+        const prodId = String(p._id);
+        const specificMarkup = productMarkupsMap[prodId] !== undefined ? Number(productMarkupsMap[prodId]) : null;
+        return {
+          id: prodId,
+          name: p.itemName,
+          amount: p.amount,
+          quantity: p.quantity,
+          category: p.category,
+          image: p.imageUrl || 'https://via.placeholder.com/150',
+          activeIngredients: p.activeIngredient || '',
+          POM: p.POM || false,
+          info: p.info || '',
+          markupPercentage: specificMarkup,
+        };
+      });
     }
 
     return NextResponse.json({
@@ -112,7 +120,7 @@ export async function PUT(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds } = body;
+    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds, productMarkups } = body;
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Partner slug is required' }, { status: 400 });
@@ -129,6 +137,7 @@ export async function PUT(req: NextRequest) {
     if (bankDetails !== undefined) updateFields.bankDetails = bankDetails;
     if (allowedCategories !== undefined) updateFields.allowedCategories = allowedCategories;
     if (curatedProductIds !== undefined) updateFields.curatedProductIds = curatedProductIds;
+    if (productMarkups !== undefined) updateFields.productMarkups = productMarkups;
 
     const updated = await Partner.findOneAndUpdate(
       { slug: slug.toLowerCase() },
