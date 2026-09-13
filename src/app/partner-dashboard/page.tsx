@@ -630,35 +630,6 @@ function DashboardContent() {
                       </button>
                     )}
                   </div>
-
-                  {/* QUICK FILTER PILLS */}
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    {[
-                      { id: 'all', label: 'All Medicines' },
-                      { id: 'Reproductive', label: 'Reproductive / Contraceptives' },
-                      { id: 'Pain Relief', label: 'Pain Relief' },
-                      { id: 'Antibiotic', label: 'Antibiotics' },
-                      { id: 'Supplements', label: 'Supplements' },
-                      { id: 'Skincare', label: 'Skincare' }
-                    ].map(tab => (
-                      <button
-                        key={tab.id}
-                        onClick={() => {
-                          setCatalogCategory(tab.id);
-                          if (tab.id === 'Reproductive') {
-                            setCatalogSearch('postpill');
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
-                          catalogCategory === tab.id
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* PRODUCT CARDS TILES */}
