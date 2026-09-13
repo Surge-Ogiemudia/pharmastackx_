@@ -9,6 +9,7 @@ export interface IPartner extends Document {
   tagline?: string;
   contactEmail?: string;
   contactPhone?: string;
+  hideStockCount?: boolean;
   bankDetails?: {
     bankName: string;
     accountNumber: string;
@@ -36,6 +37,7 @@ const PartnerSchema: Schema<IPartner> = new Schema({
   tagline: { type: String, default: 'Your Healthcare & Wellness Partner' },
   contactEmail: { type: String, trim: true },
   contactPhone: { type: String, trim: true },
+  hideStockCount: { type: Boolean, default: false },
   bankDetails: {
     bankName: { type: String, default: '' },
     accountNumber: { type: String, default: '' },

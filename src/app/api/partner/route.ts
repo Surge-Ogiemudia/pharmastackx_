@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         tagline: 'Expert Women’s Reproductive Health & Wellness',
         contactEmail: 'Business@bubblegum.health',
         contactPhone: '07067593825',
+        hideStockCount: true,
         bankDetails: {
           bankName: '',
           accountNumber: '',
@@ -120,7 +121,7 @@ export async function PUT(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds, productMarkups } = body;
+    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds, productMarkups, hideStockCount } = body;
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Partner slug is required' }, { status: 400 });
@@ -138,6 +139,7 @@ export async function PUT(req: NextRequest) {
     if (allowedCategories !== undefined) updateFields.allowedCategories = allowedCategories;
     if (curatedProductIds !== undefined) updateFields.curatedProductIds = curatedProductIds;
     if (productMarkups !== undefined) updateFields.productMarkups = productMarkups;
+    if (hideStockCount !== undefined) updateFields.hideStockCount = Boolean(hideStockCount);
 
     const updated = await Partner.findOneAndUpdate(
       { slug: slug.toLowerCase() },

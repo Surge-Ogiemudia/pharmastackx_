@@ -207,6 +207,7 @@ export async function GET(req) {
         primaryColor: partner.primaryColor,
         tagline: partner.tagline,
         markupPercentage: markupPct,
+        hideStockCount: partner.hideStockCount !== undefined ? partner.hideStockCount : (partner.slug === 'bubblegum'),
       } : null,
       pagination: {
         currentPage: page,
