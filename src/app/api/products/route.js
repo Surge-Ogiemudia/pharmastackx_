@@ -172,7 +172,7 @@ export async function GET(req) {
           image: product.imageUrl || 'https://via.placeholder.com/150',
           name: product.itemName,
           activeIngredients: product.activeIngredient || '',
-          drugClass: product.category || 'N/A',
+          drugClass: product.category || '',
           price: finalPrice,
           formattedPrice: formatPrice(finalPrice),
           basePrice: product.amount,

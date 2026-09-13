@@ -652,6 +652,11 @@ function DashboardContent() {
                       const markup = Math.round(base * (effectiveMarkup / 100));
                       const retail = base + markup;
 
+                      const rawCat = (p.drugClass || p.category || '').trim();
+                      const hasCategory = rawCat && rawCat.toUpperCase() !== 'N/A' && rawCat.toUpperCase() !== 'UNKNOWN' && rawCat.toLowerCase() !== 'medicine';
+                      const rawIng = (p.activeIngredients || '').trim();
+                      const hasIngredient = rawIng && rawIng.toUpperCase() !== 'N/A' && rawIng.toUpperCase() !== 'VERIFIED SUPPLY';
+
                       return (
                         <div
                           key={productId}
@@ -673,10 +678,12 @@ function DashboardContent() {
                           }`}
                         >
                           <div>
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                                {p.drugClass || p.category || 'Medicine'}
-                              </span>
+                            <div className="flex items-start justify-between gap-2 mb-2 min-h-[18px]">
+                              {hasCategory ? (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                  {rawCat}
+                                </span>
+                              ) : <div />}
                               {!isOnShelf && (
                                 <span className="text-xs text-slate-300 group-hover:text-rose-500 transition" title="Drag me!">
                                   ⠿ Drag
@@ -687,10 +694,12 @@ function DashboardContent() {
                             <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
                               {p.name || p.itemName}
                             </h4>
-                            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                              <span>💊</span>
-                              <span className="truncate">{p.activeIngredients && p.activeIngredients !== 'N/A' ? p.activeIngredients : 'Verified Supply'}</span>
-                            </p>
+                            {hasIngredient && (
+                              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                <span>💊</span>
+                                <span className="truncate">{rawIng}</span>
+                              </p>
+                            )}
                           </div>
 
                           {/* PRICING & ACTION */}
