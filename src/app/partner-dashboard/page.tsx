@@ -593,13 +593,8 @@ function DashboardContent() {
               <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
-                      <span>PharmaStackX Master Inventory</span>
-                      <span className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
-                        {totalCatalogProducts > 0
-                          ? `Showing ${masterProducts.length} of ${totalCatalogProducts.toLocaleString()} medicines`
-                          : `${masterProducts.length} medicines`}
-                      </span>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      PharmaStackX Master Inventory
                     </h3>
                     <p className="text-xs text-slate-500">Pick medicines to showcase on your branded storefront</p>
                   </div>
