@@ -26,6 +26,9 @@ function DashboardContent() {
   const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
   const [shelfSearch, setShelfSearch] = useState('');
   const [masterProducts, setMasterProducts] = useState<any[]>([]);
+  const [totalCatalogProducts, setTotalCatalogProducts] = useState(0);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('all');
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -83,32 +86,52 @@ function DashboardContent() {
     }
   }, []);
 
-  const searchMasterCatalog = useCallback(async (searchQuery: string, categoryFilter: string = 'all') => {
-    setLoadingCatalog(true);
+  const searchMasterCatalog = useCallback(async (searchQuery: string, categoryFilter: string = 'all', pageNum: number = 1, append: boolean = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoadingCatalog(true);
+      setCatalogPage(1);
+    }
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (categoryFilter && categoryFilter !== 'all') params.append('drugClass', categoryFilter);
+      params.append('page', String(pageNum));
       params.append('limit', '32');
       
       const res = await fetch(`/api/products?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
-          setMasterProducts(data.data);
+          if (append) {
+            setMasterProducts(prev => [...prev, ...data.data]);
+          } else {
+            setMasterProducts(data.data);
+          }
+          if (data.pagination && typeof data.pagination.totalProducts === 'number') {
+            setTotalCatalogProducts(data.pagination.totalProducts);
+          }
         }
       }
     } catch (err) {
       console.error('Failed to search master inventory:', err);
     } finally {
       setLoadingCatalog(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  const handleLoadMore = () => {
+    const nextPage = catalogPage + 1;
+    setCatalogPage(nextPage);
+    searchMasterCatalog(catalogSearch, catalogCategory, nextPage, true);
+  };
 
   // Search master catalog on query change or mount
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchMasterCatalog(catalogSearch, catalogCategory);
+      searchMasterCatalog(catalogSearch, catalogCategory, 1, false);
     }, 250);
     return () => clearTimeout(timer);
   }, [catalogSearch, catalogCategory, searchMasterCatalog]);
@@ -570,9 +593,13 @@ function DashboardContent() {
               <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
                       <span>PharmaStackX Master Inventory</span>
-                      <span className="text-xs font-normal text-slate-400">({masterProducts.length} results)</span>
+                      <span className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
+                        {totalCatalogProducts > 0
+                          ? `Showing ${masterProducts.length} of ${totalCatalogProducts.toLocaleString()} medicines`
+                          : `${masterProducts.length} medicines`}
+                      </span>
                     </h3>
                     <p className="text-xs text-slate-500">Pick medicines to showcase on your branded storefront</p>
                   </div>
@@ -647,7 +674,8 @@ function DashboardContent() {
                     <p className="text-xs text-slate-400">Try searching another medicine brand or ingredient.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[680px] overflow-y-auto pr-1">
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[680px] overflow-y-auto pr-1">
                     {masterProducts.map((p) => {
                       const productId = String(p.id || p._id);
                       const isOnShelf = curatedProducts.some(c => String(c.id || c._id) === productId);
@@ -727,6 +755,32 @@ function DashboardContent() {
                       );
                     })}
                   </div>
+
+                    {/* LOAD MORE BUTTON / PAGINATION */}
+                    {masterProducts.length < totalCatalogProducts && (
+                      <div className="pt-2 text-center">
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
+                          className="w-full sm:w-auto px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mx-auto shadow-sm"
+                        >
+                          {loadingMore ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></span>
+                              Loading more medicines...
+                            </>
+                          ) : (
+                            <>
+                              <span>⬇ Load More Medicines</span>
+                              <span className="text-slate-500 font-normal">
+                                (+32 more of {totalCatalogProducts.toLocaleString()})
+                              </span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
