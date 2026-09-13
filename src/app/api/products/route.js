@@ -57,14 +57,9 @@ export async function GET(req) {
         markupPct = partner.markupPercentage || 18;
         if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
           query._id = { $in: partner.curatedProductIds };
-        } else if (partner.allowedCategories && partner.allowedCategories.length > 0) {
-          const categoryRegexes = partner.allowedCategories.map(c => new RegExp(`^${c}$`, 'i'));
-          const keywords = ['postpill', 'contracept', 'levonorgestrel', 'condom', 'pregnancy', 'folic', 'ibuprofen', 'paracetamol', 'panadol', 'vitamin'];
-          const nameRegexes = keywords.map(k => new RegExp(k, 'i'));
-          query.$or = [
-            { category: { $in: categoryRegexes } },
-            ...nameRegexes.map(r => ({ itemName: r }))
-          ];
+        } else {
+          // Store is empty until the partner curates and drops products into their shelf
+          query._id = { $in: [] };
         }
         // When it is a partner storefront, do NOT restrict to a single pharmacy's slug
       } else {
