@@ -24,6 +24,7 @@ function DashboardContent() {
 
   // Curated Catalog & Drag-and-Drop state
   const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
+  const [shelfSearch, setShelfSearch] = useState('');
   const [masterProducts, setMasterProducts] = useState<any[]>([]);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('all');
@@ -731,8 +732,32 @@ function DashboardContent() {
                     )}
                   </div>
 
+                  {/* SHELF SEARCH BAR */}
+                  {curatedProducts.length > 0 && (
+                    <div className="relative my-2">
+                      <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                        🔍
+                      </span>
+                      <input
+                        type="text"
+                        value={shelfSearch}
+                        onChange={(e) => setShelfSearch(e.target.value)}
+                        placeholder={`Search ${curatedProducts.length} items on shelf...`}
+                        className="w-full pl-8 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+                      />
+                      {shelfSearch && (
+                        <button
+                          onClick={() => setShelfSearch('')}
+                          className="absolute inset-y-0 right-2.5 flex items-center text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* DROP ZONE NOTIFICATION */}
-                  <div className={`my-3 p-3 rounded-2xl text-center text-xs font-semibold border-2 border-dashed transition-all ${
+                  <div className={`my-2 p-3 rounded-2xl text-center text-xs font-semibold border-2 border-dashed transition-all ${
                     isOverShelf
                       ? 'border-rose-500 bg-rose-100 text-rose-700'
                       : 'border-slate-200 text-slate-400 bg-slate-50'
@@ -751,7 +776,14 @@ function DashboardContent() {
                     </div>
                   ) : (
                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                      {curatedProducts.map((item) => {
+                      {curatedProducts
+                        .filter((item) => {
+                          if (!shelfSearch.trim()) return true;
+                          const q = shelfSearch.toLowerCase();
+                          return (item.name || '').toLowerCase().includes(q) ||
+                                 (item.category || '').toLowerCase().includes(q);
+                        })
+                        .map((item) => {
                         const base = Number(item.amount || item.basePrice || item.price || 0);
                         const hasCustomMarkup = productMarkups[item.id] !== undefined;
                         const effectivePct = hasCustomMarkup 
