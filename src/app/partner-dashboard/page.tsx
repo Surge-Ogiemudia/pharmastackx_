@@ -20,7 +20,16 @@ function DashboardContent() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'branding' | 'pricing' | 'payouts'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'branding' | 'pricing' | 'payouts'>('catalog');
+
+  // Curated Catalog & Drag-and-Drop state
+  const [curatedProducts, setCuratedProducts] = useState<any[]>([]);
+  const [masterProducts, setMasterProducts] = useState<any[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogCategory, setCatalogCategory] = useState('all');
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [draggedProduct, setDraggedProduct] = useState<any | null>(null);
+  const [isOverShelf, setIsOverShelf] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -55,6 +64,9 @@ function DashboardContent() {
 
         setStats(data.stats || {});
         setOrders(data.orders || []);
+        if (data.curatedProducts && Array.isArray(data.curatedProducts)) {
+          setCuratedProducts(data.curatedProducts);
+        }
       } else {
         setToast({ msg: data.error || 'Failed to load partner', type: 'error' });
       }
@@ -64,6 +76,76 @@ function DashboardContent() {
       setLoading(false);
     }
   }, []);
+
+  const searchMasterCatalog = useCallback(async (searchQuery: string, categoryFilter: string = 'all') => {
+    setLoadingCatalog(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (categoryFilter && categoryFilter !== 'all') params.append('drugClass', categoryFilter);
+      params.append('limit', '32');
+      
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setMasterProducts(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to search master inventory:', err);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, []);
+
+  // Search master catalog on query change or mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchMasterCatalog(catalogSearch, catalogCategory);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [catalogSearch, catalogCategory, searchMasterCatalog]);
+
+  const persistCuratedIds = async (ids: string[]) => {
+    try {
+      await fetch('/api/partner', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, curatedProductIds: ids }),
+      });
+    } catch (e) {
+      console.error('Failed to persist curated IDs:', e);
+    }
+  };
+
+  const addToShelf = async (product: any) => {
+    const productId = String(product.id || product._id);
+    if (curatedProducts.some(p => String(p.id || p._id) === productId)) {
+      showToast(`${product.name || product.itemName} is already on your shelf!`, 'error');
+      return;
+    }
+    const itemToShelf = {
+      id: productId,
+      name: product.name || product.itemName,
+      amount: product.basePrice || product.price || product.amount,
+      quantity: product.stockQty !== undefined ? product.stockQty : product.quantity,
+      pharmacy: product.pharmacy || product.businessName || 'Verified Pharmacy',
+      category: product.drugClass || product.category || 'General',
+      image: product.image || product.imageUrl || 'https://via.placeholder.com/150',
+    };
+    const nextCurated = [itemToShelf, ...curatedProducts];
+    setCuratedProducts(nextCurated);
+    showToast(`Added ${itemToShelf.name} to your storefront!`);
+    await persistCuratedIds(nextCurated.map(p => p.id));
+  };
+
+  const removeFromShelf = async (productId: string) => {
+    const nextCurated = curatedProducts.filter(p => String(p.id || p._id) !== productId);
+    setCuratedProducts(nextCurated);
+    showToast('Removed item from storefront shelf');
+    await persistCuratedIds(nextCurated.map(p => p.id));
+  };
 
   useEffect(() => {
     if (slug) fetchPartnerData(slug);
@@ -209,6 +291,16 @@ function DashboardContent() {
             }`}
           >
             📦 Orders & Deliveries ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`py-4 text-sm font-semibold border-b-2 transition ${
+              activeTab === 'catalog' 
+                ? 'border-rose-500 text-rose-600' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            💊 Curate Products ({curatedProducts.length})
           </button>
           <button
             onClick={() => setActiveTab('branding')}
@@ -365,7 +457,334 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* TAB 2: STOREFRONT & BRANDING */}
+        {/* TAB: CURATE PRODUCTS (DRAG & DROP STUDIO) */}
+        {activeTab === 'catalog' && (
+          <div className="space-y-6">
+            {/* STUDIO HEADER BANNER */}
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500 text-white uppercase tracking-wider">
+                    Interactive Shelf Studio
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    Live drag & drop catalog builder
+                  </span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  Drag & Drop Medicines onto your Storefront Shelf
+                </h2>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Browse or search through <strong className="text-white">41,000+ real medicines</strong> from verified PharmaStackX pharmacies. Drag any product tile directly into your virtual shelf on the right (or tap <span className="text-rose-400 font-semibold">+ Add to Shelf</span>) to sell on <span className="font-mono text-rose-300">/p/{slug}</span>.
+                </p>
+              </div>
+
+              <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 min-w-[220px]">
+                <span className="text-xs font-semibold text-slate-400 uppercase">Live on your Storefront</span>
+                <span className="text-3xl font-extrabold text-rose-400">{curatedProducts.length} Items</span>
+                <a
+                  href={`/p/${slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow transition text-center"
+                >
+                  Preview Storefront ↗
+                </a>
+              </div>
+            </div>
+
+            {/* DUAL PANEL GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* LEFT PANEL: MASTER NETWORK INVENTORY (COL 7) */}
+              <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <span>PharmaStackX Master Inventory</span>
+                      <span className="text-xs font-normal text-slate-400">({masterProducts.length} results)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">Pick medicines to showcase on your branded storefront</p>
+                  </div>
+                  <div className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full self-start sm:self-auto font-medium">
+                    🖐 Drag card or click + Add
+                  </div>
+                </div>
+
+                {/* SEARCH & FILTERS */}
+                <div className="space-y-3">
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                      🔍
+                    </span>
+                    <input
+                      type="text"
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      placeholder="Search 41,000+ medicines (e.g. Postpill, Panadol, Pregnacare, Amox, Ibuprofen)..."
+                      className="w-full pl-10 pr-10 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+                    />
+                    {catalogSearch && (
+                      <button
+                        onClick={() => setCatalogSearch('')}
+                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* QUICK FILTER PILLS */}
+                  <div className="flex flex-wrap gap-1.5 text-xs">
+                    {[
+                      { id: 'all', label: 'All Medicines' },
+                      { id: 'Reproductive', label: 'Reproductive / Contraceptives' },
+                      { id: 'Pain Relief', label: 'Pain Relief' },
+                      { id: 'Antibiotic', label: 'Antibiotics' },
+                      { id: 'Supplements', label: 'Supplements' },
+                      { id: 'Skincare', label: 'Skincare' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setCatalogCategory(tab.id);
+                          if (tab.id === 'Reproductive') {
+                            setCatalogSearch('postpill');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
+                          catalogCategory === tab.id
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PRODUCT CARDS TILES */}
+                {loadingCatalog ? (
+                  <div className="py-20 text-center space-y-3">
+                    <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-xs text-slate-500 font-medium">Loading medicines from pharmacy network...</p>
+                  </div>
+                ) : masterProducts.length === 0 ? (
+                  <div className="py-16 text-center space-y-2 border-2 border-dashed border-slate-200 rounded-2xl">
+                    <div className="text-3xl">🔍</div>
+                    <p className="text-sm font-semibold text-slate-700">No matching medicines found</p>
+                    <p className="text-xs text-slate-400">Try searching another medicine brand or ingredient.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[680px] overflow-y-auto pr-1">
+                    {masterProducts.map((p) => {
+                      const productId = String(p.id || p._id);
+                      const isOnShelf = curatedProducts.some(c => String(c.id || c._id) === productId);
+                      const base = Number(p.basePrice || p.price || p.amount || 0);
+                      const markup = Math.round(base * (markupPercentage / 100));
+                      const retail = base + markup;
+
+                      return (
+                        <div
+                          key={productId}
+                          draggable={!isOnShelf}
+                          onDragStart={(e) => {
+                            if (isOnShelf) return;
+                            setDraggedProduct(p);
+                            e.dataTransfer.setData('text/plain', productId);
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }}
+                          onDragEnd={() => {
+                            setDraggedProduct(null);
+                            setIsOverShelf(false);
+                          }}
+                          className={`p-4 rounded-2xl border transition-all select-none relative flex flex-col justify-between ${
+                            isOnShelf
+                              ? 'bg-slate-50 border-slate-200 opacity-60'
+                              : 'bg-white border-slate-200 hover:border-rose-400 hover:shadow-md cursor-grab active:cursor-grabbing group'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                {p.drugClass || p.category || 'Medicine'}
+                              </span>
+                              {!isOnShelf && (
+                                <span className="text-xs text-slate-300 group-hover:text-rose-500 transition" title="Drag me!">
+                                  ⠿ Drag
+                                </span>
+                              )}
+                            </div>
+
+                            <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
+                              {p.name || p.itemName}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                              <span>🏪</span>
+                              <span className="truncate">{p.pharmacy || p.businessName || 'Verified Network Store'}</span>
+                            </p>
+                          </div>
+
+                          {/* PRICING & ACTION */}
+                          <div className="pt-3 mt-3 border-t border-slate-100 flex items-end justify-between gap-2">
+                            <div>
+                              <div className="text-[11px] text-slate-400">
+                                Retail: <strong className="text-slate-900 text-xs">₦{retail.toLocaleString()}</strong>
+                              </div>
+                              <div className="text-[10px] font-bold text-emerald-600">
+                                +₦{markup.toLocaleString()} ({markupPercentage}%) profit
+                              </div>
+                            </div>
+
+                            {isOnShelf ? (
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                                ✓ On Shelf
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => addToShelf(p)}
+                                className="text-xs font-bold text-white bg-slate-900 hover:bg-rose-600 px-3 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                              >
+                                + Add
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT PANEL: STOREFRONT SHELF DROP ZONE (COL 5) */}
+              <div className="lg:col-span-5 space-y-4 sticky top-24">
+                <div 
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    if (!isOverShelf) setIsOverShelf(true);
+                  }}
+                  onDragLeave={() => setIsOverShelf(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsOverShelf(false);
+                    if (draggedProduct) {
+                      addToShelf(draggedProduct);
+                      setDraggedProduct(null);
+                    }
+                  }}
+                  className={`bg-white rounded-3xl border-2 transition-all p-6 shadow-sm ${
+                    isOverShelf
+                      ? 'border-rose-500 bg-rose-50/60 ring-4 ring-rose-100 scale-[1.01]'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span>Your Storefront Shelf</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                          {curatedProducts.length}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500">Products live on /p/{slug}</p>
+                    </div>
+
+                    {curatedProducts.length > 0 && (
+                      <button
+                        onClick={async () => {
+                          if (confirm('Clear all curated items from your shelf?')) {
+                            setCuratedProducts([]);
+                            await persistCuratedIds([]);
+                            showToast('Shelf cleared');
+                          }
+                        }}
+                        className="text-xs text-slate-400 hover:text-rose-600 font-medium cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  {/* DROP ZONE NOTIFICATION */}
+                  <div className={`my-3 p-3 rounded-2xl text-center text-xs font-semibold border-2 border-dashed transition-all ${
+                    isOverShelf
+                      ? 'border-rose-500 bg-rose-100 text-rose-700'
+                      : 'border-slate-200 text-slate-400 bg-slate-50'
+                  }`}>
+                    {isOverShelf ? '📥 Release to add item to your shelf!' : '📥 Drop medicine cards here to add'}
+                  </div>
+
+                  {/* CURATED LIST */}
+                  {curatedProducts.length === 0 ? (
+                    <div className="py-14 text-center space-y-3">
+                      <div className="text-4xl">🛍️</div>
+                      <h4 className="text-sm font-bold text-slate-800">Your shelf is currently empty</h4>
+                      <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                        Drag items from the left or click <span className="font-semibold text-slate-700">+ Add</span> on any medicine to build your customized store catalog.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                      {curatedProducts.map((item) => {
+                        const base = Number(item.amount || item.basePrice || item.price || 0);
+                        const markup = Math.round(base * (markupPercentage / 100));
+                        const retail = base + markup;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3 transition group"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-xs font-bold text-slate-900 truncate">
+                                {item.name}
+                              </h5>
+                              <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+                                <span className="text-slate-600 font-semibold">₦{retail.toLocaleString()}</span>
+                                <span className="text-emerald-600 font-bold">(+₦{markup.toLocaleString()} cut)</span>
+                                <span className="text-slate-400 truncate">· {item.pharmacy}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => removeFromShelf(item.id)}
+                              className="w-7 h-7 rounded-xl bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-300 text-slate-400 hover:text-rose-600 text-xs font-bold flex items-center justify-center transition cursor-pointer shrink-0 shadow-sm"
+                              title="Remove from shelf"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* SHELF SUMMARY & LINK */}
+                  {curatedProducts.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                      <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-800 flex items-center justify-between font-semibold">
+                        <span>✓ Live & Auto-Saved</span>
+                        <span>{curatedProducts.length} Products Active</span>
+                      </div>
+                      <a
+                        href={`/p/${slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow transition block text-center"
+                      >
+                        View Live Storefront (/p/{slug}) ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: STOREFRONT & BRANDING */}
         {activeTab === 'branding' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import Partner from '@/models/Partner';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,9 +56,30 @@ export async function GET(req: NextRequest) {
     const totalProfitEarned = orders.reduce((sum, o) => sum + (o.partnerMarkupAmount || 0), 0);
     const pendingPayout = partner.payoutBalance || 0;
 
+    // Fetch curated products details if present
+    let curatedProducts: any[] = [];
+    if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
+      const rawProducts = await Product.find({ _id: { $in: partner.curatedProductIds } })
+        .select('_id itemName amount quantity businessName category imageUrl activeIngredient POM info')
+        .lean();
+      curatedProducts = rawProducts.map((p: any) => ({
+        id: String(p._id),
+        name: p.itemName,
+        amount: p.amount,
+        quantity: p.quantity,
+        pharmacy: p.businessName,
+        category: p.category,
+        image: p.imageUrl || 'https://via.placeholder.com/150',
+        activeIngredients: p.activeIngredient || '',
+        POM: p.POM || false,
+        info: p.info || '',
+      }));
+    }
+
     return NextResponse.json({
       success: true,
       partner,
+      curatedProducts,
       stats: {
         totalOrders,
         totalVolume,
