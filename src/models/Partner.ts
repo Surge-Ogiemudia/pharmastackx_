@@ -20,6 +20,9 @@ export interface IPartner extends Document {
   payoutBalance: number;
   isActive: boolean;
   apiKey?: string;
+  passwordHash?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +47,9 @@ const PartnerSchema: Schema<IPartner> = new Schema({
   payoutBalance: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   apiKey: { type: String, sparse: true },
+  passwordHash: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
 }, { timestamps: true });
 
 if (process.env.NODE_ENV === 'development') {
