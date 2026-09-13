@@ -220,8 +220,12 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Password reset link sent to ${targetEmail}. Please check your inbox and click the link to set your new password.`,
-        resetUrlDev: process.env.NODE_ENV === 'development' ? resetUrl : undefined,
+        emailDispatched,
+        resetToken,
+        resetUrl,
+        message: emailDispatched
+          ? `Password reset link sent to ${targetEmail}. Check your inbox (or use the direct link below).`
+          : `Password reset link generated for ${targetEmail}. (SMTP delivery offline; you can set it directly below).`,
       });
     }
 
