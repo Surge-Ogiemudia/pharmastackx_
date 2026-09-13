@@ -15,6 +15,7 @@ export interface IPartner extends Document {
     accountName: string;
   };
   curatedProductIds?: mongoose.Types.ObjectId[];
+  productMarkups?: Map<string, number>;
   allowedCategories?: string[];
   payoutBalance: number;
   isActive: boolean;
@@ -38,6 +39,7 @@ const PartnerSchema: Schema<IPartner> = new Schema({
     accountName: { type: String, default: '' },
   },
   curatedProductIds: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
+  productMarkups: { type: Map, of: Number, default: {} },
   allowedCategories: { type: [String], default: [] },
   payoutBalance: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },

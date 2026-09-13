@@ -39,6 +39,7 @@ function DashboardContent() {
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [markupPercentage, setMarkupPercentage] = useState(18);
+  const [productMarkups, setProductMarkups] = useState<Record<string, number>>({});
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
@@ -67,6 +68,10 @@ function DashboardContent() {
         if (data.curatedProducts && Array.isArray(data.curatedProducts)) {
           setCuratedProducts(data.curatedProducts);
         }
+        const markupsMap = p.productMarkups instanceof Map 
+          ? Object.fromEntries(p.productMarkups) 
+          : (p.productMarkups || {});
+        setProductMarkups(markupsMap);
       } else {
         setToast({ msg: data.error || 'Failed to load partner', type: 'error' });
       }
@@ -107,15 +112,15 @@ function DashboardContent() {
     return () => clearTimeout(timer);
   }, [catalogSearch, catalogCategory, searchMasterCatalog]);
 
-  const persistCuratedIds = async (ids: string[]) => {
+  const persistCuratedAndMarkups = async (ids: string[], markups: Record<string, number>) => {
     try {
       await fetch('/api/partner', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, curatedProductIds: ids }),
+        body: JSON.stringify({ slug, curatedProductIds: ids, productMarkups: markups }),
       });
     } catch (e) {
-      console.error('Failed to persist curated IDs:', e);
+      console.error('Failed to persist curated items and markups:', e);
     }
   };
 
@@ -130,21 +135,35 @@ function DashboardContent() {
       name: product.name || product.itemName,
       amount: product.basePrice || product.price || product.amount,
       quantity: product.stockQty !== undefined ? product.stockQty : product.quantity,
-      pharmacy: product.pharmacy || product.businessName || 'Verified Pharmacy',
       category: product.drugClass || product.category || 'General',
       image: product.image || product.imageUrl || 'https://via.placeholder.com/150',
     };
     const nextCurated = [itemToShelf, ...curatedProducts];
     setCuratedProducts(nextCurated);
     showToast(`Added ${itemToShelf.name} to your storefront!`);
-    await persistCuratedIds(nextCurated.map(p => p.id));
+    await persistCuratedAndMarkups(nextCurated.map(p => p.id), productMarkups);
   };
 
   const removeFromShelf = async (productId: string) => {
     const nextCurated = curatedProducts.filter(p => String(p.id || p._id) !== productId);
     setCuratedProducts(nextCurated);
+    const nextMarkups = { ...productMarkups };
+    delete nextMarkups[productId];
+    setProductMarkups(nextMarkups);
     showToast('Removed item from storefront shelf');
-    await persistCuratedIds(nextCurated.map(p => p.id));
+    await persistCuratedAndMarkups(nextCurated.map(p => p.id), nextMarkups);
+  };
+
+  const handleUpdateProductMarkup = async (productId: string, pctValue: number | null) => {
+    const nextMarkups = { ...productMarkups };
+    if (pctValue === null || isNaN(pctValue)) {
+      delete nextMarkups[productId];
+    } else {
+      nextMarkups[productId] = Math.max(0, Math.min(100, pctValue));
+    }
+    setProductMarkups(nextMarkups);
+    await persistCuratedAndMarkups(curatedProducts.map(p => p.id), nextMarkups);
+    showToast('Markup updated for product');
   };
 
   useEffect(() => {
@@ -168,6 +187,7 @@ function DashboardContent() {
         contactEmail,
         contactPhone,
         markupPercentage,
+        productMarkups,
         bankDetails: {
           bankName,
           accountNumber,
@@ -582,7 +602,10 @@ function DashboardContent() {
                       const productId = String(p.id || p._id);
                       const isOnShelf = curatedProducts.some(c => String(c.id || c._id) === productId);
                       const base = Number(p.basePrice || p.price || p.amount || 0);
-                      const markup = Math.round(base * (markupPercentage / 100));
+                      const effectiveMarkup = productMarkups[productId] !== undefined 
+                        ? Number(productMarkups[productId]) 
+                        : markupPercentage;
+                      const markup = Math.round(base * (effectiveMarkup / 100));
                       const retail = base + markup;
 
                       return (
@@ -621,8 +644,8 @@ function DashboardContent() {
                               {p.name || p.itemName}
                             </h4>
                             <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                              <span>🏪</span>
-                              <span className="truncate">{p.pharmacy || p.businessName || 'Verified Network Store'}</span>
+                              <span>💊</span>
+                              <span className="truncate">{p.activeIngredients && p.activeIngredients !== 'N/A' ? p.activeIngredients : 'Verified Supply'}</span>
                             </p>
                           </div>
 
@@ -633,7 +656,7 @@ function DashboardContent() {
                                 Retail: <strong className="text-slate-900 text-xs">₦{retail.toLocaleString()}</strong>
                               </div>
                               <div className="text-[10px] font-bold text-emerald-600">
-                                +₦{markup.toLocaleString()} ({markupPercentage}%) profit
+                                +₦{markup.toLocaleString()} ({effectiveMarkup}%) profit
                               </div>
                             </div>
 
@@ -729,32 +752,66 @@ function DashboardContent() {
                     <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
                       {curatedProducts.map((item) => {
                         const base = Number(item.amount || item.basePrice || item.price || 0);
-                        const markup = Math.round(base * (markupPercentage / 100));
+                        const hasCustomMarkup = productMarkups[item.id] !== undefined;
+                        const effectivePct = hasCustomMarkup 
+                          ? Number(productMarkups[item.id]) 
+                          : markupPercentage;
+                        const markup = Math.round(base * (effectivePct / 100));
                         const retail = base + markup;
 
                         return (
                           <div
                             key={item.id}
-                            className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3 transition group"
+                            className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col gap-2.5 transition group"
                           >
-                            <div className="min-w-0 flex-1">
-                              <h5 className="text-xs font-bold text-slate-900 truncate">
-                                {item.name}
-                              </h5>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px]">
-                                <span className="text-slate-600 font-semibold">₦{retail.toLocaleString()}</span>
-                                <span className="text-emerald-600 font-bold">(+₦{markup.toLocaleString()} cut)</span>
-                                <span className="text-slate-400 truncate">· {item.pharmacy}</span>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <h5 className="text-xs font-bold text-slate-900 truncate">
+                                  {item.name}
+                                </h5>
+                                <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+                                  <span className="text-slate-800 font-bold">₦{retail.toLocaleString()}</span>
+                                  <span className="text-emerald-600 font-bold">(+₦{markup.toLocaleString()} cut)</span>
+                                </div>
                               </div>
+
+                              <button
+                                onClick={() => removeFromShelf(item.id)}
+                                className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-300 text-slate-400 hover:text-rose-600 text-xs font-bold flex items-center justify-center transition cursor-pointer shrink-0 shadow-xs"
+                                title="Remove from shelf"
+                              >
+                                ✕
+                              </button>
                             </div>
 
-                            <button
-                              onClick={() => removeFromShelf(item.id)}
-                              className="w-7 h-7 rounded-xl bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-300 text-slate-400 hover:text-rose-600 text-xs font-bold flex items-center justify-center transition cursor-pointer shrink-0 shadow-sm"
-                              title="Remove from shelf"
-                            >
-                              ✕
-                            </button>
+                            {/* PRODUCT SPECIFIC MARKUP CONTROLLER */}
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
+                              <span className="text-slate-500 font-medium">Custom Markup:</span>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={hasCustomMarkup ? productMarkups[item.id] : ''}
+                                  placeholder={String(markupPercentage)}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                    handleUpdateProductMarkup(item.id, val);
+                                  }}
+                                  className="w-14 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 text-right focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                                />
+                                <span className="font-bold text-slate-500">%</span>
+                                {hasCustomMarkup && (
+                                  <button
+                                    onClick={() => handleUpdateProductMarkup(item.id, null)}
+                                    className="text-[10px] text-slate-400 hover:text-rose-500 underline ml-1 cursor-pointer"
+                                    title="Reset to global markup default"
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}

@@ -111,10 +111,27 @@ export async function POST(req: NextRequest) {
         const partner = await Partner.findOne({ slug: partnerSlug.toLowerCase(), isActive: true });
         if (partner) {
           resolvedPartnerSlug = partner.slug;
-          partnerMarkupAmount = Math.round(totalAmount * ((partner.markupPercentage || 18) / 100));
-          await Partner.findByIdAndUpdate(partner._id, {
-            $inc: { payoutBalance: partnerMarkupAmount }
-          });
+          const defaultPct = partner.markupPercentage || 18;
+          const productMarkupsMap = partner.productMarkups instanceof Map
+            ? Object.fromEntries(partner.productMarkups)
+            : (partner.productMarkups || {});
+
+          partnerMarkupAmount = (items || []).reduce((sum: number, item: any) => {
+            const itemId = String(item.id || item._id || item.productId || '');
+            const itemPct = productMarkupsMap[itemId] !== undefined ? Number(productMarkupsMap[itemId]) : defaultPct;
+            const price = Number(item.price) || 0;
+            const qty = Number(item.qty) || 0;
+            const itemTotal = price * qty;
+            // Retail price includes the markup: retail = base * (1 + pct / 100) -> markup = retail * (pct / (100 + pct))
+            const itemProfit = itemPct > 0 ? Math.round(itemTotal * (itemPct / (100 + itemPct))) : 0;
+            return sum + itemProfit;
+          }, 0);
+
+          if (partnerMarkupAmount > 0) {
+            await Partner.findByIdAndUpdate(partner._id, {
+              $inc: { payoutBalance: partnerMarkupAmount }
+            });
+          }
         }
       } catch (pErr) {
         console.error('[Orders] Partner lookup/credit error:', pErr);

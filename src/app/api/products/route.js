@@ -153,14 +153,22 @@ export async function GET(req) {
       }
     });
 
+    const partnerProductMarkups = partner?.productMarkups instanceof Map 
+      ? Object.fromEntries(partner.productMarkups) 
+      : (partner?.productMarkups || {});
+
     const transformedProducts = products.map(product => {
       try {
          if (!product.itemName || typeof product.amount === 'undefined') {
           throw new Error('Product record is missing required fields: itemName or amount.');
         }
-        const finalPrice = markupPct > 0 ? Math.round(product.amount * (1 + markupPct / 100)) : product.amount;
+        const prodId = product._id.toString();
+        const effectiveMarkup = partnerProductMarkups[prodId] !== undefined 
+          ? Number(partnerProductMarkups[prodId]) 
+          : markupPct;
+        const finalPrice = effectiveMarkup > 0 ? Math.round(product.amount * (1 + effectiveMarkup / 100)) : product.amount;
         return {
-          id: product._id.toString(),
+          id: prodId,
           image: product.imageUrl || 'https://via.placeholder.com/150',
           name: product.itemName,
           activeIngredients: product.activeIngredient || '',
@@ -169,12 +177,14 @@ export async function GET(req) {
           formattedPrice: formatPrice(finalPrice),
           basePrice: product.amount,
           pharmacy: partner ? partner.name : (product.businessName || 'Unknown Pharmacy'),
+          businessName: partner ? partner.name : (product.businessName || 'Unknown Pharmacy'),
           pharmacyCoordinates: coordMap[product.businessName] || null,
           POM: product.POM || false,
           info: product.info,
           slug: product.slug,
           partnerSlug: partner ? partner.slug : null,
           isPartnerProduct: !!partner,
+          productMarkupPercentage: effectiveMarkup,
           stockQty: typeof product.quantity === 'number' ? product.quantity : null,
           inStock: typeof product.quantity === 'number' ? product.quantity > 0 : true,
         };
