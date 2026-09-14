@@ -126,7 +126,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   })();
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
-  const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'pickup' | 'standard' | 'express'>('delivery');
+  const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'standard' | 'express'>('delivery');
   const [couriers, setCouriers] = useState<CourierOption[]>([]);
   const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
   const [loadingRates, setLoadingRates] = useState(false);
@@ -233,7 +233,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   }, []);
 
   // Validation
-  const isAddressRequired = deliveryOption !== 'pickup';
+  const isAddressRequired = true;
   const isFormValid = useMemo(() => {
     return (
       patientName.trim() !== '' &&
@@ -298,7 +298,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   }, [uniquePharmacies, pharmacist, patientName, deliveryPhone, deliveryEmail, items]);
 
   useEffect(() => {
-    if (deliveryOption === 'pickup') return;
     if (!deliveryAddress || deliveryAddress.trim().length < 3) return;
 
     const timer = setTimeout(() => {
@@ -306,17 +305,16 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [deliveryAddress, deliveryCity, deliveryState, deliveryOption, fetchCourierRates]);
+  }, [deliveryAddress, deliveryCity, deliveryState, fetchCourierRates]);
 
   const getDeliveryFee = useCallback(() => {
-    if (deliveryOption === 'pickup') return 0;
     if (selectedCourier) return selectedCourier.total;
     if (couriers.length > 0) return couriers[0].total;
     return 1500;
-  }, [deliveryOption, selectedCourier, couriers]);
+  }, [selectedCourier, couriers]);
 
   const deliveryFee = getDeliveryFee();
-  const sfcPercentage = deliveryOption === 'pickup' ? 25 : 20;
+  const sfcPercentage = 20;
   const sfcAmount = subtotal * (sfcPercentage / 100);
   const { discountAmount, deliveryDiscount, sfcDiscount, finalTotal } = calculateDiscount(subtotal, deliveryFee, sfcAmount);
   const total = finalTotal;
@@ -364,7 +362,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       deliveryEmail, deliveryPhone, deliveryCity, deliveryState,
       items: itemsForBackend,
       coupon: activePromo?.code,
-      deliveryOption: deliveryOption === 'pickup' ? 'pickup' : (selectedCourier ? selectedCourier.courierName : 'courier'),
+      deliveryOption: selectedCourier ? selectedCourier.courierName : 'courier',
       orderType: actualOrderType,
       businesses: uniquePharmacies,
       requestId,
@@ -372,7 +370,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       patientPhone: deliveryPhone,
       deliveryAddress,
       partnerSlug: activePartnerSlug,
-      courierName: selectedCourier ? selectedCourier.courierName : (deliveryOption === 'pickup' ? 'Pickup' : 'Standard Courier'),
+      courierName: selectedCourier ? selectedCourier.courierName : 'Standard Courier',
       courierId: selectedCourier?.courierId,
       courierLogo: selectedCourier?.courierImage,
       deliveryFee: deliveryFee,
@@ -578,33 +576,10 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
         </DialogActions>
       </Dialog>
 
-      {/* DELIVERY OPTIONS */}
+      {/* DELIVERY DESTINATION & LIVE COURIER SELECTION */}
       <div className="co-section co-reveal d3">
-        <div className="co-sec-label">Delivery preference</div>
-        <div className="co-delivery-opts">
-          <div className={`co-delivery-opt ${deliveryOption !== 'pickup' ? 'selected' : ''}`} onClick={() => setDeliveryOption('delivery')}>
-            <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
-            <div className="co-delivery-opt-body">
-              <div className="co-delivery-opt-title">Doorstep Delivery</div>
-              <div className="co-delivery-opt-sub">Live courier pool (Gokada, Kwik, GIGL, Bubble Express) dispatched to your door.</div>
-            </div>
-            {selectedCourier && deliveryOption !== 'pickup' && (
-              <div className="co-delivery-opt-price">₦{selectedCourier.total.toLocaleString()}</div>
-            )}
-          </div>
-
-          <div className={`co-delivery-opt ${deliveryOption === 'pickup' ? 'selected' : ''}`} onClick={() => setDeliveryOption('pickup')}>
-            <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
-            <div className="co-delivery-opt-body">
-              <div className="co-delivery-opt-title">Pickup from pharmacy</div>
-              <div className="co-delivery-opt-sub">The pharmacy is notified instantly. Pay now and walk in to collect — no waiting.</div>
-            </div>
-            <div className="co-delivery-opt-price" style={{color: deliveryOption === 'pickup' ? 'var(--green)' : '#bbb'}}>Free</div>
-          </div>
-        </div>
-
-        {deliveryOption !== 'pickup' && (
-          <div id="addressSection" style={{marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12}}>
+        <div className="co-sec-label">Doorstep Delivery Destination</div>
+        <div id="addressSection" style={{display: 'flex', flexDirection: 'column', gap: 12}}>
             <div style={{fontSize: 12, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5}}>
               Delivery Destination
             </div>
@@ -691,7 +666,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* CONTACT INFO */}

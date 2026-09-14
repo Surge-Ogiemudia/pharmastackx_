@@ -87,7 +87,7 @@ export default function CartContent({ setView }: { setView?: (view: string) => v
 
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
-  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'pickup'>('standard');
+  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
 
   const [orderType, setOrderType] = useState('MN');
   const [isProcessingFreeOrder, setIsProcessingFreeOrder] = useState(false);
@@ -120,7 +120,7 @@ export default function CartContent({ setView }: { setView?: (view: string) => v
     }
   }, [user]);
 
-    const isAddressRequired = deliveryOption !== 'pickup';
+  const isAddressRequired = true;
 const isFormValid =
   patientName.trim() !== '' &&
   patientAge.trim() !== '' &&
@@ -156,7 +156,6 @@ const isFormValid =
   };
 
     const getDeliveryFee = () => {
-    if (deliveryOption === 'pickup') return 0;
     const baseDeliveryFee = deliveryOption === 'standard' ? STANDARD_DELIVERY_FEE : EXPRESS_DELIVERY_FEE;
     if (actualOrderType === 'S' || actualOrderType === 'MN') return baseDeliveryFee;
     if (actualOrderType === 'MP') return baseDeliveryFee * uniquePharmacies.length;
@@ -165,7 +164,7 @@ const isFormValid =
 
 
 const deliveryFee = getDeliveryFee();
-const sfcPercentage = deliveryOption === 'pickup' ? 25 : 20;
+const sfcPercentage = 20;
 const sfcAmount = subtotal * (sfcPercentage / 100);
 const { discountAmount, deliveryDiscount, sfcDiscount, finalTotal } = calculateDiscount(subtotal, deliveryFee, sfcAmount);
 
@@ -466,9 +465,9 @@ useEffect(() => {
                   <Box sx={{ width: '100%' }}><TextField fullWidth size="small" label="Patient Condition (Optional)" value={patientCondition} onChange={(e) => setPatientCondition(e.target.value)} /></Box>
                   <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required size="small" label="Delivery Phone Number" value={deliveryPhone} onChange={(e) => setDeliveryPhone(e.target.value)} /></Box>
                   <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required size="small" label="Email Address" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} /></Box>
-                  <Box sx={{ width: '100%' }}><TextField fullWidth required={deliveryOption !== 'pickup'} size="small" label="Delivery Address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} /></Box>
-                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required={deliveryOption !== 'pickup'} size="small" label="City" value={deliveryCity} onChange={(e) => setDeliveryCity(e.target.value)} /></Box>
-                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required={deliveryOption !== 'pickup'} size="small" label="State" value={deliveryState} onChange={(e) => setDeliveryState(e.target.value)} /></Box>
+                  <Box sx={{ width: '100%' }}><TextField fullWidth required size="small" label="Delivery Address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} /></Box>
+                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required size="small" label="City" value={deliveryCity} onChange={(e) => setDeliveryCity(e.target.value)} /></Box>
+                  <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}><TextField fullWidth required size="small" label="State" value={deliveryState} onChange={(e) => setDeliveryState(e.target.value)} /></Box>
                 </Box>
               </Paper>
             </Box>
@@ -504,7 +503,7 @@ useEffect(() => {
                 {/* Delivery Options */}
 <Box sx={{ mb: 2 }}>
   <Typography variant="body2" sx={{ mb: 1, color: '#666', fontSize: '0.85rem', fontWeight: 500 }}>Delivery Option</Typography>
-  <RadioGroup value={deliveryOption} onChange={(e) => setDeliveryOption(e.target.value as 'standard' | 'express' | 'pickup')} sx={{ gap: 0 }}>
+  <RadioGroup value={deliveryOption} onChange={(e) => setDeliveryOption(e.target.value as 'standard' | 'express')} sx={{ gap: 0 }}>
     <FormControlLabel 
         value="standard" 
         control={<Radio size="small" sx={{ py: 0.5, '&.Mui-checked': { color: '#006D5B' } }} />} 
@@ -533,41 +532,10 @@ useEffect(() => {
                 </Typography>
             </Box>
         } 
-        sx={{ mr: 0, mb: 0.5 }} 
-    />
-    <FormControlLabel
-      value="pickup"
-      control={<Radio size="small" sx={{ py: 0.5, '&.Mui-checked': { color: '#006D5B' } }} />}
-      label={
-        <Box>
-          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-          Free Delivery (Pickup from Pharmacy)
-          </Typography>
-          <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666' }}>
-          You will receive the pharmacy's location and phone number to arrange pickup.
-          </Typography>
-        </Box>
-      }
-      sx={{ mr: 0 }}
+        sx={{ mr: 0 }} 
     />
   </RadioGroup>
 </Box>
-
-{deliveryOption === 'pickup' && (
-  <Paper sx={{ p: 2, mt: 2, mb: 3, border: '1px solid #006D5B', bgcolor: '#e8f5e8' }}>
-    <Typography sx={{ fontWeight: 600, color: '#004D40', mb: 1 }}>
-      {uniquePharmacies.length > 1 ? 'Pickup Locations' : 'Pickup Location'}
-    </Typography>
-    {uniquePharmacies.map((pharmacy, index) => (
-      <Box key={index} sx={{ mb: index === uniquePharmacies.length - 1 ? 0 : 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>- {pharmacy}</Typography>
-      </Box>
-    ))}
-    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-      Full details will be provided on the Orders page after checkout.
-    </Typography>
-  </Paper>
-)}
                 {/* Promo Code */}
                 <Box sx={{ mb: 3 }}>
                   {!activePromo ? (
