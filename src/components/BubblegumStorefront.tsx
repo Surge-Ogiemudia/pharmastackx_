@@ -139,30 +139,28 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
 
       {/* TOP NAVBAR (Mirrors Dashboard Header) */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           
           {/* LEFT: BRAND INFO */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 pr-2">
             <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-md overflow-hidden shrink-0"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-xs overflow-hidden shrink-0"
               style={{ backgroundColor: partner.primaryColor || '#F43F5E' }}
             >
               {partner.logoUrl ? (
-                <img src={partner.logoUrl} alt={partner.name} className="w-full h-full object-contain p-1.5" />
+                <img src={partner.logoUrl} alt={partner.name} className="w-full h-full object-contain p-1" />
               ) : (
                 partner.name.charAt(0).toUpperCase()
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900">{partner.name}</h1>
-              </div>
-              <p className="text-xs text-slate-500 line-clamp-1">{partner.tagline || 'Expert Women’s Reproductive Health & Wellness'}</p>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-slate-900 truncate">{partner.name}</h1>
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate">{partner.tagline || 'Expert Women’s Reproductive Health & Wellness'}</p>
             </div>
           </div>
 
           {/* RIGHT: STOREFRONT BADGE & CART BUTTON */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {partner.contactPhone && (
               <a
                 href={`https://wa.me/234${partner.contactPhone.replace(/^0+/, '')}`}
@@ -177,10 +175,10 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-900 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
             >
-              <span>🛒 Order Bag</span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500 text-white">
+              <span>🛒 Bag</span>
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-rose-500 text-white">
                 {cartTotalCount}
               </span>
             </button>
@@ -189,28 +187,34 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
       </header>
 
       {/* MAIN CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3.5 sm:pt-8 space-y-4 sm:space-y-8">
 
-        {/* HERO BANNER (Mirrors Dashboard Interactive Studio Banner) */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
-          <div className="space-y-3 max-w-2xl z-10">
+        {/* HERO BANNER (Mobile-Optimized & Compact) */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 sm:space-y-3 max-w-2xl z-10">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500 text-white uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500 text-white uppercase tracking-wider">
                 Official Patient Store
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-[11px] sm:text-xs text-slate-400">
                 Verified Women&apos;s Health Catalog
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+            <h2 className="text-base sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug">
               Confidential & Verified Women’s Healthcare Essentials
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed hidden sm:block">
               Order genuine reproductive healthcare, emergency contraception, pain relief, and wellness essentials curated by {partner.name}. Delivered swiftly and privately to your door.
             </p>
+            {/* Slim inline status on mobile */}
+            <div className="flex md:hidden items-center gap-2 text-[11px] text-emerald-400 font-medium pt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>{products.length} Products In Stock & Ready to Dispatch</span>
+            </div>
           </div>
 
-          <div className="bg-slate-800/80 backdrop-blur border border-slate-700 p-5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 min-w-[220px] z-10">
+          {/* Desktop stats box only */}
+          <div className="hidden md:flex bg-slate-800/80 backdrop-blur border border-slate-700 p-5 rounded-2xl flex-col items-center justify-center text-center space-y-2 min-w-[220px] z-10">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live On Storefront</span>
             <span className="text-3xl font-extrabold text-rose-400">{products.length} Products</span>
             <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold pt-1">
@@ -224,7 +228,7 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
         </div>
 
         {/* CATALOG & SEARCH CONTAINER (Mirrors Dashboard Master Inventory Card) */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
           
           {/* HEADER & SEARCH BAR */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
