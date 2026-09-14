@@ -23,13 +23,32 @@ async function getSession(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   await dbConnect();
+  const { searchParams } = new URL(req.url);
+  const idsParam = searchParams.get('ids');
+  const partnerSlugParam = searchParams.get('partnerSlug') || searchParams.get('partner');
+
+  // Allow guest customers on partner storefronts to retrieve their placed orders by IDs stored in their browser
+  if (idsParam) {
+    try {
+      const ids = idsParam.split(',').map(id => id.trim()).filter(Boolean);
+      const query: any = { _id: { $in: ids } };
+      if (partnerSlugParam) {
+        query.partnerSlug = partnerSlugParam.toLowerCase();
+      }
+      const guestOrders = await Order.find(query).sort({ createdAt: -1 });
+      return NextResponse.json(guestOrders);
+    } catch (err: any) {
+      console.error('Error fetching guest orders by ids:', err);
+      return NextResponse.json({ message: 'Error fetching orders', error: err.message }, { status: 500 });
+    }
+  }
+
   const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { searchParams } = new URL(req.url);
     const businessName = searchParams.get('businessName');
     const deliveryOption = searchParams.get('deliveryOption');
 
@@ -84,19 +103,21 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await dbConnect();
   const session = await getSession(req);
-  if (!session) {
+  const body = await req.json();
+  const {
+    patientName, patientAge, patientCondition,
+    deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
+    items, coupon, deliveryOption, orderType, businesses,
+    requestId, quoteId, sfcAmount, partnerSlug,
+    courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken
+  } = body;
+
+  // If not logged in, allow guest checkout if partnerSlug or delivery contact is provided
+  if (!session && !partnerSlug && !deliveryEmail) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const body = await req.json();
-    const {
-      patientName, patientAge, patientCondition,
-      deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
-      items, coupon, deliveryOption, orderType, businesses,
-      requestId, quoteId, sfcAmount, partnerSlug,
-      courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken
-    } = body;
 
     // Calculate total amount if not provided or to verify
     const totalAmount = (items || []).reduce((sum: number, item: any) => {
@@ -140,7 +161,7 @@ export async function POST(req: NextRequest) {
     }
 
     const orderData = {
-      user: session.userId,
+      user: session?.userId || undefined,
       patientName, patientAge, patientCondition,
       deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
       items: items || [],

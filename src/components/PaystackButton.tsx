@@ -75,7 +75,9 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
 
   const onSuccess = (reference: any) => {
     console.log('Payment successful. Reference:', reference.reference);
-    const dest = props.redirectPath || '/?view=confirmOrder';
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const defaultDest = currentPath && currentPath !== '/' ? `${currentPath}?view=confirmOrder` : '/?view=confirmOrder';
+    const dest = props.redirectPath || defaultDest;
     router.push(`${dest}${dest.includes('?') ? '&' : '?'}redirect_status=success`);
   };
 

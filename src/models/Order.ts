@@ -25,6 +25,9 @@ export interface IOrder extends Document {
   courierLogo?: string;
   deliveryFee?: number;
   shipbubbleRequestToken?: string;
+  shipbubbleOrderCode?: string;
+  shipbubbleTrackingUrl?: string;
+  shipbubbleStatus?: string;
   orderType: 'S' | 'MN' | 'MP';
   totalAmount: number;
   sfcAmount: number;
@@ -40,7 +43,7 @@ export interface IOrder extends Document {
 }
 
 const OrderSchema: Schema<IOrder> = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: false },
   items: [{
     name: { type: String, required: true },
     price: { type: Number, required: true },
@@ -67,6 +70,9 @@ const OrderSchema: Schema<IOrder> = new Schema({
   courierLogo: { type: String },
   deliveryFee: { type: Number, default: 0 },
   shipbubbleRequestToken: { type: String },
+  shipbubbleOrderCode: { type: String },
+  shipbubbleTrackingUrl: { type: String },
+  shipbubbleStatus: { type: String },
   orderType: { 
     type: String, 
     required: true, 
