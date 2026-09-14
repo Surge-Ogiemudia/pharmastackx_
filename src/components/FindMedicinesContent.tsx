@@ -128,7 +128,14 @@ export default function FindMedicinesContent({
   const [partnerDetails, setPartnerDetails] = useState<any>(null);
   const [isLoadingPharmacy, setIsLoadingPharmacy] = useState(false);
 
+  const isPartnerStorefront = Boolean(
+    partnerSlug || 
+    partnerDetails || 
+    (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/'))
+  );
+
   const shouldHideStockCount = Boolean(
+    isPartnerStorefront ||
     partnerDetails?.hideStockCount || 
     partnerDetails?.slug?.toLowerCase() === 'bubblegum' || 
     partnerSlug?.toLowerCase() === 'bubblegum' || 
