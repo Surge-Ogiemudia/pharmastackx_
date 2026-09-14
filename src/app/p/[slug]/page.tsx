@@ -1,13 +1,18 @@
-﻿'use client';
+'use client';
 
 import { Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import FindMedicinesContent from '@/components/FindMedicinesContent';
+import BubblegumStorefront from '@/components/BubblegumStorefront';
 
 function PartnerStorefrontInner() {
   const params = useParams();
   const rawSlug = (params?.slug as string) || '';
   const slug = decodeURIComponent(rawSlug).toLowerCase().trim();
+
+  if (slug === 'bubblegum' || slug === 'bubblegumhealth') {
+    return <BubblegumStorefront partnerSlug={slug} />;
+  }
 
   return <FindMedicinesContent partnerSlug={slug} />;
 }

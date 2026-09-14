@@ -8,6 +8,7 @@ import { event } from '../lib/gtag';
 import { debounce } from 'lodash';
 import { useSession } from '@/context/SessionProvider';
 import styles from '../app/find-medicines/FindMedicines.module.css';
+import BubblegumStorefront from './BubblegumStorefront';
 
 // --- CONFIGURATION --- //
 const AVERAGE_TRAVEL_SPEED_KMH = 40;
@@ -412,6 +413,10 @@ export default function FindMedicinesContent({
   };
 
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
+  if (slug === 'bubblegum' || slug === 'bubblegumhealth' || partnerSlug === 'bubblegum' || partnerDetails?.slug === 'bubblegum') {
+    return <BubblegumStorefront partnerSlug={partnerSlug || slug || 'bubblegum'} setView={setView} />;
+  }
 
   return (
     <div className={styles.root}>
