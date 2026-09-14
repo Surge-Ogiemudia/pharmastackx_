@@ -1,20 +1,57 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import FindMedicinesContent from '@/components/FindMedicinesContent';
 import BubblegumStorefront from '@/components/BubblegumStorefront';
+import ConfirmOrderContent from '@/components/ConfirmOrderContent';
 
 function PartnerStorefrontInner() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const rawSlug = (params?.slug as string) || '';
   const slug = decodeURIComponent(rawSlug).toLowerCase().trim();
 
-  if (slug === 'bubblegum' || slug === 'bubblegumhealth') {
-    return <BubblegumStorefront partnerSlug={slug} />;
+  const viewFromQuery = searchParams?.get('view');
+  const [view, setView] = useState<string>(viewFromQuery || 'storefront');
+
+  useEffect(() => {
+    const currentView = searchParams?.get('view');
+    if (currentView) {
+      setView(currentView);
+    } else {
+      setView('storefront');
+    }
+  }, [searchParams]);
+
+  const handleSetView = (newView: string) => {
+    setView(newView);
+    const sp = new URLSearchParams(window.location.search);
+    if (newView === 'confirmOrder') {
+      sp.set('view', 'confirmOrder');
+      if (slug) sp.set('slug', slug);
+      router.push(`?${sp.toString()}`);
+    } else {
+      sp.delete('view');
+      const q = sp.toString();
+      router.push(window.location.pathname + (q ? `?${q}` : ''));
+    }
+  };
+
+  if (view === 'confirmOrder') {
+    return (
+      <div className="min-h-screen bg-[#fafaf8]">
+        <ConfirmOrderContent setView={handleSetView} />
+      </div>
+    );
   }
 
-  return <FindMedicinesContent partnerSlug={slug} />;
+  if (slug === 'bubblegum' || slug === 'bubblegumhealth') {
+    return <BubblegumStorefront partnerSlug={slug} setView={handleSetView} />;
+  }
+
+  return <FindMedicinesContent partnerSlug={slug} setView={handleSetView} />;
 }
 
 export default function PartnerStorefrontPage() {
