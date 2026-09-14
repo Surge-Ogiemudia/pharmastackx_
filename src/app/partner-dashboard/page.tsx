@@ -724,34 +724,33 @@ function DashboardContent() {
         </div>
       </header>
 
-      {/* STATS OVERVIEW CARDS */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Orders</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">{stats.totalOrders || 0}</p>
-            <p className="text-xs text-emerald-600 mt-1 font-medium">Synced via PharmaStackX</p>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Sales Volume</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">₦{(stats.totalVolume || 0).toLocaleString()}</p>
-            <p className="text-xs text-slate-500 mt-1">Processed through Paystack</p>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Profit Earned</p>
-            <p className="text-2xl font-bold text-rose-600 mt-2">₦{(stats.totalProfitEarned || 0).toLocaleString()}</p>
-            <p className="text-xs text-slate-500 mt-1">At {markupPercentage}% Partner Cut</p>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-br from-rose-50 to-white">
-            <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Accrued Settlement Balance</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">₦{(stats.pendingPayout || 0).toLocaleString()}</p>
-            <p className="text-xs text-rose-600 mt-1 font-medium">Payable upon request / cycle</p>
-          </div>
-        </div>
-
         {/* TAB 1: ORDERS & SETTLEMENTS */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
+            {/* STATS OVERVIEW CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Orders</p>
+                <p className="text-2xl font-bold text-slate-900 mt-2">{stats.totalOrders || 0}</p>
+                <p className="text-xs text-emerald-600 mt-1 font-medium">Synced via PharmaStackX</p>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Sales Volume</p>
+                <p className="text-2xl font-bold text-slate-900 mt-2">₦{(stats.totalVolume || 0).toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">Processed through Paystack</p>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Profit Earned</p>
+                <p className="text-2xl font-bold text-rose-600 mt-2">₦{(stats.totalProfitEarned || 0).toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">At {markupPercentage}% Partner Cut</p>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm bg-gradient-to-br from-rose-50 to-white">
+                <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Accrued Settlement Balance</p>
+                <p className="text-2xl font-bold text-slate-900 mt-2">₦{(stats.pendingPayout || 0).toLocaleString()}</p>
+                <p className="text-xs text-rose-600 mt-1 font-medium">Payable upon request / cycle</p>
+              </div>
+            </div>
             {/* SETTLEMENT BANK DETAILS CARD */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
