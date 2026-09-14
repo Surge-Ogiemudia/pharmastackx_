@@ -13,7 +13,8 @@ import { useTrack } from '../hooks/useTrack';
 
 interface PaystackButtonProps {
   total: number;
-  deliveryOption: 'standard' | 'express' | 'pickup';
+  deliveryOption: 'standard' | 'express' | 'pickup' | 'delivery' | string;
+  courierName?: string;
   orderType: 'S' | 'MN' | 'MP';
   uniquePharmacies: string[];
   subtotal: number;
@@ -51,7 +52,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
       custom_fields: [
         { display_name: "Patient Name", variable_name: "patient_name", value: props.patientName },
         { display_name: "Patient Age", variable_name: "patient_age", value: props.patientAge },
-        { display_name: "Delivery Option", variable_name: "delivery_option", value: props.deliveryOption },
+        { display_name: "Delivery Option", variable_name: "delivery_option", value: props.courierName || props.deliveryOption },
         { display_name: "Order Type", variable_name: "order_type", value: props.orderType },
         { display_name: "Promo Code", variable_name: "promo_code", value: props.promoCode || 'N/A' },
         { display_name: "Subtotal", variable_name: "subtotal", value: `₦${props.subtotal.toLocaleString()}` },

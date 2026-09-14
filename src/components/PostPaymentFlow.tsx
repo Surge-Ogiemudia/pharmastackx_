@@ -27,7 +27,7 @@ interface PharmacyInfo {
 
 interface Props {
   requestId: string | null;
-  deliveryOption: 'standard' | 'express' | 'pickup';
+  deliveryOption: 'standard' | 'express' | 'pickup' | 'delivery' | string;
   deliveryState: string;
   patientName: string;
   total: number;
