@@ -145,7 +145,7 @@ export default function FindMedicinesContent({
   const drugClasses = ['all', 'Cardiovascular', 'Diabetes', 'Antibiotic', 'Pain Relief', 'Respiratory', 'Skincare', 'Supplements'];
 
   const fetchMedicines = useCallback(debounce(async (page: number, search: string, filter: string, sort: string) => {
-    if (medicines.length === 0) setIsLoading(true);
+    setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -170,8 +170,9 @@ export default function FindMedicinesContent({
         let processed = data.data;
 
         if (search === '' && filter === 'all' && sort === 'recommended' && page === 1) {
-            localStorage.setItem('cached_medicines', JSON.stringify(processed));
-            localStorage.setItem('cached_pagination', JSON.stringify(data.pagination));
+            const cacheKey = slug || '__global__';
+            localStorage.setItem(`cached_medicines__${cacheKey}`, JSON.stringify(processed));
+            localStorage.setItem(`cached_pagination__${cacheKey}`, JSON.stringify(data.pagination));
         }
 
         if (userLocation) {
@@ -223,8 +224,12 @@ export default function FindMedicinesContent({
   }, []);
 
   useEffect(() => {
-    const cached = localStorage.getItem('cached_medicines');
-    const cachedPag = localStorage.getItem('cached_pagination');
+    // Only restore cache for the exact same slug context.
+    // If we are on a partner storefront (/p/bubblegum or partnerSlug prop) the
+    // cache key MUST include that slug so we never flash the global 41k catalog.
+    const cacheSlug = partnerSlug || slug || '__global__';
+    const cached = localStorage.getItem(`cached_medicines__${cacheSlug}`);
+    const cachedPag = localStorage.getItem(`cached_pagination__${cacheSlug}`);
     if (cached && cachedPag) {
       try {
         setMedicines(JSON.parse(cached));
@@ -234,7 +239,12 @@ export default function FindMedicinesContent({
         console.error("Cache parse error", e);
       }
     }
-  }, []);
+    // Also clear any stale slug-less cache keys left behind by old code
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cached_medicines');
+      localStorage.removeItem('cached_pagination');
+    }
+  }, [partnerSlug, slug]);
 
   useEffect(() => {
     if (!slug) {
