@@ -103,11 +103,14 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
     initializePayment({ onSuccess, onClose });
   };
 
+  const isGuestAllowed = Boolean(props.redirectPath || props.deliveryEmail);
+  const canProceed = Boolean((user || isGuestAllowed) && props.isFormValid);
+
   const getButtonText = () => {
-    if (!user) return 'Please log in to check out';
+    if (!user && !isGuestAllowed) return 'Please log in to check out';
     if (!props.isFormValid) return 'Please fill in delivery info';
     return 'Proceed to Checkout';
-  }
+  };
 
   return (
     <>
@@ -121,7 +124,7 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
       variant="contained"
       size="large"
       onClick={handleCheckout}
-      disabled={!user || !props.isFormValid}
+      disabled={!canProceed}
       sx={{
         background: 'linear-gradient(135deg, #006D5B 0%, #004D40 100%)',
         borderRadius: '12px',
