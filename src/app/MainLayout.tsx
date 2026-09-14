@@ -8,7 +8,15 @@ import { track } from '@/lib/track';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [isSubdomain, setIsSubdomain] = useState(false);
+  const [isSubdomain, setIsSubdomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      return ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && 
+             !hostname.startsWith('www.') && 
+             !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+    }
+    return false;
+  });
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -18,15 +26,18 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const showNavbar = !isSubdomain && 
+  const isPartnerRoute = pathname?.startsWith('/p/') || 
+                         pathname === '/partner-dashboard' || 
+                         isSubdomain || 
+                         (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/'));
+
+  const showNavbar = !isPartnerRoute && 
     pathname !== '/find-medicines' && 
     pathname !== '/product-demo' && 
     pathname !== '/pulse' && 
     !pathname?.startsWith('/pulse/') &&
     pathname !== '/extension' &&
-    !pathname?.startsWith('/extension') &&
-    !pathname?.startsWith('/p/') &&
-    pathname !== '/partner-dashboard';
+    !pathname?.startsWith('/extension');
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change
