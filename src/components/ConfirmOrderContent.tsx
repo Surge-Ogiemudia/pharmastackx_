@@ -118,6 +118,12 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const [showPostPaymentFlow, setShowPostPaymentFlow] = useState(false);
   const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
   const [completedPharmacyName, setCompletedPharmacyName] = useState<string | undefined>(undefined);
+  const activePartnerSlug = searchParams?.get('partner') || searchParams?.get('slug') || (() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('psx_active_partner') : null;
+      return stored ? JSON.parse(stored).slug : undefined;
+    } catch (e) { return undefined; }
+  })();
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'pickup' | 'standard' | 'express'>('delivery');
@@ -332,7 +338,14 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     setPostPaymentStatus('processing');
     setPostPaymentMessage('Payment successful. Creating your order, please wait...');
 
-    if (!user) {
+    const activePartnerSlug = searchParams?.get('partner') || searchParams?.get('slug') || (() => {
+      try {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('psx_active_partner') : null;
+        return stored ? JSON.parse(stored).slug : undefined;
+      } catch (e) { return undefined; }
+    })();
+
+    if (!user && !activePartnerSlug && !deliveryEmail) {
       setPostPaymentStatus('error');
       setPostPaymentMessage('Error: User session expired. Please log in again.');
       return;
@@ -345,13 +358,6 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       qty: item.quantity,
       image: item.image,
     }));
-
-    const activePartnerSlug = searchParams?.get('partner') || searchParams?.get('slug') || (() => {
-      try {
-        const stored = typeof window !== 'undefined' ? localStorage.getItem('psx_active_partner') : null;
-        return stored ? JSON.parse(stored).slug : undefined;
-      } catch (e) { return undefined; }
-    })();
 
     const orderData = {
       patientName, patientAge, patientCondition,
@@ -376,6 +382,49 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
     const result = await addOrder(orderData);
 
     if (result.success) {
+      const createdOrder = (result as any).order;
+      const createdOrderId = createdOrder?._id || createdOrder?.id;
+
+      // Save order ID to localStorage for privacy-scoped guest device tracking
+      if (typeof window !== 'undefined' && createdOrderId) {
+        try {
+          const key = activePartnerSlug ? `${activePartnerSlug}_orders` : 'psx_guest_orders';
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          if (!existing.includes(createdOrderId)) {
+            existing.unshift(createdOrderId);
+            localStorage.setItem(key, JSON.stringify(existing));
+          }
+          const genExisting = JSON.parse(localStorage.getItem('psx_guest_orders') || '[]');
+          if (!genExisting.includes(createdOrderId)) {
+            genExisting.unshift(createdOrderId);
+            localStorage.setItem('psx_guest_orders', JSON.stringify(genExisting));
+          }
+        } catch (e) {
+          console.error('Failed to save order ID to localStorage:', e);
+        }
+      }
+
+      // Multi-recipient email dispatch (Customer, PSX Sales, Admin, Partner)
+      fetch('/api/notify-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: createdOrderId,
+          patientName,
+          deliveryEmail,
+          deliveryPhone,
+          deliveryAddress,
+          deliveryCity,
+          deliveryState,
+          deliveryOption,
+          courierName: selectedCourier?.courierName,
+          total,
+          items: itemsForBackend,
+          requestId,
+          partnerSlug: activePartnerSlug,
+        }),
+      }).catch(err => console.error('Failed to dispatch notify-purchase:', err));
+
       const capturedRequestId = requestId;
       const capturedPharmacyName = uniquePharmacies[0];
       if (capturedRequestId) {
@@ -393,6 +442,14 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
 
       clearCart();
       removePromo();
+
+      if (activePartnerSlug) {
+        // Drop straight into the tailored partner orders tab!
+        setPostPaymentStatus('idle');
+        setView('orders');
+        return;
+      }
+
       router.replace(window.location.pathname, { scroll: false });
       setPostPaymentStatus('idle');
       setCompletedRequestId(capturedRequestId ?? null);
@@ -403,7 +460,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       setPostPaymentMessage(`Order creation failed: ${result.message}`);
       router.replace(window.location.pathname, { scroll: false });
     }
-  }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router, selectedCourier, deliveryFee, requestToken, searchParams]);
+  }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router, selectedCourier, deliveryFee, requestToken, searchParams, total, setView]);
 
   useEffect(() => {
     const status = searchParams?.get('redirect_status');
@@ -740,6 +797,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
           deliveryCity={deliveryCity}
           deliveryState={deliveryState}
           isFormValid={isFormValid}
+          redirectPath={typeof window !== 'undefined' && activePartnerSlug ? `${window.location.pathname}?view=confirmOrder&slug=${activePartnerSlug}` : undefined}
         />
         <div className="co-secure-note">🔒 Secured by Paystack · Your payment is protected</div>
       </div>

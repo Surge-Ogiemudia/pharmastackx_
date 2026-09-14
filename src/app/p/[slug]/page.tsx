@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import FindMedicinesContent from '@/components/FindMedicinesContent';
 import BubblegumStorefront from '@/components/BubblegumStorefront';
 import ConfirmOrderContent from '@/components/ConfirmOrderContent';
+import BubblegumOrders from '@/components/BubblegumOrders';
 
 function PartnerStorefrontInner() {
   const params = useParams();
@@ -32,6 +33,10 @@ function PartnerStorefrontInner() {
       sp.set('view', 'confirmOrder');
       if (slug) sp.set('slug', slug);
       router.push(`?${sp.toString()}`);
+    } else if (newView === 'orders' || newView === 'orderManagement') {
+      sp.set('view', 'orders');
+      if (slug) sp.set('slug', slug);
+      router.push(`?${sp.toString()}`);
     } else {
       sp.delete('view');
       const q = sp.toString();
@@ -45,6 +50,10 @@ function PartnerStorefrontInner() {
         <ConfirmOrderContent setView={handleSetView} />
       </div>
     );
+  }
+
+  if (view === 'orders' || view === 'orderManagement') {
+    return <BubblegumOrders partnerSlug={slug} setView={handleSetView} />;
   }
 
   if (slug === 'bubblegum' || slug === 'bubblegumhealth') {
