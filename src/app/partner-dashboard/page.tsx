@@ -60,7 +60,6 @@ function DashboardContent() {
   const [logoUrl, setLogoUrl] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#F43F5E');
-  const [hideStockCount, setHideStockCount] = useState(true);
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [markupPercentage, setMarkupPercentage] = useState(18);
@@ -81,7 +80,6 @@ function DashboardContent() {
         setTagline(p.tagline || '');
         setLogoUrl(p.logoUrl || '');
         setPrimaryColor(p.primaryColor || '#F43F5E');
-        setHideStockCount(p.hideStockCount !== undefined ? p.hideStockCount : (targetSlug === 'bubblegum'));
         setContactEmail(p.contactEmail || '');
         setContactPhone(p.contactPhone || '');
         setMarkupPercentage(p.markupPercentage ?? 18);
@@ -365,7 +363,6 @@ function DashboardContent() {
         tagline,
         logoUrl,
         primaryColor,
-        hideStockCount,
         contactEmail,
         contactPhone,
         markupPercentage,
@@ -434,7 +431,6 @@ function DashboardContent() {
           tagline,
           logoUrl: data.url,
           primaryColor,
-          hideStockCount,
           contactEmail,
           contactPhone,
           markupPercentage,
@@ -1426,22 +1422,6 @@ function DashboardContent() {
                     placeholder="e.g. 07067593825"
                   />
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/70">
-                <div className="space-y-0.5 pr-4">
-                  <div className="text-xs font-semibold text-slate-800">Hide Stock Quantities on Storefront</div>
-                  <p className="text-[11px] text-slate-500">Hides inventory counters (e.g. &quot;Only 1 left&quot; or &quot;5 available&quot;) so customers only see in-stock or out-of-stock availability.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={hideStockCount}
-                    onChange={(e) => setHideStockCount(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
-                </label>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end">
