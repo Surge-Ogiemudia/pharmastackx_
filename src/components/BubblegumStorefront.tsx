@@ -25,6 +25,7 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -46,25 +47,44 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Fetch partner profile & branding
+  // Initial load: fetch partner & catalog in parallel before revealing UI
   useEffect(() => {
-    async function fetchPartner() {
+    let active = true;
+    async function initStore() {
       try {
-        const res = await fetch(`/api/partner?slug=${encodeURIComponent(partnerSlug)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.partner) {
-            setPartner(data.partner);
+        const [partnerRes, productsRes] = await Promise.all([
+          fetch(`/api/partner?slug=${encodeURIComponent(partnerSlug)}`),
+          fetch(`/api/products?slug=${encodeURIComponent(partnerSlug)}&limit=100`)
+        ]);
+
+        if (partnerRes.ok) {
+          const pData = await partnerRes.json();
+          if (active && pData.success && pData.partner) {
+            setPartner(pData.partner);
+          }
+        }
+
+        if (productsRes.ok) {
+          const prodData = await productsRes.json();
+          if (active && prodData.success && Array.isArray(prodData.data)) {
+            setProducts(prodData.data);
           }
         }
       } catch (err) {
-        console.error('Failed to fetch partner info:', err);
+        console.error('Failed to initialize partner store:', err);
+      } finally {
+        if (active) {
+          setIsReady(true);
+          setLoading(false);
+        }
       }
     }
-    fetchPartner();
+
+    initStore();
+    return () => { active = false; };
   }, [partnerSlug]);
 
-  // Fetch partner catalog
+  // Subsequent searches & category filters
   const fetchProducts = useCallback(async (query: string = '', category: string = 'all') => {
     setLoading(true);
     try {
@@ -90,11 +110,12 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
   }, [partnerSlug]);
 
   useEffect(() => {
+    if (!isReady) return;
     const handler = setTimeout(() => {
       fetchProducts(searchQuery, activeCategory);
     }, 250);
     return () => clearTimeout(handler);
-  }, [searchQuery, activeCategory, fetchProducts]);
+  }, [searchQuery, activeCategory, fetchProducts, isReady]);
 
   const handleAddToCart = (product: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -126,6 +147,19 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
     const found = cart.find(i => i.id === productId);
     return found ? found.quantity : 0;
   };
+
+  if (!isReady) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="flex items-center gap-2.5">
+          <span className="w-3 h-3 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-slate-700 animate-bounce" style={{ animationDelay: '450ms' }}></span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24">

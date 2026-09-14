@@ -38,6 +38,18 @@ const FindPharmacyContent = dynamic(() => import("@/components/FindPharmacyConte
 const OrderRequestsContent = dynamic(() => import("@/components/OrderRequestsContent"), { loading: () => <NavSkeleton /> });
 const FindPharmacistContent = dynamic(() => import("@/components/FindPharmacistContent"), { loading: () => <NavSkeleton /> });
 const FindMedicinesContent = dynamic(() => import("@/components/FindMedicinesContent"), { loading: () => <NavSkeleton /> });
+const BubblegumStorefront = dynamic(() => import("@/components/BubblegumStorefront"), { 
+  loading: () => (
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="w-3 h-3 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+        <span className="w-3 h-3 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+        <span className="w-3 h-3 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+        <span className="w-3 h-3 rounded-full bg-slate-700 animate-bounce" style={{ animationDelay: '450ms' }}></span>
+      </div>
+    </div>
+  )
+});
 const MedicineRestock = dynamic(() => import("@/components/MedicineRestock"), { loading: () => <NavSkeleton /> });
 const AccountContent = dynamic(() => import("@/components/AccountContent"), { loading: () => <NavSkeleton /> });
 const Chat = dynamic(() => import("@/components/Chat"), { loading: () => <CircularProgress /> });
@@ -855,7 +867,11 @@ const renderPageView = (title: string, layoutId: string, children?: React.ReactN
             sx={{ width: '100%', display: 'flex', flexDirection: 'column', pt: 0, pb: bottomPadding, bgcolor: '#fafaf8' }}
           >
             <Box sx={{ flexGrow: 1 }}>
-              <FindMedicinesContent setView={setView} partnerSlug={searchParams?.get('slug') || undefined} />
+              {(searchParams?.get('slug') === 'bubblegum' || searchParams?.get('slug') === 'bubblegumhealth') ? (
+                <BubblegumStorefront partnerSlug="bubblegum" setView={setView} />
+              ) : (
+                <FindMedicinesContent setView={setView} partnerSlug={searchParams?.get('slug') || undefined} />
+              )}
             </Box>
           </Box>
         );
