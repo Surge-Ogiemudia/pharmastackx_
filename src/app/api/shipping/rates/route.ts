@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 
-const SHIPBUBBLE_API_KEY = process.env.SHIPBUBBLE_API_KEY || 'sb_sandbox_4a67d0c5acb02e90e4ef4fb4e3f43c2085bf3061427c1b1e6d982632c1d9a495';
+const SHIPBUBBLE_API_KEY = process.env.SHIPBUBBLE_API_KEY || 'sb_prod_da9fee47730a44feb587a42067544eed04a785555a131a3040c153fd2781048a';
 const SHIPBUBBLE_BASE_URL = 'https://api.shipbubble.com/v1';
 
 // Default category: Dry food and supplements / Pharmaceuticals
