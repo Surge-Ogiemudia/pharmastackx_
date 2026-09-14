@@ -63,6 +63,19 @@ export async function GET(req: NextRequest) {
       ? Object.fromEntries(partner.productMarkups)
       : (partner.productMarkups || {});
 
+    const customProductImagesMap = partner.customProductImages instanceof Map
+      ? Object.fromEntries(partner.customProductImages)
+      : (partner.customProductImages || {});
+
+    const catalogImageMap: Record<string, string> = {};
+    if (Array.isArray(partner.curatedCatalog)) {
+      partner.curatedCatalog.forEach((item: any) => {
+        if (item.productId && item.imageUrl) {
+          catalogImageMap[String(item.productId)] = item.imageUrl;
+        }
+      });
+    }
+
     if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
       const rawProducts = await Product.find({ _id: { $in: partner.curatedProductIds } })
         .select('_id itemName amount quantity businessName category imageUrl activeIngredient POM info')
@@ -70,13 +83,15 @@ export async function GET(req: NextRequest) {
       curatedProducts = rawProducts.map((p: any) => {
         const prodId = String(p._id);
         const specificMarkup = productMarkupsMap[prodId] !== undefined ? Number(productMarkupsMap[prodId]) : null;
+        const resolvedImage = customProductImagesMap[prodId] || catalogImageMap[prodId] || p.imageUrl || '';
         return {
           id: prodId,
           name: p.itemName,
           amount: p.amount,
           quantity: p.quantity,
           category: p.category,
-          image: p.imageUrl || 'https://via.placeholder.com/150',
+          image: resolvedImage,
+          imageUrl: resolvedImage,
           activeIngredients: p.activeIngredient || '',
           POM: p.POM || false,
           info: p.info || '',
@@ -121,7 +136,7 @@ export async function PUT(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds, productMarkups, hideStockCount } = body;
+    const { slug, name, markupPercentage, logoUrl, primaryColor, tagline, contactEmail, contactPhone, bankDetails, allowedCategories, curatedProductIds, productMarkups, hideStockCount, customProductImages, curatedCatalog } = body;
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Partner slug is required' }, { status: 400 });
@@ -140,6 +155,8 @@ export async function PUT(req: NextRequest) {
     if (curatedProductIds !== undefined) updateFields.curatedProductIds = curatedProductIds;
     if (productMarkups !== undefined) updateFields.productMarkups = productMarkups;
     if (hideStockCount !== undefined) updateFields.hideStockCount = Boolean(hideStockCount);
+    if (customProductImages !== undefined) updateFields.customProductImages = customProductImages;
+    if (curatedCatalog !== undefined) updateFields.curatedCatalog = curatedCatalog;
 
     const updated = await Partner.findOneAndUpdate(
       { slug: slug.toLowerCase() },

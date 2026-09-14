@@ -172,6 +172,18 @@ export async function GET(req) {
       ? Object.fromEntries(partner.productMarkups) 
       : (partner?.productMarkups || {});
 
+    const partnerCustomImages = partner?.customProductImages instanceof Map
+      ? Object.fromEntries(partner.customProductImages)
+      : (partner?.customProductImages || {});
+
+    if (Array.isArray(partner?.curatedCatalog)) {
+      partner.curatedCatalog.forEach(item => {
+        if (item.productId && item.imageUrl) {
+          partnerCustomImages[item.productId.toString()] = item.imageUrl;
+        }
+      });
+    }
+
     const transformedProducts = products.map(product => {
       try {
          if (!product.itemName || typeof product.amount === 'undefined') {
@@ -182,9 +194,11 @@ export async function GET(req) {
           ? Number(partnerProductMarkups[prodId]) 
           : markupPct;
         const finalPrice = effectiveMarkup > 0 ? Math.round(product.amount * (1 + effectiveMarkup / 100)) : product.amount;
+        const resolvedImage = partnerCustomImages[prodId] || product.imageUrl || '';
         return {
           id: prodId,
-          image: product.imageUrl || 'https://via.placeholder.com/150',
+          image: resolvedImage || '',
+          imageUrl: resolvedImage || '',
           name: product.itemName,
           activeIngredients: product.activeIngredient || '',
           drugClass: product.category || '',
