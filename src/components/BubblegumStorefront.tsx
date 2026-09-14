@@ -32,6 +32,11 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Extended Network Fallback states (Option B)
+  const [isNetworkMode, setIsNetworkMode] = useState(false);
+  const [networkLoading, setNetworkLoading] = useState(false);
+  const [networkProducts, setNetworkProducts] = useState<any[]>([]);
+
   const categories = useMemo(() => [
     'all',
     'Contraceptive Kits',
@@ -109,8 +114,47 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
     }
   }, [partnerSlug]);
 
+  // Option B: Search extended network (50,000+ items across partner pharmacies)
+  const handleSearchNetwork = async (queryToSearch?: string) => {
+    const q = (typeof queryToSearch === 'string' ? queryToSearch : searchQuery).trim();
+    if (!q) return;
+    setNetworkLoading(true);
+    setIsNetworkMode(true);
+    try {
+      const params = new URLSearchParams({
+        slug: partnerSlug,
+        search: q,
+        network: 'true',
+        limit: '60',
+      });
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setNetworkProducts(data.data);
+        } else {
+          setNetworkProducts([]);
+        }
+      } else {
+        setNetworkProducts([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch network products:', err);
+      setNetworkProducts([]);
+    } finally {
+      setNetworkLoading(false);
+    }
+  };
+
+  const exitNetworkMode = () => {
+    setIsNetworkMode(false);
+    setNetworkProducts([]);
+  };
+
   useEffect(() => {
     if (!isReady) return;
+    setIsNetworkMode(false);
+    setNetworkProducts([]);
     const handler = setTimeout(() => {
       fetchProducts(searchQuery, activeCategory);
     }, 250);
@@ -301,11 +345,14 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
           {/* CATEGORY FILTER PILLS */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {categories.map((cat) => {
-              const isActive = activeCategory === cat;
+              const isActive = !isNetworkMode && activeCategory === cat;
               return (
                 <button
                   key={cat}
-                  onClick={() => setActiveCategory(cat)}
+                  onClick={() => {
+                    if (isNetworkMode) exitNetworkMode();
+                    setActiveCategory(cat);
+                  }}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                     isActive
                       ? 'bg-rose-600 text-white shadow-xs'
@@ -318,31 +365,150 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
             })}
           </div>
 
-          {/* PRODUCTS GRID (Mirrors Dashboard Tile Design) */}
-          {loading ? (
-            <div className="py-20 text-center space-y-3">
-              <div className="w-9 h-9 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-xs font-medium text-slate-500">Loading curated catalog...</p>
-            </div>
-          ) : products.length === 0 ? (
-            <div className="py-16 text-center space-y-3">
-              <div className="text-4xl">🛍️</div>
-              <h4 className="text-sm font-bold text-slate-800">No matching medicines found</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {searchQuery ? `No results for "${searchQuery}". Try a different keyword.` : 'Check back shortly as new items are added to the shelf.'}
-              </p>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="text-xs font-bold text-rose-600 hover:underline pt-2"
-                >
-                  Clear search
-                </button>
-              )}
+          {/* EXTENDED NETWORK SEARCH BAR / BANNER */}
+          {isNetworkMode ? (
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 text-white p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-slate-700">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+                    Extended Network
+                  </span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    {networkLoading ? 'Searching network inventory...' : `${networkProducts.length} verified ${networkProducts.length === 1 ? 'medicine' : 'medicines'} found for "${searchQuery}"`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Sourced from licensed partner pharmacies across Nigeria. Handled with private packaging and delivered swiftly through {partner.name}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exitNetworkMode}
+                className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition whitespace-nowrap cursor-pointer border border-white/10"
+              >
+                ← Back to Curated Shelf
+              </button>
             </div>
           ) : (
+            searchQuery.trim() && !loading && products.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 pt-0.5 pb-1 px-1">
+                <span>Showing {products.length} {products.length === 1 ? 'medicine' : 'medicines'} on curated shelf</span>
+                <button
+                  type="button"
+                  onClick={() => handleSearchNetwork(searchQuery)}
+                  disabled={networkLoading}
+                  className="text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer flex items-center gap-1.5 self-start sm:self-auto text-[11px] sm:text-xs"
+                >
+                  <span>Search 50,000+ items across extended partner network</span>
+                  <span>→</span>
+                </button>
+              </div>
+            )
+          )}
+
+          {/* PRODUCTS GRID (Mirrors Dashboard Tile Design) */}
+          {(isNetworkMode ? networkLoading : loading) ? (
+            <div className="py-20 text-center space-y-3">
+              <div className="w-9 h-9 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-xs font-medium text-slate-500">
+                {isNetworkMode ? 'Searching 50,000+ partner network products...' : 'Loading curated catalog...'}
+              </p>
+            </div>
+          ) : (isNetworkMode ? networkProducts : products).length === 0 ? (
+            isNetworkMode ? (
+              /* Network search also returned 0 results -> WhatsApp Concierge Fallback */
+              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-4 bg-rose-50/60 rounded-3xl border border-rose-100 shadow-xs">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto text-2xl border border-rose-100 shadow-xs">
+                  💬
+                </div>
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                    <span>Not in Online Catalog</span>
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    "{searchQuery}" Isn't Listed Online Yet
+                  </h4>
+                  <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+                    Don't worry — our care specialists can source almost any genuine medication or prescription privately through our licensed distributor network.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                  <a
+                    href={`https://wa.me/234${partner.contactPhone ? partner.contactPhone.replace(/^0+/, '') : '7067593825'}?text=${encodeURIComponent(`Hi Bubblegum Health, I was searching for "${searchQuery}" on your storefront and could not find it. Can you help me source and deliver this privately?`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+                  >
+                    <span>💬</span>
+                    <span>Request & Order via WhatsApp</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={exitNetworkMode}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 py-2 px-3 cursor-pointer"
+                  >
+                    Back to curated catalog
+                  </button>
+                </div>
+              </div>
+            ) : searchQuery.trim() ? (
+              /* Curated shelf returned 0 results -> Option B: Prompt to search extended network */
+              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-4">
+                <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-rose-100 shadow-xs">
+                  🔍
+                </div>
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                    <span>Not on Curated Shelf</span>
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    Looking for "{searchQuery}"?
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    This item isn't on Bubblegum's primary women's health shelf, but it may be in stock across our partner network of 50,000+ verified pharmacy products.
+                  </p>
+                </div>
+                
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSearchNetwork(searchQuery)}
+                    disabled={networkLoading}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    {networkLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>Searching Partner Network...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🌐</span>
+                        <span>Search 50,000+ Network Products</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 py-2 px-3 cursor-pointer"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-16 text-center space-y-3">
+                <div className="text-4xl">🛍️</div>
+                <h4 className="text-sm font-bold text-slate-800">No matching medicines found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Check back shortly as new items are added to this category.
+                </p>
+              </div>
+            )
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {products.map((p) => {
+              {(isNetworkMode ? networkProducts : products).map((p) => {
                 const qtyInCart = getCartItemQty(p.id || p._id);
                 return (
                   <div
@@ -353,9 +519,16 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
                     <div>
                       {/* CARD TOP ROW */}
                       <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">
-                          {p.category || 'Medicine'}
-                        </span>
+                        {p.isNetworkItem || isNetworkMode ? (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/80 flex items-center gap-1">
+                            <span>🌐</span>
+                            <span>Network Partner</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">
+                            {p.category || 'Medicine'}
+                          </span>
+                        )}
                         {p.POM && (
                           <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/60">
                             Rx Required
@@ -450,6 +623,13 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
                 ✕
               </button>
             </div>
+
+            {(selectedProduct.isNetworkItem || isNetworkMode) && (
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 font-semibold">
+                <span>🌐</span>
+                <span>Extended Partner Network • Verified Sourcing & Discreet Dispatch</span>
+              </div>
+            )}
 
             {selectedProduct.info && selectedProduct.info !== 'N/A' && (
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed max-h-40 overflow-y-auto">

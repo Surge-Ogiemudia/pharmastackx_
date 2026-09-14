@@ -48,6 +48,8 @@ export async function GET(req) {
 
     // Build the base match query — exclude items with zero or missing price
     let query = { isPublished: true, amount: { $gt: 0 } };
+    const network = searchParams.get('network') === 'true';
+
     // Check if the slug corresponds to a B2B Partner storefront
     let partner = null;
     let markupPct = 0;
@@ -55,11 +57,24 @@ export async function GET(req) {
       partner = await Partner.findOne({ slug: slug.toLowerCase(), isActive: true }).lean();
       if (partner) {
         markupPct = partner.markupPercentage || 18;
-        if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
-          query._id = { $in: partner.curatedProductIds };
+        if (!network) {
+          if (partner.curatedProductIds && partner.curatedProductIds.length > 0) {
+            query._id = { $in: partner.curatedProductIds };
+          } else {
+            // Store is empty until the partner curates and drops products into their shelf
+            query._id = { $in: [] };
+          }
         } else {
-          // Store is empty until the partner curates and drops products into their shelf
-          query._id = { $in: [] };
+          // When searching the extended partner network, exclude synthetic mock pharmacies
+          const syntheticPharmacies = [
+            'Central Pharmacy',
+            'Mantle pharmacy',
+            'Pharmacy Pharmacy',
+            'Pi Pharmacy',
+            'Stackx Pharmacy',
+            'utah pharmacy'
+          ];
+          query.businessName = { $nin: syntheticPharmacies };
         }
         // When it is a partner storefront, do NOT restrict to a single pharmacy's slug
       } else {
@@ -184,6 +199,8 @@ export async function GET(req) {
           slug: product.slug,
           partnerSlug: partner ? partner.slug : null,
           isPartnerProduct: !!partner,
+          isCurated: partner?.curatedProductIds?.some(cid => cid.toString() === prodId) ?? false,
+          isNetworkItem: !!partner && !(partner?.curatedProductIds?.some(cid => cid.toString() === prodId)),
           productMarkupPercentage: effectiveMarkup,
           stockQty: typeof product.quantity === 'number' ? product.quantity : null,
           inStock: typeof product.quantity === 'number' ? product.quantity > 0 : true,
@@ -200,6 +217,7 @@ export async function GET(req) {
     return NextResponse.json({
       success: true,
       data: transformedProducts,
+      isNetworkFallback: network,
       partner: partner ? {
         name: partner.name,
         slug: partner.slug,
