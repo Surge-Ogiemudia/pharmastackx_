@@ -9,6 +9,63 @@ interface BubblegumStorefrontProps {
   setView?: (view: string) => void;
 }
 
+// Clean packshot image renderer with graceful fallback to a stylish stylized pill/capsule badge
+function ProductImageWithFallback({
+  src,
+  alt,
+  category,
+  className = "w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105",
+  containerClassName = "relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors",
+  iconSize = "w-6 h-6",
+  badgeSize = "w-12 h-12",
+  showLabel = true,
+}: {
+  src?: string;
+  alt: string;
+  category?: string;
+  className?: string;
+  containerClassName?: string;
+  iconSize?: string;
+  badgeSize?: string;
+  showLabel?: boolean;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const validSrc = src && typeof src === 'string' && src.trim() !== '' && !src.includes('placeholder.com');
+
+  if (!validSrc || hasError) {
+    return (
+      <div className={containerClassName}>
+        <div className="flex flex-col items-center justify-center text-center p-2 select-none">
+          <div className={`${badgeSize} rounded-2xl bg-gradient-to-tr from-rose-100 to-rose-50 text-rose-500 flex items-center justify-center shadow-2xs border border-rose-200/50 ${showLabel ? 'mb-1.5' : ''}`}>
+            {/* Stylish stylized pill/capsule SVG badge */}
+            <svg className={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+              <path d="m8.5 8.5 7 7" />
+            </svg>
+          </div>
+          {showLabel && (
+            <span className="text-[10px] font-extrabold text-rose-400 uppercase tracking-wider line-clamp-1">
+              {category || 'Medication'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerClassName}>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onError={() => setHasError(true)}
+        className={className}
+      />
+    </div>
+  );
+}
+
 export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView }: BubblegumStorefrontProps) {
   const router = useRouter();
   const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart();
@@ -167,9 +224,9 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
       id: product.id || product._id,
       name: product.name,
       price: product.price,
-      image: product.image || 'https://via.placeholder.com/150',
+      image: product.image || product.imageUrl || '',
       activeIngredients: product.activeIngredients || '',
-      drugClass: product.category || '',
+      drugClass: product.category || product.drugClass || '',
       pharmacy: partner.name || 'Bubblegum Health',
     });
     showToast(`Added "${product.name}" to cart`);
@@ -548,6 +605,15 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
                         )}
                       </div>
 
+                      {/* PRODUCT PACKSHOT IMAGE */}
+                      <ProductImageWithFallback
+                        src={p.image || p.imageUrl}
+                        alt={p.name}
+                        category={p.category || p.drugClass}
+                        containerClassName="relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors"
+                        className="w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+                      />
+
                       {/* TITLE (Mirrors bold uppercase style from dashboard) */}
                       <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-rose-600 transition leading-snug line-clamp-2">
                         {p.name}
@@ -635,6 +701,17 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
                 ✕
               </button>
             </div>
+
+            {/* MODAL PRODUCT PACKSHOT */}
+            <ProductImageWithFallback
+              src={selectedProduct.image || selectedProduct.imageUrl}
+              alt={selectedProduct.name}
+              category={selectedProduct.category || selectedProduct.drugClass}
+              containerClassName="relative w-full h-52 sm:h-60 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/40 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-4"
+              className="w-full h-full object-contain drop-shadow-sm"
+              iconSize="w-8 h-8"
+              badgeSize="w-16 h-16"
+            />
 
             {(selectedProduct.isNetworkItem || isNetworkMode) && (
               <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 font-semibold">
@@ -732,6 +809,17 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
                       key={item.id}
                       className="p-3 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between gap-2 sm:gap-3"
                     >
+                      {/* CART THUMBNAIL */}
+                      <ProductImageWithFallback
+                        src={item.image}
+                        alt={item.name}
+                        containerClassName="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden"
+                        className="w-full h-full object-contain"
+                        badgeSize="w-8 h-8"
+                        iconSize="w-4 h-4"
+                        showLabel={false}
+                      />
+
                       <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1 pr-1">
                         <h5 className="text-xs font-bold text-slate-900 truncate">
                           {item.name}

@@ -67,6 +67,9 @@ function DashboardContent() {
   const [contactPhone, setContactPhone] = useState('');
   const [markupPercentage, setMarkupPercentage] = useState(18);
   const [productMarkups, setProductMarkups] = useState<Record<string, number>>({});
+  const [customProductImages, setCustomProductImages] = useState<Record<string, string>>({});
+  const [editingImageProductId, setEditingImageProductId] = useState<string | null>(null);
+  const [customImageInput, setCustomImageInput] = useState<string>('');
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
@@ -99,6 +102,11 @@ function DashboardContent() {
           ? Object.fromEntries(p.productMarkups) 
           : (p.productMarkups || {});
         setProductMarkups(markupsMap);
+
+        const customImgsMap = p.customProductImages instanceof Map
+          ? Object.fromEntries(p.customProductImages)
+          : (p.customProductImages || {});
+        setCustomProductImages(customImgsMap);
       } else {
         setToast({ msg: data.error || 'Failed to load partner', type: 'error' });
       }
@@ -294,16 +302,54 @@ function DashboardContent() {
     return () => clearTimeout(timer);
   }, [catalogSearch, catalogCategory, searchMasterCatalog]);
 
-  const persistCuratedAndMarkups = async (ids: string[], markups: Record<string, number>) => {
+  const persistCuratedAndMarkups = async (
+    ids: string[], 
+    markups: Record<string, number>,
+    customImgs?: Record<string, string>
+  ) => {
     try {
+      const payload: any = { slug, curatedProductIds: ids, productMarkups: markups };
+      const imagesToPersist = customImgs !== undefined ? customImgs : customProductImages;
+      if (imagesToPersist) {
+        payload.customProductImages = imagesToPersist;
+      }
       await fetch('/api/partner', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, curatedProductIds: ids, productMarkups: markups }),
+        body: JSON.stringify(payload),
       });
     } catch (e) {
       console.error('Failed to persist curated items and markups:', e);
     }
+  };
+
+  const handleSaveCustomImage = async (productId: string, newUrl: string) => {
+    const trimmed = newUrl.trim();
+    const nextImages = { ...customProductImages };
+    if (!trimmed) {
+      delete nextImages[productId];
+    } else {
+      nextImages[productId] = trimmed;
+    }
+    setCustomProductImages(nextImages);
+
+    // Update in local curatedProducts list
+    const nextCurated = curatedProducts.map(p => {
+      if (String(p.id || p._id) === productId) {
+        return {
+          ...p,
+          image: trimmed || p.image || p.imageUrl || '',
+          imageUrl: trimmed || p.imageUrl || p.image || '',
+        };
+      }
+      return p;
+    });
+    setCuratedProducts(nextCurated);
+
+    setEditingImageProductId(null);
+    setCustomImageInput('');
+    showToast(trimmed ? 'Product packshot image updated!' : 'Packshot image reset to default');
+    await persistCuratedAndMarkups(nextCurated.map(p => p.id), productMarkups, nextImages);
   };
 
   const addToShelf = async (product: any) => {
@@ -1105,15 +1151,35 @@ function DashboardContent() {
                               )}
                             </div>
 
-                            <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
-                              {p.name || p.itemName}
-                            </h4>
-                            {hasIngredient && (
-                              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                                <span>💊</span>
-                                <span className="truncate">{rawIng}</span>
-                              </p>
-                            )}
+                            <div className="flex items-start gap-2.5">
+                              {/* PACKAGING THUMBNAIL */}
+                              <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden">
+                                {(p.image || p.imageUrl) && !(p.image || p.imageUrl).includes('placeholder.com') ? (
+                                  <img
+                                    src={p.image || p.imageUrl}
+                                    alt={p.name || p.itemName}
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="text-base">💊</span>
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
+                                  {p.name || p.itemName}
+                                </h4>
+                                {hasIngredient && (
+                                  <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                    <span>💊</span>
+                                    <span className="truncate">{rawIng}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           {/* PRICING & ACTION */}
@@ -1284,19 +1350,71 @@ function DashboardContent() {
                         const markup = Math.round(base * (effectivePct / 100));
                         const retail = base + markup;
 
+                        const itemImage = customProductImages[item.id] || item.image || item.imageUrl || '';
+                        const isEditingThisImage = editingImageProductId === item.id;
+
                         return (
                           <div
                             key={item.id}
                             className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col gap-2.5 transition group"
                           >
-                            <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start justify-between gap-2.5">
+                              {/* SHELF ITEM THUMBNAIL */}
+                              <div className="w-14 h-14 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden shadow-2xs">
+                                {itemImage && !itemImage.includes('placeholder.com') ? (
+                                  <img
+                                    src={itemImage}
+                                    alt={item.name}
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+                                      <path d="m8.5 8.5 7 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+
                               <div className="min-w-0 flex-1">
-                                <h5 className="text-xs font-bold text-slate-900 truncate">
+                                <h5 className="text-xs font-bold text-slate-900 truncate" title={item.name}>
                                   {item.name}
                                 </h5>
                                 <div className="flex items-center gap-2 mt-0.5 text-[11px]">
                                   <span className="text-slate-800 font-bold">₦{retail.toLocaleString()}</span>
                                   <span className="text-emerald-600 font-bold">(+₦{markup.toLocaleString()} cut)</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isEditingThisImage) {
+                                        setEditingImageProductId(null);
+                                        setCustomImageInput('');
+                                      } else {
+                                        setEditingImageProductId(item.id);
+                                        setCustomImageInput(itemImage);
+                                      }
+                                    }}
+                                    className="text-[10px] font-semibold text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>🖼️</span>
+                                    <span>{itemImage ? 'Edit Image URL' : 'Set Custom Image'}</span>
+                                  </button>
+                                  {customProductImages[item.id] && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveCustomImage(item.id, '')}
+                                      className="text-[10px] text-slate-400 hover:text-rose-600 underline cursor-pointer"
+                                      title="Reset to default product packshot"
+                                    >
+                                      Reset
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
@@ -1308,6 +1426,42 @@ function DashboardContent() {
                                 ✕
                               </button>
                             </div>
+
+                            {/* INLINE IMAGE URL EDITOR */}
+                            {isEditingThisImage && (
+                              <div className="p-2.5 bg-white rounded-xl border border-rose-200 space-y-2 text-left shadow-2xs">
+                                <div className="text-[10px] font-bold text-slate-700 flex items-center justify-between">
+                                  <span>Custom Packshot Image URL:</span>
+                                  <span className="text-[9px] text-slate-400">Direct image link (jpg, png, webp)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="url"
+                                    value={customImageInput}
+                                    onChange={(e) => setCustomImageInput(e.target.value)}
+                                    placeholder="https://example.com/product-packshot.png"
+                                    className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveCustomImage(item.id, customImageInput)}
+                                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingImageProductId(null);
+                                      setCustomImageInput('');
+                                    }}
+                                    className="px-2 py-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
 
                             {/* PRODUCT SPECIFIC MARKUP CONTROLLER */}
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-[11px]">
