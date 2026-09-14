@@ -19,7 +19,12 @@ export interface IOrder extends Document {
   deliveryCity: string;
   deliveryState: string;
   coupon?: string;
-  deliveryOption: 'standard' | 'express' | 'pickup';
+  deliveryOption: 'standard' | 'express' | 'pickup' | 'courier' | string;
+  courierName?: string;
+  courierId?: string;
+  courierLogo?: string;
+  deliveryFee?: number;
+  shipbubbleRequestToken?: string;
   orderType: 'S' | 'MN' | 'MP';
   totalAmount: number;
   sfcAmount: number;
@@ -55,9 +60,13 @@ const OrderSchema: Schema<IOrder> = new Schema({
   coupon: { type: String },
   deliveryOption: { 
     type: String, 
-    required: true, 
-    enum: ['standard', 'express', 'pickup'] 
+    required: true,
   },
+  courierName: { type: String },
+  courierId: { type: String },
+  courierLogo: { type: String },
+  deliveryFee: { type: Number, default: 0 },
+  shipbubbleRequestToken: { type: String },
   orderType: { 
     type: String, 
     required: true, 

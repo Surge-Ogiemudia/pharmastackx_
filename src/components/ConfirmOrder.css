@@ -579,3 +579,65 @@
     margin-top: 12px;
     font-weight: 400;
 }
+
+/* LIVE COURIER POOL & BADGES */
+.co-courier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.co-courier-badge.cheapest {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.co-courier-badge.fastest {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+}
+
+.co-courier-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.06);
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.co-rates-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    background: rgba(0,0,0,0.02);
+    border-radius: 12px;
+    font-size: 13px;
+    color: #666;
+    border: 1px dashed rgba(0,0,0,0.1);
+}
+
+.co-rates-hint {
+    padding: 12px 14px;
+    background: rgba(0, 109, 91, 0.05);
+    border: 1px dashed rgba(0, 109, 91, 0.2);
+    border-radius: 12px;
+    font-size: 12px;
+    color: #006D5B;
+    line-height: 1.4;
+}
+

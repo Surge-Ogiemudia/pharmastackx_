@@ -94,7 +94,8 @@ export async function POST(req: NextRequest) {
       patientName, patientAge, patientCondition,
       deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
       items, coupon, deliveryOption, orderType, businesses,
-      requestId, quoteId, sfcAmount, partnerSlug
+      requestId, quoteId, sfcAmount, partnerSlug,
+      courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken
     } = body;
 
     // Calculate total amount if not provided or to verify
@@ -147,6 +148,11 @@ export async function POST(req: NextRequest) {
       businesses: businesses || [],
       totalAmount,
       sfcAmount: sfcAmount || 0,
+      deliveryFee: deliveryFee || 0,
+      courierName,
+      courierId,
+      courierLogo,
+      shipbubbleRequestToken,
       requestId: (requestId && requestId.length === 24) ? requestId : undefined,
       quoteId,
       partnerSlug: resolvedPartnerSlug,

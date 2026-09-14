@@ -49,8 +49,18 @@ interface RequestData {
   quotes: Quote[];
 }
 
-const STANDARD_DELIVERY_FEE = 10;
-const EXPRESS_DELIVERY_FEE = 10;
+export interface CourierOption {
+  courierId: string;
+  courierName: string;
+  courierImage?: string;
+  serviceCode: string;
+  serviceType: string;
+  total: number;
+  deliveryEta: string;
+  pickupEta?: string;
+  isCheapest?: boolean;
+  isFastest?: boolean;
+}
 
 export default function ConfirmOrderContent({ setView }: { setView: (view: string) => void }) {
   const { items, updateQuantity, removeFromCart, clearCart, requestId, quoteId, fetchCartFromDB, initializeCart } = useCart();
@@ -110,7 +120,12 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const [completedPharmacyName, setCompletedPharmacyName] = useState<string | undefined>(undefined);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
-  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'pickup'>('standard');
+  const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'pickup' | 'standard' | 'express'>('delivery');
+  const [couriers, setCouriers] = useState<CourierOption[]>([]);
+  const [selectedCourier, setSelectedCourier] = useState<CourierOption | null>(null);
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
+  const [requestToken, setRequestToken] = useState<string | null>(null);
   const [isProcessingFreeOrder, setIsProcessingFreeOrder] = useState(false);
 
   // Form Fields
@@ -233,11 +248,66 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const isSingleOrder = uniquePharmacies.length <= 1;
   const actualOrderType = isSingleOrder ? 'S' : 'MN';
 
+  // Fetch live courier rates from Shipbubble
+  const fetchCourierRates = useCallback(async (address: string, city: string, state: string) => {
+    if (!address || address.trim().length < 3) return;
+    setLoadingRates(true);
+    setRatesError(null);
+    try {
+      const primaryPharmacy = uniquePharmacies[0] || (pharmacist ? pharmacist.name : 'PharmaStackX Central Hub');
+      const res = await fetch('/api/shipping/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pharmacyName: primaryPharmacy,
+          deliveryAddress: address,
+          deliveryCity: city,
+          deliveryState: state,
+          recipientName: patientName,
+          recipientPhone: deliveryPhone,
+          recipientEmail: deliveryEmail,
+          items: items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price }))
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && Array.isArray(data.couriers) && data.couriers.length > 0) {
+        setCouriers(data.couriers);
+        setRequestToken(data.requestToken || null);
+        setSelectedCourier(prev => {
+          if (prev && data.couriers.some((c: CourierOption) => c.courierId === prev.courierId)) {
+            return data.couriers.find((c: CourierOption) => c.courierId === prev.courierId);
+          }
+          return data.cheapestCourier || data.couriers[0];
+        });
+      } else {
+        setRatesError(data.message || 'Unable to fetch courier rates for this address.');
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch courier rates:', err);
+      setRatesError('Failed to connect to courier network.');
+    } finally {
+      setLoadingRates(false);
+    }
+  }, [uniquePharmacies, pharmacist, patientName, deliveryPhone, deliveryEmail, items]);
+
+  useEffect(() => {
+    if (deliveryOption === 'pickup') return;
+    if (!deliveryAddress || deliveryAddress.trim().length < 3) return;
+
+    const timer = setTimeout(() => {
+      fetchCourierRates(deliveryAddress, deliveryCity, deliveryState);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [deliveryAddress, deliveryCity, deliveryState, deliveryOption, fetchCourierRates]);
+
   const getDeliveryFee = useCallback(() => {
     if (deliveryOption === 'pickup') return 0;
-    const baseDeliveryFee = deliveryOption === 'standard' ? STANDARD_DELIVERY_FEE : EXPRESS_DELIVERY_FEE;
-    return baseDeliveryFee;
-  }, [deliveryOption]);
+    if (selectedCourier) return selectedCourier.total;
+    if (couriers.length > 0) return couriers[0].total;
+    return 1500;
+  }, [deliveryOption, selectedCourier, couriers]);
 
   const deliveryFee = getDeliveryFee();
   const sfcPercentage = deliveryOption === 'pickup' ? 25 : 20;
@@ -288,7 +358,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       deliveryEmail, deliveryPhone, deliveryCity, deliveryState,
       items: itemsForBackend,
       coupon: activePromo?.code,
-      deliveryOption,
+      deliveryOption: deliveryOption === 'pickup' ? 'pickup' : (selectedCourier ? selectedCourier.courierName : 'courier'),
       orderType: actualOrderType,
       businesses: uniquePharmacies,
       requestId,
@@ -296,6 +366,11 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       patientPhone: deliveryPhone,
       deliveryAddress,
       partnerSlug: activePartnerSlug,
+      courierName: selectedCourier ? selectedCourier.courierName : (deliveryOption === 'pickup' ? 'Pickup' : 'Standard Courier'),
+      courierId: selectedCourier?.courierId,
+      courierLogo: selectedCourier?.courierImage,
+      deliveryFee: deliveryFee,
+      shipbubbleRequestToken: requestToken || undefined,
     };
     
     const result = await addOrder(orderData);
@@ -328,7 +403,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       setPostPaymentMessage(`Order creation failed: ${result.message}`);
       router.replace(window.location.pathname, { scroll: false });
     }
-  }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router]);
+  }, [user, items, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router, selectedCourier, deliveryFee, requestToken, searchParams]);
 
   useEffect(() => {
     const status = searchParams?.get('redirect_status');
@@ -450,6 +525,17 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       <div className="co-section co-reveal d3">
         <div className="co-sec-label">Delivery preference</div>
         <div className="co-delivery-opts">
+          <div className={`co-delivery-opt ${deliveryOption !== 'pickup' ? 'selected' : ''}`} onClick={() => setDeliveryOption('delivery')}>
+            <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
+            <div className="co-delivery-opt-body">
+              <div className="co-delivery-opt-title">Doorstep Delivery</div>
+              <div className="co-delivery-opt-sub">Live courier pool (Gokada, Kwik, GIGL, Bubble Express) dispatched to your door.</div>
+            </div>
+            {selectedCourier && deliveryOption !== 'pickup' && (
+              <div className="co-delivery-opt-price">₦{selectedCourier.total.toLocaleString()}</div>
+            )}
+          </div>
+
           <div className={`co-delivery-opt ${deliveryOption === 'pickup' ? 'selected' : ''}`} onClick={() => setDeliveryOption('pickup')}>
             <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
             <div className="co-delivery-opt-body">
@@ -458,33 +544,95 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
             </div>
             <div className="co-delivery-opt-price" style={{color: deliveryOption === 'pickup' ? 'var(--green)' : '#bbb'}}>Free</div>
           </div>
-
-          <div className={`co-delivery-opt ${deliveryOption === 'standard' ? 'selected' : ''}`} onClick={() => setDeliveryOption('standard')}>
-            <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
-            <div className="co-delivery-opt-body">
-              <div className="co-delivery-opt-title">Standard delivery</div>
-              <div className="co-delivery-opt-sub">Reliable delivery, usually by tomorrow.</div>
-            </div>
-            <div className="co-delivery-opt-price">₦{STANDARD_DELIVERY_FEE.toLocaleString()}</div>
-          </div>
-
-          <div className={`co-delivery-opt ${deliveryOption === 'express' ? 'selected' : ''}`} onClick={() => setDeliveryOption('express')}>
-            <div className="co-delivery-opt-radio"><div className="co-delivery-opt-radio-inner"></div></div>
-            <div className="co-delivery-opt-body">
-              <div className="co-delivery-opt-title">Express delivery</div>
-              <div className="co-delivery-opt-sub">30mins – 3hrs delivery depending on location.</div>
-            </div>
-            <div className="co-delivery-opt-price">₦{EXPRESS_DELIVERY_FEE.toLocaleString()}</div>
-          </div>
         </div>
 
         {deliveryOption !== 'pickup' && (
-          <div id="addressSection" style={{marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10}}>
-            <input className="co-address-field" type="text" placeholder="Delivery address" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} />
-            <div style={{display: 'flex', gap: 10}}>
-              <input className="co-address-field" style={{flex: 1}} type="text" placeholder="City" value={deliveryCity} onChange={e => setDeliveryCity(e.target.value)} />
-              <input className="co-address-field" style={{flex: 1}} type="text" placeholder="State" value={deliveryState} onChange={e => setDeliveryState(e.target.value)} />
+          <div id="addressSection" style={{marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12}}>
+            <div style={{fontSize: 12, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5}}>
+              Delivery Destination
             </div>
+            <input 
+              className="co-address-field" 
+              type="text" 
+              placeholder="Street address (e.g. 15 Admiralty Way, Lekki Phase 1)" 
+              value={deliveryAddress} 
+              onChange={e => setDeliveryAddress(e.target.value)} 
+            />
+            <div style={{display: 'flex', gap: 10}}>
+              <input className="co-address-field" style={{flex: 1}} type="text" placeholder="City (e.g. Lekki / Ikeja / Benin)" value={deliveryCity} onChange={e => setDeliveryCity(e.target.value)} />
+              <input className="co-address-field" style={{flex: 1}} type="text" placeholder="State (e.g. Lagos / Edo)" value={deliveryState} onChange={e => setDeliveryState(e.target.value)} />
+            </div>
+
+            {/* LIVE COURIER POOL DISPLAY */}
+            {loadingRates && (
+              <div className="co-rates-loading">
+                <CircularProgress size={18} sx={{ color: 'var(--green)' }} />
+                <span>Fetching live rates from available couriers...</span>
+              </div>
+            )}
+
+            {!loadingRates && couriers.length === 0 && (!deliveryAddress || deliveryAddress.trim().length < 3) && (
+              <div className="co-rates-hint">
+                📍 Enter your delivery address above to view real-time courier options and rates from Gokada, Kwik, GIGL, and more.
+              </div>
+            )}
+
+            {!loadingRates && ratesError && couriers.length === 0 && (
+              <div style={{ padding: '10px 14px', background: '#fff3e0', border: '1px solid #ffe0b2', borderRadius: 10, fontSize: 12, color: '#e65100' }}>
+                ⚠️ {ratesError}
+              </div>
+            )}
+
+            {!loadingRates && couriers.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{fontSize: 12, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8}}>
+                  Choose Delivery Courier
+                </div>
+                <div className="co-delivery-opts">
+                  {couriers.map((courier) => {
+                    const isSelected = selectedCourier?.courierId === courier.courierId;
+                    return (
+                      <div
+                        key={courier.courierId}
+                        className={`co-delivery-opt ${isSelected ? 'selected' : ''}`}
+                        onClick={() => setSelectedCourier(courier)}
+                      >
+                        <div className="co-delivery-opt-radio">
+                          <div className="co-delivery-opt-radio-inner"></div>
+                        </div>
+
+                        {courier.courierImage && (
+                          <img 
+                            src={courier.courierImage} 
+                            alt={courier.courierName}
+                            className="co-courier-logo" 
+                          />
+                        )}
+
+                        <div className="co-delivery-opt-body">
+                          <div className="co-delivery-opt-title" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span>{courier.courierName}</span>
+                            {courier.isCheapest && (
+                              <span className="co-courier-badge cheapest">🏷️ Cheapest</span>
+                            )}
+                            {courier.isFastest && (
+                              <span className="co-courier-badge fastest">⚡ Fastest</span>
+                            )}
+                          </div>
+                          <div className="co-delivery-opt-sub">
+                            {courier.deliveryEta} {courier.serviceType ? `· ${courier.serviceType === 'pickup' ? 'Direct Pickup' : 'Dropoff'}` : ''}
+                          </div>
+                        </div>
+
+                        <div className="co-delivery-opt-price">
+                          ₦{courier.total.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -573,6 +721,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
         <PaystackButton
           total={total}
           deliveryOption={deliveryOption}
+          courierName={selectedCourier?.courierName}
           orderType={actualOrderType}
           uniquePharmacies={uniquePharmacies}
           subtotal={subtotal}
