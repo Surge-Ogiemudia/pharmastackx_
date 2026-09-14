@@ -156,9 +156,6 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900">{partner.name}</h1>
-                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                  Active Partner
-                </span>
               </div>
               <p className="text-xs text-slate-500 line-clamp-1">{partner.tagline || 'Expert Women’s Reproductive Health & Wellness'}</p>
             </div>
@@ -193,33 +190,6 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
 
       {/* MAIN CONTAINER */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
-
-        {/* 4 STAT HIGHLIGHT CARDS (Mirrors Dashboard Top Cards) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Quality Assured</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-1 sm:mt-2">100% Genuine</p>
-            <p className="text-[11px] text-emerald-600 mt-0.5 sm:mt-1 font-medium">Sourced from certified labs</p>
-          </div>
-
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Delivery Network</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-1 sm:mt-2">Doorstep Dispatch</p>
-            <p className="text-[11px] text-slate-500 mt-0.5 sm:mt-1">Same-day across Lagos</p>
-          </div>
-
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Privacy & Discretion</p>
-            <p className="text-lg sm:text-xl font-bold text-rose-600 mt-1 sm:mt-2">Unmarked Parcels</p>
-            <p className="text-[11px] text-slate-500 mt-0.5 sm:mt-1">Plain packaging guaranteed</p>
-          </div>
-
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Secure Checkout</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-1 sm:mt-2">Verified Paystack</p>
-            <p className="text-[11px] text-emerald-600 mt-0.5 sm:mt-1 font-medium">Safe & instant payments</p>
-          </div>
-        </div>
 
         {/* HERO BANNER (Mirrors Dashboard Interactive Studio Banner) */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
