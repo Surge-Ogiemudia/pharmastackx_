@@ -54,7 +54,7 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
       try {
         const [partnerRes, productsRes] = await Promise.all([
           fetch(`/api/partner?slug=${encodeURIComponent(partnerSlug)}`),
-          fetch(`/api/products?slug=${encodeURIComponent(partnerSlug)}&limit=100`)
+          fetch(`/api/products?slug=${encodeURIComponent(partnerSlug)}&limit=500`)
         ]);
 
         if (partnerRes.ok) {
@@ -90,7 +90,7 @@ export default function BubblegumStorefront({ partnerSlug = 'bubblegum', setView
     try {
       const params = new URLSearchParams({
         slug: partnerSlug,
-        limit: '100',
+        limit: '500',
       });
       if (query.trim()) params.append('search', query.trim());
       if (category !== 'all') params.append('drugClass', category);
