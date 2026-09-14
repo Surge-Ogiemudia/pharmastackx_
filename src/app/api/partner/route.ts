@@ -83,7 +83,10 @@ export async function GET(req: NextRequest) {
       curatedProducts = rawProducts.map((p: any) => {
         const prodId = String(p._id);
         const specificMarkup = productMarkupsMap[prodId] !== undefined ? Number(productMarkupsMap[prodId]) : null;
-        const resolvedImage = customProductImagesMap[prodId] || catalogImageMap[prodId] || p.imageUrl || '';
+        const customImg = customProductImagesMap[prodId];
+        const resolvedImage = (customImg === '__REMOVED__' || customImg === 'none') 
+          ? '' 
+          : (customImg || catalogImageMap[prodId] || p.imageUrl || '');
         return {
           id: prodId,
           name: p.itemName,
@@ -140,6 +143,77 @@ export async function PUT(req: NextRequest) {
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Partner slug is required' }, { status: 400 });
+    }
+
+    // Atomic action: Delete / remove product image
+    if (body.action === 'delete-product-image') {
+      const { productId } = body;
+      if (!productId) {
+        return NextResponse.json({ success: false, error: 'productId is required' }, { status: 400 });
+      }
+      // 1. Wipe image from Product document in MongoDB
+      await Product.findByIdAndUpdate(productId, { $set: { imageUrl: '' } });
+
+      // 2. Wipe from Partner customProductImages and curatedCatalog
+      const partnerDoc = await Partner.findOne({ slug: slug.toLowerCase() });
+      if (partnerDoc) {
+        if (!partnerDoc.customProductImages) {
+          partnerDoc.customProductImages = new Map();
+        }
+        if (partnerDoc.customProductImages instanceof Map) {
+          partnerDoc.customProductImages.set(productId, '__REMOVED__');
+        } else {
+          (partnerDoc.customProductImages as any)[productId] = '__REMOVED__';
+        }
+
+        if (Array.isArray(partnerDoc.curatedCatalog)) {
+          partnerDoc.curatedCatalog = partnerDoc.curatedCatalog.map((item: any) => {
+            if (String(item.productId) === String(productId)) {
+              item.imageUrl = '';
+            }
+            return item;
+          });
+        }
+        await partnerDoc.save();
+      }
+
+      return NextResponse.json({ success: true, message: 'Product image removed successfully' });
+    }
+
+    // Atomic action: Update / set custom product image
+    if (body.action === 'set-product-image') {
+      const { productId, imageUrl } = body;
+      if (!productId) {
+        return NextResponse.json({ success: false, error: 'productId is required' }, { status: 400 });
+      }
+      const cleanUrl = String(imageUrl || '').trim();
+      if (cleanUrl) {
+        await Product.findByIdAndUpdate(productId, { $set: { imageUrl: cleanUrl } });
+      }
+
+      const partnerDoc = await Partner.findOne({ slug: slug.toLowerCase() });
+      if (partnerDoc) {
+        if (!partnerDoc.customProductImages) {
+          partnerDoc.customProductImages = new Map();
+        }
+        if (partnerDoc.customProductImages instanceof Map) {
+          partnerDoc.customProductImages.set(productId, cleanUrl || '__REMOVED__');
+        } else {
+          (partnerDoc.customProductImages as any)[productId] = cleanUrl || '__REMOVED__';
+        }
+
+        if (Array.isArray(partnerDoc.curatedCatalog)) {
+          partnerDoc.curatedCatalog = partnerDoc.curatedCatalog.map((item: any) => {
+            if (String(item.productId) === String(productId)) {
+              item.imageUrl = cleanUrl;
+            }
+            return item;
+          });
+        }
+        await partnerDoc.save();
+      }
+
+      return NextResponse.json({ success: true, message: 'Product image updated successfully', imageUrl: cleanUrl });
     }
 
     const updateFields: any = {};

@@ -73,6 +73,11 @@ function DashboardContent() {
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [inspectingProductIndex, setInspectingProductIndex] = useState<number | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'with-image' | 'without-image'>('all');
+  const [reviewSearch, setReviewSearch] = useState('');
 
   const fetchPartnerData = useCallback(async (targetSlug: string) => {
     setLoading(true);
@@ -327,7 +332,7 @@ function DashboardContent() {
     const trimmed = newUrl.trim();
     const nextImages = { ...customProductImages };
     if (!trimmed) {
-      delete nextImages[productId];
+      nextImages[productId] = '__REMOVED__';
     } else {
       nextImages[productId] = trimmed;
     }
@@ -338,8 +343,8 @@ function DashboardContent() {
       if (String(p.id || p._id) === productId) {
         return {
           ...p,
-          image: trimmed || p.image || p.imageUrl || '',
-          imageUrl: trimmed || p.imageUrl || p.image || '',
+          image: trimmed || '',
+          imageUrl: trimmed || '',
         };
       }
       return p;
@@ -348,7 +353,59 @@ function DashboardContent() {
 
     setEditingImageProductId(null);
     setCustomImageInput('');
-    showToast(trimmed ? 'Product packshot image updated!' : 'Packshot image reset to default');
+    showToast(trimmed ? 'Product packshot image updated!' : 'Packshot image removed');
+
+    try {
+      await fetch('/api/partner', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: trimmed ? 'set-product-image' : 'delete-product-image',
+          slug,
+          productId,
+          imageUrl: trimmed,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to sync image update:', err);
+    }
+    await persistCuratedAndMarkups(nextCurated.map(p => p.id), productMarkups, nextImages);
+  };
+
+  const handleDeleteProductImage = async (productId: string, productName?: string) => {
+    setDeletingImageId(productId);
+    const nextImages = { ...customProductImages, [productId]: '__REMOVED__' };
+    setCustomProductImages(nextImages);
+
+    const nextCurated = curatedProducts.map(p => {
+      if (String(p.id || p._id) === productId) {
+        return {
+          ...p,
+          image: '',
+          imageUrl: '',
+        };
+      }
+      return p;
+    });
+    setCuratedProducts(nextCurated);
+
+    showToast(`Image removed from ${productName || 'product'}. Remains on shelf.`);
+
+    try {
+      await fetch('/api/partner', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete-product-image',
+          slug,
+          productId,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to delete image in backend:', err);
+    } finally {
+      setDeletingImageId(null);
+    }
     await persistCuratedAndMarkups(nextCurated.map(p => p.id), productMarkups, nextImages);
   };
 
@@ -1290,6 +1347,30 @@ function DashboardContent() {
                     )}
                   </div>
 
+                  {/* SHELF HEADER ACTIONS & REVIEW BUTTON */}
+                  {curatedProducts.length > 0 && (
+                    <div className="my-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewFilter('all');
+                          setReviewSearch('');
+                          setShowReviewModal(true);
+                        }}
+                        className="flex-1 py-2 px-3 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>📸</span>
+                        <span>Rapid Image Reviewer</span>
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                          {curatedProducts.filter(p => {
+                            const img = customProductImages[p.id] || p.image || p.imageUrl;
+                            return img && img !== '__REMOVED__' && !img.includes('placeholder.com');
+                          }).length} / {curatedProducts.length} Images
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* SHELF SEARCH BAR */}
                   {curatedProducts.length > 0 && (
                     <div className="relative my-2">
@@ -1350,8 +1431,11 @@ function DashboardContent() {
                         const markup = Math.round(base * (effectivePct / 100));
                         const retail = base + markup;
 
-                        const itemImage = customProductImages[item.id] || item.image || item.imageUrl || '';
+                        const rawImg = customProductImages[item.id] || item.image || item.imageUrl || '';
+                        const itemImage = (rawImg === '__REMOVED__' || rawImg === 'none') ? '' : rawImg;
+                        const hasValidImage = !!itemImage && !itemImage.includes('placeholder.com');
                         const isEditingThisImage = editingImageProductId === item.id;
+                        const rawProductIndex = curatedProducts.findIndex(p => String(p.id || p._id) === String(item.id));
 
                         return (
                           <div
@@ -1359,19 +1443,32 @@ function DashboardContent() {
                             className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col gap-2.5 transition group"
                           >
                             <div className="flex items-start justify-between gap-2.5">
-                              {/* SHELF ITEM THUMBNAIL */}
-                              <div className="w-14 h-14 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden shadow-2xs">
-                                {itemImage && !itemImage.includes('placeholder.com') ? (
-                                  <img
-                                    src={itemImage}
-                                    alt={item.name}
-                                    className="w-full h-full object-contain"
-                                    onError={(e) => {
-                                      (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                  />
+                              {/* SHELF ITEM THUMBNAIL - CLICKABLE FOR PREVIEW & AUDIT */}
+                              <div
+                                onClick={() => {
+                                  if (rawProductIndex >= 0) {
+                                    setInspectingProductIndex(rawProductIndex);
+                                  }
+                                }}
+                                className="w-14 h-14 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden shadow-2xs cursor-pointer hover:border-rose-400 hover:scale-105 transition-all group/thumb relative"
+                                title="Click to inspect large image or delete if wrong"
+                              >
+                                {hasValidImage ? (
+                                  <>
+                                    <img
+                                      src={itemImage}
+                                      alt={item.name}
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                      <span className="text-[9px] text-white font-black">🔍 View</span>
+                                    </div>
+                                  </>
                                 ) : (
-                                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center">
+                                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-400 flex items-center justify-center">
                                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
                                       <path d="m8.5 8.5 7 7" />
@@ -1381,14 +1478,35 @@ function DashboardContent() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <h5 className="text-xs font-bold text-slate-900 truncate" title={item.name}>
+                                <h5 
+                                  onClick={() => {
+                                    if (rawProductIndex >= 0) {
+                                      setInspectingProductIndex(rawProductIndex);
+                                    }
+                                  }}
+                                  className="text-xs font-bold text-slate-900 truncate hover:text-rose-600 cursor-pointer" 
+                                  title={item.name}
+                                >
                                   {item.name}
                                 </h5>
                                 <div className="flex items-center gap-2 mt-0.5 text-[11px]">
                                   <span className="text-slate-800 font-bold">₦{retail.toLocaleString()}</span>
                                   <span className="text-emerald-600 font-bold">(+₦{markup.toLocaleString()} cut)</span>
                                 </div>
-                                <div className="mt-1 flex items-center gap-2">
+                                <div className="mt-1 flex items-center flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (rawProductIndex >= 0) {
+                                        setInspectingProductIndex(rawProductIndex);
+                                      }
+                                    }}
+                                    className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>🔍</span>
+                                    <span>Inspect</span>
+                                  </button>
+
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1403,16 +1521,19 @@ function DashboardContent() {
                                     className="text-[10px] font-semibold text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
                                   >
                                     <span>🖼️</span>
-                                    <span>{itemImage ? 'Edit Image URL' : 'Set Custom Image'}</span>
+                                    <span>{hasValidImage ? 'Edit URL' : 'Set Image'}</span>
                                   </button>
-                                  {customProductImages[item.id] && (
+
+                                  {hasValidImage && (
                                     <button
                                       type="button"
-                                      onClick={() => handleSaveCustomImage(item.id, '')}
-                                      className="text-[10px] text-slate-400 hover:text-rose-600 underline cursor-pointer"
-                                      title="Reset to default product packshot"
+                                      disabled={deletingImageId === item.id}
+                                      onClick={() => handleDeleteProductImage(item.id, item.name)}
+                                      className="text-[10px] font-semibold text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
+                                      title="Delete wrong image (product stays on shelf waiting for correct photo)"
                                     >
-                                      Reset
+                                      <span>🗑️</span>
+                                      <span>{deletingImageId === item.id ? 'Deleting...' : 'Delete Image'}</span>
                                     </button>
                                   )}
                                 </div>
@@ -1933,6 +2054,388 @@ function DashboardContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 1. SINGLE PRODUCT IMAGE INSPECTION & AUDIT MODAL */}
+      {inspectingProductIndex !== null && curatedProducts[inspectingProductIndex] && (() => {
+        const item = curatedProducts[inspectingProductIndex];
+        const rawImg = customProductImages[item.id] || item.image || item.imageUrl || '';
+        const itemImage = (rawImg === '__REMOVED__' || rawImg === 'none') ? '' : rawImg;
+        const hasValidImage = !!itemImage && !itemImage.includes('placeholder.com');
+        const hasPrev = inspectingProductIndex > 0;
+        const hasNext = inspectingProductIndex < curatedProducts.length - 1;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+              {/* HEADER */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold">
+                    Item {inspectingProductIndex + 1} of {curatedProducts.length}
+                  </span>
+                  {hasValidImage ? (
+                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Has Image
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Waiting for Image
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInspectingProductIndex(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* PRODUCT INFO */}
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                  {item.name}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Category: <span className="font-semibold text-slate-700">{item.category || 'General Medication'}</span>
+                </p>
+              </div>
+
+              {/* IMAGE DISPLAY CONTAINER */}
+              <div className="relative w-full h-64 sm:h-72 rounded-2xl bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-200/80 flex items-center justify-center p-4 overflow-hidden shadow-inner">
+                {hasValidImage ? (
+                  <img
+                    src={itemImage}
+                    alt={item.name}
+                    className="w-full h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-4">
+                    <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-500 flex items-center justify-center mb-2 shadow-xs">
+                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+                        <path d="m8.5 8.5 7 7" />
+                      </svg>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">No Image Assigned</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Displays a clean capsule icon on storefront until you paste a link below</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ACTION BUTTONS (DELETE OR KEEP) */}
+              <div className="space-y-2 pt-1">
+                <div className="grid grid-cols-2 gap-3">
+                  {hasValidImage ? (
+                    <button
+                      type="button"
+                      disabled={deletingImageId === item.id}
+                      onClick={async () => {
+                        await handleDeleteProductImage(item.id, item.name);
+                        // Auto-advance to next item so review is fast
+                        if (hasNext) {
+                          setInspectingProductIndex(inspectingProductIndex + 1);
+                        }
+                      }}
+                      className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <span>🗑️</span>
+                      <span>Wrong Image (Delete)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="py-3 px-4 bg-slate-100 text-slate-400 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed"
+                    >
+                      <span>(Already Clean)</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (hasNext) {
+                        setInspectingProductIndex(inspectingProductIndex + 1);
+                      } else {
+                        setInspectingProductIndex(null);
+                        showToast('Reached end of shelf!');
+                      }
+                    }}
+                    className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>✓</span>
+                    <span>{hasValidImage ? 'Correct (Keep & Next →)' : 'Skip to Next →'}</span>
+                  </button>
+                </div>
+
+                {/* NAVIGATION STEPPER */}
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 text-slate-500">
+                  <button
+                    type="button"
+                    disabled={!hasPrev}
+                    onClick={() => setInspectingProductIndex(inspectingProductIndex - 1)}
+                    className="px-3 py-1.5 rounded-lg hover:bg-slate-100 font-semibold disabled:opacity-30 cursor-pointer"
+                  >
+                    ← Previous Item
+                  </button>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {inspectingProductIndex + 1} / {curatedProducts.length}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!hasNext}
+                    onClick={() => setInspectingProductIndex(inspectingProductIndex + 1)}
+                    className="px-3 py-1.5 rounded-lg hover:bg-slate-100 font-semibold disabled:opacity-30 cursor-pointer"
+                  >
+                    Next Item →
+                  </button>
+                </div>
+              </div>
+
+              {/* INLINE QUICK EDIT URL OPTION */}
+              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                  Or Paste Correct Image URL for this item:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    defaultValue={hasValidImage ? itemImage : ''}
+                    placeholder="https://.../packaging.jpg"
+                    id={`modal-img-input-${item.id}`}
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById(`modal-img-input-${item.id}`) as HTMLInputElement;
+                      if (input) {
+                        handleSaveCustomImage(item.id, input.value);
+                      }
+                    }}
+                    className="px-3 py-2 bg-slate-900 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap"
+                  >
+                    Save URL
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 2. RAPID IMAGE REVIEWER (FULL AUDIT MODAL) */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+          <div className="max-w-5xl w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95">
+            {/* AUDIT MODAL HEADER */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-black text-slate-900">📸 Shelf Packshot Reviewer</h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold font-mono">
+                    {curatedProducts.length} Items Total
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Click <strong className="text-rose-600">Delete Image</strong> on any wrongly matched packaging photo. The item stays on your shelf waiting for a future image.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-xs"
+                >
+                  Done Reviewing ✓
+                </button>
+              </div>
+            </div>
+
+            {/* FILTER TABS & SEARCH */}
+            <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    reviewFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
+                  }`}
+                >
+                  All ({curatedProducts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('with-image')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                    reviewFilter === 'with-image' ? 'bg-white text-emerald-700 shadow-xs' : 'hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  Has Image ({curatedProducts.filter(p => {
+                    const img = customProductImages[p.id] || p.image || p.imageUrl;
+                    return img && img !== '__REMOVED__' && !img.includes('placeholder.com');
+                  }).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('without-image')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                    reviewFilter === 'without-image' ? 'bg-white text-amber-700 shadow-xs' : 'hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  Waiting for Image ({curatedProducts.filter(p => {
+                    const img = customProductImages[p.id] || p.image || p.imageUrl;
+                    return !img || img === '__REMOVED__' || img.includes('placeholder.com');
+                  }).length})
+                </button>
+              </div>
+
+              <div className="relative flex-1 sm:max-w-xs">
+                <input
+                  type="text"
+                  value={reviewSearch}
+                  onChange={(e) => setReviewSearch(e.target.value)}
+                  placeholder="Search products to audit..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+                {reviewSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setReviewSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* AUDIT GRID OF PRODUCTS */}
+            <div className="flex-1 overflow-y-auto pr-1 py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {curatedProducts
+                .filter(p => {
+                  const rawImg = customProductImages[p.id] || p.image || p.imageUrl || '';
+                  const itemImage = (rawImg === '__REMOVED__' || rawImg === 'none') ? '' : rawImg;
+                  const hasValidImage = !!itemImage && !itemImage.includes('placeholder.com');
+                  if (reviewFilter === 'with-image' && !hasValidImage) return false;
+                  if (reviewFilter === 'without-image' && hasValidImage) return false;
+                  if (reviewSearch.trim()) {
+                    const q = reviewSearch.toLowerCase();
+                    return (p.name || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q);
+                  }
+                  return true;
+                })
+                .map((item) => {
+                  const rawImg = customProductImages[item.id] || item.image || item.imageUrl || '';
+                  const itemImage = (rawImg === '__REMOVED__' || rawImg === 'none') ? '' : rawImg;
+                  const hasValidImage = !!itemImage && !itemImage.includes('placeholder.com');
+                  const rawIdx = curatedProducts.findIndex(p => p.id === item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-2xl border flex flex-col justify-between gap-2.5 transition ${
+                        hasValidImage ? 'bg-slate-50 border-slate-200 hover:border-slate-300' : 'bg-rose-50/30 border-rose-100'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        {/* CARD IMAGE */}
+                        <div
+                          onClick={() => {
+                            if (rawIdx >= 0) setInspectingProductIndex(rawIdx);
+                          }}
+                          className="relative w-full h-36 rounded-xl bg-white border border-slate-200/80 p-2 flex items-center justify-center overflow-hidden cursor-pointer hover:border-rose-400 group/gridthumb transition"
+                          title="Click to view full size"
+                        >
+                          {hasValidImage ? (
+                            <>
+                              <img
+                                src={itemImage}
+                                alt={item.name}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/gridthumb:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                <span className="text-[10px] text-white font-black">🔍 Inspect</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-center p-2">
+                              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-400 flex items-center justify-center mb-1">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+                                  <path d="m8.5 8.5 7 7" />
+                                </svg>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-400">Waiting for Image</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* PRODUCT TITLE */}
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight" title={item.name}>
+                            {item.name}
+                          </h5>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 line-clamp-1">
+                            {item.category || 'Medication'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* ACTIONS */}
+                      <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                        {hasValidImage ? (
+                          <button
+                            type="button"
+                            disabled={deletingImageId === item.id}
+                            onClick={() => handleDeleteProductImage(item.id, item.name)}
+                            className="flex-1 py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <span>🗑️</span>
+                            <span>{deletingImageId === item.id ? 'Deleting...' : 'Delete Image'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (rawIdx >= 0) setInspectingProductIndex(rawIdx);
+                            }}
+                            className="flex-1 py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>🖼️</span>
+                            <span>Add Image</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (rawIdx >= 0) setInspectingProductIndex(rawIdx);
+                          }}
+                          className="py-1.5 px-2.5 text-slate-500 hover:text-slate-900 rounded-lg text-[11px] font-semibold hover:bg-slate-100 transition cursor-pointer"
+                        >
+                          🔍 View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}
