@@ -301,12 +301,10 @@ export default function BubblegumOrders({ partnerSlug = 'bubblegum', setView }: 
                         )}
                         <div>
                           <div className="font-bold text-slate-900 text-sm">
-                            {order.courierName || (order.deliveryOption === 'pickup' ? 'Self Pickup' : 'Standard Delivery')}
+                            {order.courierName || 'Standard Delivery'}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {order.deliveryOption === 'pickup'
-                              ? 'Collect directly from pharmacy'
-                              : `Delivery Fee: ₦${Number(order.deliveryFee || 0).toLocaleString()}`}
+                            Delivery Fee: ₦{Number(order.deliveryFee || 0).toLocaleString()}
                           </div>
                         </div>
                       </div>
