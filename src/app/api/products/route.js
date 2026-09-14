@@ -194,7 +194,10 @@ export async function GET(req) {
           ? Number(partnerProductMarkups[prodId]) 
           : markupPct;
         const finalPrice = effectiveMarkup > 0 ? Math.round(product.amount * (1 + effectiveMarkup / 100)) : product.amount;
-        const resolvedImage = partnerCustomImages[prodId] || product.imageUrl || '';
+        const customImg = partnerCustomImages[prodId];
+        const resolvedImage = (customImg === '__REMOVED__' || customImg === 'none')
+          ? ''
+          : (customImg || product.imageUrl || '');
         return {
           id: prodId,
           image: resolvedImage || '',
