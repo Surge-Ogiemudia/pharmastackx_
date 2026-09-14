@@ -43,6 +43,19 @@ import { useSession } from '../context/SessionProvider';
 import axios from 'axios';
 
 export default function Navbar() {
+  const pathname = usePathname();
+
+  // Never render on partner subdomains or partner storefronts
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isSub = ['pharmastackx.com', 'psx.ng'].some(d => hostname.endsWith(d)) && 
+                  !hostname.startsWith('www.') && 
+                  !['pharmastackx.com', 'psx.ng', 'localhost'].includes(hostname);
+    if (isSub || window.location.pathname.startsWith('/p/') || pathname?.startsWith('/p/')) {
+      return null;
+    }
+  }
+
   const { user, isLoading, logout } = useSession();
   const isAdmin = user?.role === 'admin';
   const isBusinessUser = user?.role && ['admin', 'pharmacy', 'vendor', 'stockManager'].includes(user.role);
@@ -68,7 +81,6 @@ export default function Navbar() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const { getTotalItems } = useCart();
-  const pathname = usePathname();
 
   const isActive = (path: string) => {
     if (!pathname) return false;
