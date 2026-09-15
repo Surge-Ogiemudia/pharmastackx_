@@ -56,16 +56,30 @@ export async function POST(req) {
      }
 
     let slug = undefined;
-    const nameForSlug = businessName || allData.companyName || username;
-    if (['pharmacy', 'clinic', 'vendor', 'agent', 'medical_rep'].includes(finalRole) && nameForSlug) {
-      slug = nameForSlug.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/gi, '');
+    if (finalRole === 'medical_rep') {
+      const firstName = (allData.fullName || username || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/gi, '');
+      const comp = (allData.companyName || '').trim().toLowerCase().replace(/[^a-z0-9]/gi, '');
+      const baseSlug = comp ? `${firstName}.${comp}` : firstName;
+      slug = baseSlug;
       let slugExists = await User.findOne({ slug });
       let count = 1;
-      let baseSlug = slug;
       while (slugExists) {
         slug = `${baseSlug}${count}`;
         slugExists = await User.findOne({ slug });
         count++;
+      }
+    } else {
+      const nameForSlug = businessName || username;
+      if (['pharmacy', 'clinic', 'vendor', 'agent'].includes(finalRole) && nameForSlug) {
+        slug = nameForSlug.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/gi, '');
+        let slugExists = await User.findOne({ slug });
+        let count = 1;
+        let baseSlug = slug;
+        while (slugExists) {
+          slug = `${baseSlug}${count}`;
+          slugExists = await User.findOne({ slug });
+          count++;
+        }
       }
     }
 

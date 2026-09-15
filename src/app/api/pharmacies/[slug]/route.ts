@@ -14,8 +14,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
     const cleanSlug = slug.toLowerCase().trim();
 
-    const pharmacy = await User.findOne({ slug: cleanSlug, role: { $in: ['pharmacy', 'pharmacist'] } })
-      .select('businessName businessAddress city state professionalVerificationStatus profilePicture')
+    const pharmacy = await User.findOne({ slug: cleanSlug, role: { $in: ['pharmacy', 'pharmacist', 'medical_rep', 'vendor'] } })
+      .select('businessName businessAddress city state professionalVerificationStatus profilePicture companyName repType role')
       .lean();
 
     if (pharmacy) {
