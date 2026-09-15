@@ -29,7 +29,9 @@ interface DetailedUser {
     username: string;
     email: string;
     profilePicture?: string;
-    role: 'admin' | 'customer' | 'pharmacy' | 'clinic' | 'vendor' | 'agent' | 'pharmacist' | 'user';
+    role: 'admin' | 'customer' | 'pharmacy' | 'clinic' | 'vendor' | 'agent' | 'pharmacist' | 'user' | 'medical_rep';
+    companyName?: string;
+    repType?: 'company' | 'freelance';
     businessName?: string;
     businessAddress?: string;
     slug?: string;
@@ -338,30 +340,36 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                                         <Box sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.15)', fontSize: '10px', fontWeight: 700, color: '#0F6E56', fontFamily: 'Sora, sans-serif' }}>
                                             ✓ Verified
                                         </Box>
-                                        <Box onClick={() => setShowSubscription(true)} sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '10px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer' }}>
-                                            {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
-                                        </Box>
-                                        <Box sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(0,0,0,0.04)', fontSize: '10px', fontWeight: 600, color: '#888', fontFamily: 'Sora, sans-serif', textTransform: 'capitalize' }}>
-                                            {accountUser.role}
+                                        {accountUser.role !== 'medical_rep' && (
+                                            <Box onClick={() => setShowSubscription(true)} sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: 'rgba(120,60,180,0.07)', border: '1px solid rgba(120,60,180,0.15)', fontSize: '10px', fontWeight: 700, color: '#7c3aed', fontFamily: 'Sora, sans-serif', cursor: 'pointer' }}>
+                                                {accountUser.subscriptionStatus === 'subscribed' ? '⚡ Pro' : '· Basic'}
+                                            </Box>
+                                        )}
+                                        <Box sx={{ px: 1.25, py: 0.4, borderRadius: '100px', bgcolor: accountUser.role === 'medical_rep' ? 'rgba(30,64,175,0.08)' : 'rgba(0,0,0,0.04)', border: accountUser.role === 'medical_rep' ? '1px solid rgba(30,64,175,0.2)' : 'none', fontSize: '10px', fontWeight: 600, color: accountUser.role === 'medical_rep' ? '#1E40AF' : '#888', fontFamily: 'Sora, sans-serif', textTransform: 'capitalize' }}>
+                                            {accountUser.role === 'medical_rep' ? 'Medical Rep' : accountUser.role}
                                         </Box>
                                     </Box>
                                 </Box>
                             </Box>
                         </div>
 
-                        {/* ── Pharmacy widgets ── */}
-                        {['pharmacy', 'admin'].includes(accountUser.role) && (
+                        {/* ── Pharmacy / Medical Rep widgets ── */}
+                        {['pharmacy', 'admin', 'medical_rep'].includes(accountUser.role) && (
                             <div className="activity-widget" onClick={() => goTo('store')}>
-                                <div className="widget-icon-box">🏪</div>
+                                <div className="widget-icon-box">{accountUser.role === 'medical_rep' ? '📦' : '🏪'}</div>
                                 <div className="widget-content">
                                     <div className="widget-title">Store Management</div>
-                                    <div className="widget-desc">Manage your pharmacy inventory and listings.</div>
+                                    <div className="widget-desc">
+                                        {accountUser.role === 'medical_rep'
+                                            ? 'Manage your catalogue and bulk inventory listings.'
+                                            : 'Manage your pharmacy inventory and listings.'}
+                                    </div>
                                 </div>
                                 <div className="widget-arrow">→</div>
                             </div>
                         )}
 
-                        {['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
+                        {accountUser.role !== 'medical_rep' && ['pharmacy', 'pharmacist', 'admin'].includes(accountUser.role) && (
                             <div className="activity-widget" onClick={() => goTo('restock')}>
                                 <div className="widget-icon-box">💊</div>
                                 <div className="widget-content">
@@ -373,7 +381,7 @@ const AccountContent = ({ setView, onBack }: AccountContentProps) => {
                         )}
 
                         {/* ── Upgrade widget ── */}
-                        {accountUser.subscriptionStatus !== 'subscribed' && (
+                        {accountUser.role !== 'medical_rep' && accountUser.subscriptionStatus !== 'subscribed' && (
                             <div className="activity-widget" onClick={() => setShowSubscription(true)} style={{ background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '1.5px solid rgba(124,58,237,0.2)' }}>
                                 <div className="widget-icon-box" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed' }}>⚡</div>
                                 <div className="widget-content">

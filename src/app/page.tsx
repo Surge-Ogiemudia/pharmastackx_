@@ -170,6 +170,13 @@ const [globalSettings, setGlobalSettings] = useState<any>(null);
         router.push(`/auth?view=${view}`);
       }
     }
+
+    // Medical reps only have access to home and account views
+    if (!isLoading && user?.role === 'medical_rep') {
+      if (['orders', 'orderMedicines', 'orderRequests', 'requestsList', 'medicineRestock', 'findMedicines'].includes(view)) {
+        setView('home');
+      }
+    }
     
     // Don't do anything else until the user's session is loaded.
     if (!user) return;
