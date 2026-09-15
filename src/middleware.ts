@@ -30,19 +30,27 @@ export async function middleware(request: NextRequest) {
   }
 
   const hostname = request.headers.get('host') || '';
-  // New Subdomain Logic
+  // Subdomain Logic: supports single-level and multi-level (e.g. rep.psx.ng, chinedu.fidson.psx.ng)
   const mainDomains = ['pharmastackx.com', 'psx.ng']; 
-  const slug = hostname.split('.')[0];
-  // Check if the request is on a subdomain (and not 'www').
-  const isSubdomain = mainDomains.some(domain => hostname.endsWith(domain)) &&
-                      !hostname.startsWith('www.') &&
-                      !mainDomains.includes(hostname);
+  const matchedDomain = mainDomains.find(d => hostname.endsWith(d) && hostname !== d);
+  const isSubdomain = !!matchedDomain && !hostname.startsWith('www.');
 
+  if (isSubdomain && matchedDomain) {
+    // Extract full prefix before domain, e.g. "chinedu.fidson" or "rep"
+    const slug = hostname.slice(0, -(matchedDomain.length + 1)).toLowerCase().trim();
 
-  if (isSubdomain && (pathname === '/' || pathname === '')) {
-    console.log(`[Middleware] Subdomain root hit. Rewriting to /p/${slug}`);
-    url.pathname = `/p/${slug}`;
-    return NextResponse.rewrite(url);
+    // Dedicated Rep portal: rep.psx.ng -> Medical Rep auth & signup
+    if (slug === 'rep') {
+      if (pathname === '/' || pathname === '') {
+        url.pathname = '/auth';
+        url.searchParams.set('role', 'medical_rep');
+        return NextResponse.redirect(url);
+      }
+    } else if (slug && (pathname === '/' || pathname === '')) {
+      console.log(`[Middleware] Subdomain root hit. Rewriting to /p/${slug}`);
+      url.pathname = `/p/${slug}`;
+      return NextResponse.rewrite(url);
+    }
   }
 
   

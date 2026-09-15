@@ -42,6 +42,7 @@ interface StockItem {
   amount: number;
   quantity: number;
   category: string;
+  minSalesUnit?: string;
   isPublished: boolean;
   imageUrl?: string;
   info: string;
@@ -51,6 +52,7 @@ interface StockItem {
 
 export default function StoreManagement({ onBack }: { onBack?: () => void }) {
   const { user, isLoading: sessionLoading, refreshSession } = useSession();
+  const isMedicalRep = user?.role === 'medical_rep';
   const [selectedTab, setSelectedTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -99,10 +101,15 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     amount: 0,
     quantity: 0,
     category: '',
+    customCategory: '',
+    minSalesUnit: '1 Carton',
+    customSalesUnit: '',
     info: '',
     POM: false,
     imageUrl: ''
   });
+  const [isAiScanning, setIsAiScanning] = useState(false);
+  const snapInputRef = useRef<HTMLInputElement>(null);
   const [isStorePublished, setIsStorePublished] = useState(false);
   const [isStoreSetupRequired, setIsStoreSetupRequired] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
@@ -144,7 +151,9 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
         setUserSlug(user.slug || '');
         fetchInitialData();
         setIsStoreSetupRequired(false);
-        axios.get('/api/stock/synkk-status').then(r => { if (isMounted.current) setSynkkStatus(r.data); }).catch(() => {});
+        if (user.role !== 'medical_rep') {
+          axios.get('/api/stock/synkk-status').then(r => { if (isMounted.current) setSynkkStatus(r.data); }).catch(() => {});
+        }
         fetchOrdersData('month');
       }
     }
@@ -344,17 +353,67 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
     reader.readAsDataURL(file);
   };
 
+  const handleSnapPack = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Data = reader.result as string;
+      setFormValues(prev => ({ ...prev, imageUrl: base64Data }));
+      setIsAiScanning(true);
+      setShowUploadForm(true);
+      try {
+        const res = await axios.post('/api/ai/scan-med-pack', { image: base64Data });
+        if (res.data?.success && res.data?.data) {
+          const { itemName, activeIngredient, category, minSalesUnit } = res.data.data;
+          setFormValues(prev => ({
+            ...prev,
+            itemName: itemName || prev.itemName,
+            activeIngredient: activeIngredient || prev.activeIngredient,
+            category: category || prev.category,
+            minSalesUnit: minSalesUnit || prev.minSalesUnit,
+            imageUrl: base64Data
+          }));
+        }
+      } catch (err) {
+        console.error('AI Scan error:', err);
+      } finally {
+        setIsAiScanning(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleFormSubmit = async () => {
     if (!formValues.itemName) return alert('Medication Name is required');
     if (!formValues.category) return alert('Please select a Category');
     if (!formValues.activeIngredient) return alert('Active Ingredient is required');
+    
+    const finalCategory = (formValues.category === 'Others' && formValues.customCategory.trim())
+      ? formValues.customCategory.trim()
+      : formValues.category;
+
+    const finalSalesUnit = (formValues.minSalesUnit === 'Custom' && formValues.customSalesUnit.trim())
+      ? formValues.customSalesUnit.trim()
+      : formValues.minSalesUnit;
+
+    const finalQuantity = isMedicalRep ? 9999 : (formValues.quantity || 0);
+    const finalPOM = isMedicalRep ? false : formValues.POM;
+
     setIsSubmitting(true);
     try {
-        const payload = { ...formValues, businessName: user?.businessName };
+        const payload = {
+          ...formValues,
+          category: finalCategory,
+          minSalesUnit: finalSalesUnit,
+          quantity: finalQuantity,
+          POM: finalPOM,
+          businessName: user?.businessName
+        };
         const res = await axios.post('/api/stock', payload);
         if (isMounted.current) {
             setStockData([res.data.product, ...stockData]);
-            setFormValues({ itemName: '', activeIngredient: '', amount: 0, quantity: 0, category: '', info: '', POM: false, imageUrl: '' });
+            setFormValues({ itemName: '', activeIngredient: '', amount: 0, quantity: 0, category: '', customCategory: '', minSalesUnit: '1 Carton', customSalesUnit: '', info: '', POM: false, imageUrl: '' });
             setShowUploadForm(false);
             alert('Product added successfully!');
         }
@@ -757,7 +816,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                 }}>
                   <Box sx={{ position: 'absolute', top: -40, right: -40, width: 120, height: 120, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
                   <Typography sx={{ fontSize: '10px', fontWeight: 800, opacity: 0.5, letterSpacing: '1.2px', textTransform: 'uppercase', mb: 1.5 }}>
-                    YOUR {user?.role === 'pharmacy' ? 'PHARMACY' : 'PHARMACIST'} STORE
+                    YOUR {user?.role === 'pharmacy' ? 'PHARMACY' : user?.role === 'medical_rep' ? 'MEDICAL REP' : 'PHARMACIST'} STORE
                   </Typography>
                   <Box sx={{ mb: 1.5 }}>
                     <Typography className="fraunces" sx={{ fontSize: { xs: '24px', sm: '32px' }, fontWeight: 900, lineHeight: 0.85, letterSpacing: '-1.2px', maxWidth: '100%', wordWrap: 'break-word' }}>
@@ -814,7 +873,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                     )}
                   </Box>
                   {/* SYNKK STATUS STRIP */}
-                  {synkkStatus && (
+                  {!isMedicalRep && synkkStatus && (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'rgba(0,0,0,0.18)', borderRadius: '12px', px: 2, py: 1.2, mb: 2, border: '1px solid rgba(255,255,255,0.07)' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: synkkStatus.connected ? '#4ade80' : 'rgba(255,255,255,0.25)', boxShadow: synkkStatus.connected ? '0 0 6px #4ade80' : 'none', flexShrink: 0 }} />
@@ -1053,32 +1112,57 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <Box onClick={() => { setShowUploadForm(!showUploadForm); setShowCsvUpload(false); }} sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ width: 56, height: 56, bgcolor: '#EBF7F2', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Box sx={{ width: 22, height: 22, border: '2.5px solid #0F6E56', borderRadius: '4px', opacity: 0.8 }} />
+                            <Box sx={{ width: 56, height: 56, bgcolor: isMedicalRep ? '#eff6ff' : '#EBF7F2', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Box sx={{ width: 22, height: 22, border: `2.5px solid ${isMedicalRep ? '#1E40AF' : '#0F6E56'}`, borderRadius: '4px', opacity: 0.8 }} />
                             </Box>
                             <Box>
                               <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.5 }}>Add single item</Typography>
-                              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>Add one medicine at a time with image, price and stock details.</Typography>
+                              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>
+                                {isMedicalRep ? 'Snap pack or add medicine with packaging and wholesale price.' : 'Add one medicine at a time with image, price and stock details.'}
+                              </Typography>
                             </Box>
                           </Box>
                           <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>›</Typography>
                         </Box>
-                        <Box onClick={() => { setShowCsvUpload(!showCsvUpload); setShowUploadForm(false); }} sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ width: 56, height: 56, bgcolor: '#FDF2F5', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Box sx={{ width: 22, height: 22, border: '2.5px solid #FF4D97', borderRadius: '4px', opacity: 0.8 }} />
+                        {!isMedicalRep && (
+                          <Box onClick={() => { setShowCsvUpload(!showCsvUpload); setShowUploadForm(false); }} sx={{ background: 'white', borderRadius: '24px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #eee', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(0.99)', bgcolor: '#fcfcfc' } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Box sx={{ width: 56, height: 56, bgcolor: '#FDF2F5', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Box sx={{ width: 22, height: 22, border: '2.5px solid #FF4D97', borderRadius: '4px', opacity: 0.8 }} />
+                              </Box>
+                              <Box>
+                                <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.5 }}>Bulk upload via CSV</Typography>
+                                <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>Upload hundreds of medicines at once using a spreadsheet file.</Typography>
+                              </Box>
                             </Box>
-                            <Box>
-                              <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.5 }}>Bulk upload via CSV</Typography>
-                              <Typography sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, maxWidth: '200px', lineHeight: 1.3 }}>Upload hundreds of medicines at once using a spreadsheet file.</Typography>
-                            </Box>
+                            <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>›</Typography>
                           </Box>
-                          <Typography sx={{ fontSize: '18px', color: 'rgba(0,0,0,0.15)', fontWeight: 200, mr: 1 }}>›</Typography>
-                        </Box>
+                        )}
                       </Box>
                       {showUploadForm && (
                         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ background: 'white', padding: '30px', borderRadius: '30px', marginTop: '15px', border: '1px solid #eee' }}>
-                          <Typography className="fraunces" sx={{ fontSize: '18px', fontWeight: 800, color: '#0F6E56', mb: 3 }}>Add a medicine</Typography>
+                          <Typography className="fraunces" sx={{ fontSize: '18px', fontWeight: 800, color: isMedicalRep ? '#1E40AF' : '#0F6E56', mb: 2 }}>
+                            {isMedicalRep ? 'Add wholesale product' : 'Add a medicine'}
+                          </Typography>
+
+                          {/* AI Packshot Scanner Banner for Medical Reps */}
+                          {isMedicalRep && (
+                            <Box sx={{ mb: 3, p: 2, bgcolor: '#eff6ff', borderRadius: '16px', border: '1.5px dashed #3b82f6', textAlign: 'center' }}>
+                              <input type="file" ref={snapInputRef} accept="image/*" capture="environment" onChange={handleSnapPack} hidden />
+                              <Button
+                                variant="contained"
+                                onClick={() => snapInputRef.current?.click()}
+                                disabled={isAiScanning}
+                                sx={{ bgcolor: '#1E40AF', color: '#fff', borderRadius: '12px', py: 1.2, px: 3, fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1e3a8a' }, display: 'inline-flex', alignItems: 'center', gap: 1 }}
+                              >
+                                {isAiScanning ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : '📸 Snap Pack (Auto-Fill with AI)'}
+                              </Button>
+                              <Typography sx={{ fontSize: '11px', color: '#475569', mt: 1, fontWeight: 500 }}>
+                                Snap a picture of the medicine box. AI will extract name, active ingredient and packaging unit automatically, and save the photo.
+                              </Typography>
+                            </Box>
+                          )}
+
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                             <Box>
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>MEDICINE NAME</Typography>
@@ -1088,6 +1172,7 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>ACTIVE INGREDIENT</Typography>
                               <TextField fullWidth placeholder="e.g. Amoxicillin/Clavulanate" name="activeIngredient" value={formValues.activeIngredient} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
                             </Box>
+
                             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                               <Box>
                                 <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>CATEGORY</Typography>
@@ -1096,49 +1181,105 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                   <MenuItem value="Antibiotics">Antibiotics</MenuItem>
                                   <MenuItem value="Antimalarials">Antimalarials</MenuItem>
                                   <MenuItem value="Vitamins">Vitamins</MenuItem>
+                                  <MenuItem value="Cardiovascular">Cardiovascular</MenuItem>
+                                  <MenuItem value="Dermatology">Dermatology</MenuItem>
+                                  <MenuItem value="Gastrointestinal">Gastrointestinal</MenuItem>
+                                  <MenuItem value="Respiratory">Respiratory</MenuItem>
                                   <MenuItem value="Others">Others</MenuItem>
                                 </Select>
                               </Box>
-                              <Box>
-                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>PRICE (₦)</Typography>
-                                <TextField fullWidth type="number" name="amount" value={formValues.amount} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
-                              </Box>
+
+                              {isMedicalRep ? (
+                                <Box>
+                                  <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>MINIMUM SALES FORM / UNIT</Typography>
+                                  <Select fullWidth name="minSalesUnit" value={formValues.minSalesUnit} onChange={(e: any) => handleFormChange(e)} variant="outlined" sx={{ borderRadius: '12px', bgcolor: '#F9FBFB' }}>
+                                    <MenuItem value="1 Carton">1 Carton</MenuItem>
+                                    <MenuItem value="1 Box">1 Box</MenuItem>
+                                    <MenuItem value="1 Roll">1 Roll</MenuItem>
+                                    <MenuItem value="Pack of 10">Pack of 10</MenuItem>
+                                    <MenuItem value="Pack of 50">Pack of 50</MenuItem>
+                                    <MenuItem value="Carton of 50">Carton of 50</MenuItem>
+                                    <MenuItem value="Custom">Custom / Other</MenuItem>
+                                  </Select>
+                                </Box>
+                              ) : (
+                                <Box>
+                                  <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>PRICE (₦)</Typography>
+                                  <TextField fullWidth type="number" name="amount" value={formValues.amount} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                                </Box>
+                              )}
                             </Box>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+
+                            {/* Conditional Custom Category Field */}
+                            {formValues.category === 'Others' && (
                               <Box>
-                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>QTY IN STOCK</Typography>
-                                <TextField fullWidth type="number" name="quantity" value={formValues.quantity} onChange={handleFormChange} placeholder="0" variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} inputProps={{ min: 0 }} />
+                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>SPECIFY CATEGORY</Typography>
+                                <TextField fullWidth placeholder="Enter custom category..." name="customCategory" value={formValues.customCategory} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
                               </Box>
-                            </Box>
+                            )}
+
+                            {/* Conditional Custom Sales Unit Field */}
+                            {isMedicalRep && formValues.minSalesUnit === 'Custom' && (
+                              <Box>
+                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>SPECIFY PACKAGING UNIT</Typography>
+                                <TextField fullWidth placeholder="e.g. Half carton, Drum of 1000, 1 Display Pack" name="customSalesUnit" value={formValues.customSalesUnit} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                              </Box>
+                            )}
+
+                            {/* Price Field for Medical Rep */}
+                            {isMedicalRep && (
+                              <Box>
+                                <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                  WHOLESALE PRICE PER {formValues.minSalesUnit === 'Custom' ? (formValues.customSalesUnit || 'UNIT') : formValues.minSalesUnit} (₦)
+                                </Typography>
+                                <TextField fullWidth type="number" name="amount" value={formValues.amount} onChange={handleFormChange} placeholder="0" variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                              </Box>
+                            )}
+
+                            {/* QTY IN STOCK (Only for retail pharmacy) */}
+                            {!isMedicalRep && (
+                              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                                <Box>
+                                  <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>QTY IN STOCK</Typography>
+                                  <TextField fullWidth type="number" name="quantity" value={formValues.quantity} onChange={handleFormChange} placeholder="0" variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} inputProps={{ min: 0 }} />
+                                </Box>
+                              </Box>
+                            )}
+
                             <Box>
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>DESCRIPTION / INFO</Typography>
-                              <TextField fullWidth multiline rows={2} placeholder="Dosage, side effects, or administration instructions..." name="info" value={formValues.info} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
+                              <TextField fullWidth multiline rows={2} placeholder="Packaging details, batch info, minimum order requirements..." name="info" value={formValues.info} onChange={handleFormChange} variant="outlined" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: '#F9FBFB' } }} />
                             </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#F9FBFB', p: 1.5, borderRadius: '12px', border: '1px solid #eee' }}>
-                              <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.6)' }}>Prescription Required (POM)</Typography>
-                              <Checkbox checked={formValues.POM} onChange={(e) => setFormValues(prev => ({ ...prev, POM: e.target.checked }))} sx={{ color: '#0F6E56', '&.Mui-checked': { color: '#0F6E56' } }} />
-                            </Box>
+
+                            {/* POM Checkbox (Only for retail pharmacy) */}
+                            {!isMedicalRep && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#F9FBFB', p: 1.5, borderRadius: '12px', border: '1px solid #eee' }}>
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.6)' }}>Prescription Required (POM)</Typography>
+                                <Checkbox checked={formValues.POM} onChange={(e) => setFormValues(prev => ({ ...prev, POM: e.target.checked }))} sx={{ color: '#0F6E56', '&.Mui-checked': { color: '#0F6E56' } }} />
+                              </Box>
+                            )}
+
                             <Box>
                               <Typography sx={{ fontSize: '10px', fontWeight: 800, color: 'rgba(0,0,0,0.3)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.8px' }}>MEDICINE IMAGE</Typography>
                               <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageChange} hidden />
-                              <Box onClick={() => fileInputRef.current?.click()} sx={{ border: '1.5px dashed #ddd', borderRadius: '24px', py: formValues.imageUrl ? 2 : 4, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#F9FBFB', cursor: 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { borderColor: '#0F6E56', bgcolor: '#f0f7f4' } }}>
+                              <Box onClick={() => fileInputRef.current?.click()} sx={{ border: '1.5px dashed #ddd', borderRadius: '24px', py: formValues.imageUrl ? 2 : 4, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: '#F9FBFB', cursor: 'pointer', overflow: 'hidden', transition: 'all 0.2s', '&:hover': { borderColor: isMedicalRep ? '#1E40AF' : '#0F6E56', bgcolor: '#f0f7f4' } }}>
                                 {formValues.imageUrl ? (
                                   <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                                     <img src={formValues.imageUrl} style={{ width: '100px', height: '100px', objectFit: 'contain', borderRadius: '12px' }} alt="Preview" />
-                                    <Typography sx={{ fontSize: '11px', color: '#0F6E56', fontWeight: 700 }}>Change Image</Typography>
+                                    <Typography sx={{ fontSize: '11px', color: isMedicalRep ? '#1E40AF' : '#0F6E56', fontWeight: 700 }}>Change Image</Typography>
                                   </Box>
                                 ) : (
                                   <>
-                                    <Box sx={{ width: 44, height: 44, bgcolor: '#EBF7F2', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1.5 }}>
-                                      <UploadFile sx={{ color: '#0F6E56', fontSize: 20 }} />
+                                    <Box sx={{ width: 44, height: 44, bgcolor: isMedicalRep ? '#eff6ff' : '#EBF7F2', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1.5 }}>
+                                      <UploadFile sx={{ color: isMedicalRep ? '#1E40AF' : '#0F6E56', fontSize: 20 }} />
                                     </Box>
-                                    <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', fontWeight: 500 }}>Tap to upload image · <span style={{ color: '#0F6E56', fontWeight: 700 }}>Browse files</span></Typography>
+                                    <Typography sx={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', fontWeight: 500 }}>Tap to upload image · <span style={{ color: isMedicalRep ? '#1E40AF' : '#0F6E56', fontWeight: 700 }}>Browse files</span></Typography>
                                   </>
                                 )}
                               </Box>
                             </Box>
-                            <Button fullWidth variant="contained" onClick={handleFormSubmit} disabled={isSubmitting} sx={{ bgcolor: '#0F6E56', color: 'white', borderRadius: '14px', py: 1.8, fontSize: '14px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#0a5240', boxShadow: 'none' }, mt: 1 }}>
-                              {isSubmitting ? 'PROCESSING...' : 'ADD TO STORE'}
+                            <Button fullWidth variant="contained" onClick={handleFormSubmit} disabled={isSubmitting} sx={{ bgcolor: isMedicalRep ? '#1E40AF' : '#0F6E56', color: 'white', borderRadius: '14px', py: 1.8, fontSize: '14px', fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: isMedicalRep ? '#172554' : '#0a5240', boxShadow: 'none' }, mt: 1 }}>
+                              {isSubmitting ? 'PROCESSING...' : (isMedicalRep ? 'ADD WHOLESALE PRODUCT' : 'ADD TO STORE')}
                             </Button>
                           </Box>
                         </motion.div>
@@ -1203,16 +1344,24 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                                 <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                                   <Typography noWrap sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.2 }}>{item.itemName}</Typography>
                                   <Typography noWrap sx={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', fontWeight: 500, mb: 1 }}>{item.activeIngredient}</Typography>
-                                  <Box sx={{ display: 'flex', gap: 0.8, mt: 0.5 }}>
+                                  <Box sx={{ display: 'flex', gap: 0.8, mt: 0.5, flexWrap: 'wrap' }}>
                                     <Chip label={needsFix ? 'Needs attention' : 'Published'} size="small" sx={{ height: '24px', fontSize: '10px', fontWeight: 800, bgcolor: needsFix ? '#FEF3C7' : '#EBF7F2', color: needsFix ? '#B45309' : '#0F6E56', borderRadius: '8px' }} />
                                     <Chip label={item.category} size="small" sx={{ height: '24px', fontSize: '10px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', bgcolor: '#f5f5f5', borderRadius: '8px' }} />
+                                    {isMedicalRep && item.minSalesUnit && (
+                                      <Chip label={`Unit: ${item.minSalesUnit}`} size="small" sx={{ height: '24px', fontSize: '10px', fontWeight: 700, color: '#1E40AF', bgcolor: '#EFF6FF', borderRadius: '8px' }} />
+                                    )}
                                   </Box>
                                 </Box>
                               </Box>
-                              <Box sx={{ width: 85, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
-                                <Typography sx={{ fontSize: '17px', fontWeight: 800, color: '#000', mb: 0.2, whiteSpace: 'nowrap' }}>{item.amount > 0 ? `₦${Number(item.amount).toLocaleString()}` : '—'}</Typography>
-                                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: item.quantity > 0 ? '#0F6E56' : '#B45309', mb: 0.3 }}>
-                                  {item.quantity > 0 ? `${item.quantity} in stock` : 'Out of stock'}
+                              <Box sx={{ minWidth: isMedicalRep ? 100 : 85, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                                <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#000', mb: 0.2, whiteSpace: 'nowrap' }}>
+                                  {item.amount > 0 ? `₦${Number(item.amount).toLocaleString()}` : '—'}
+                                  {isMedicalRep && item.minSalesUnit && (
+                                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(0,0,0,0.4)', display: 'block' }}>/{item.minSalesUnit}</span>
+                                  )}
+                                </Typography>
+                                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: (isMedicalRep || item.quantity > 0) ? '#0F6E56' : '#B45309', mb: 0.3 }}>
+                                  {isMedicalRep ? 'Available' : (item.quantity > 0 ? `${item.quantity} in stock` : 'Out of stock')}
                                 </Typography>
                                 <Typography onClick={() => { setSelectedProduct(item); setTileEditData(item); }} sx={{ fontSize: '13px', fontWeight: 700, color: '#FF4D97', cursor: 'pointer' }}>{needsFix ? 'Fix' : 'Edit'}</Typography>
                               </Box>
@@ -1615,16 +1764,22 @@ export default function StoreManagement({ onBack }: { onBack?: () => void }) {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <TextField label="Medication Name" fullWidth variant="outlined" value={tileEditData.itemName} onChange={e => setTileEditData({...tileEditData, itemName: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
                     <TextField label="Active Ingredient" fullWidth variant="outlined" value={tileEditData.activeIngredient} onChange={e => setTileEditData({...tileEditData, activeIngredient: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                      <TextField label="Price (₦)" type="number" fullWidth variant="outlined" value={tileEditData.amount} onChange={e => setTileEditData({...tileEditData, amount: Number(e.target.value)})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
-                      <TextField label="Qty in stock" type="number" fullWidth variant="outlined" value={tileEditData.quantity ?? 0} onChange={e => setTileEditData({...tileEditData, quantity: Number(e.target.value)})} disabled={!isEditingTile} inputProps={{ min: 0 }} InputProps={{ sx: { borderRadius: '16px' } }} />
+                    <Box sx={{ display: 'grid', gridTemplateColumns: isMedicalRep ? '1fr 1fr' : '1fr 1fr', gap: '20px' }}>
+                      <TextField label={isMedicalRep ? "Wholesale Price (₦)" : "Price (₦)"} type="number" fullWidth variant="outlined" value={tileEditData.amount} onChange={e => setTileEditData({...tileEditData, amount: Number(e.target.value)})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
+                      {isMedicalRep ? (
+                        <TextField label="Packaging / Sales Unit" fullWidth variant="outlined" placeholder="e.g. Carton, Box" value={tileEditData.minSalesUnit || ''} onChange={e => setTileEditData({...tileEditData, minSalesUnit: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
+                      ) : (
+                        <TextField label="Qty in stock" type="number" fullWidth variant="outlined" value={tileEditData.quantity ?? 0} onChange={e => setTileEditData({...tileEditData, quantity: Number(e.target.value)})} disabled={!isEditingTile} inputProps={{ min: 0 }} InputProps={{ sx: { borderRadius: '16px' } }} />
+                      )}
                     </Box>
                     <TextField label="Category" fullWidth variant="outlined" value={tileEditData.category} onChange={e => setTileEditData({...tileEditData, category: e.target.value})} disabled={!isEditingTile} InputProps={{ sx: { borderRadius: '16px' } }} />
                     
                     <Box sx={{ background: '#fafafa', padding: '30px', borderRadius: '30px', display: 'flex', flexDirection: 'column', gap: '15px', border: `1.5px solid ${COLORS.border}` }}>
                         <Typography sx={{ fontSize: '10px', fontWeight: 900, color: COLORS.sub, letterSpacing: '1.5px', marginBottom: '5px', textTransform: 'uppercase' }}>VISIBILITY & COMPLIANCE</Typography>
                         <FormControlLabel control={<Checkbox checked={tileEditData.isPublished} onChange={e => e.target.checked ? handlePublish(tileEditData._id!) : handleUnpublish(tileEditData._id!)} color="success" />} label={<span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--black)' }}>Live on Storefront</span>} />
-                        <FormControlLabel control={<Checkbox checked={tileEditData.POM} onChange={e => setTileEditData({...tileEditData, POM: e.target.checked})} disabled={!isEditingTile} color="error" />} label={<span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--black)' }}>Prescription Required (POM)</span>} />
+                        {!isMedicalRep && (
+                          <FormControlLabel control={<Checkbox checked={tileEditData.POM} onChange={e => setTileEditData({...tileEditData, POM: e.target.checked})} disabled={!isEditingTile} color="error" />} label={<span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--black)' }}>Prescription Required (POM)</span>} />
+                        )}
                     </Box>
                   </Box>
                 </Box>

@@ -12,6 +12,7 @@ export interface IProduct extends Document {
   info: string;
   POM: boolean;
   quantity?: number;
+  minSalesUnit?: string;
   manufacturer?: string;
   expiryDate?: Date;
   slug: string;
@@ -30,6 +31,7 @@ const productSchema: Schema<IProduct> = new mongoose.Schema({
   itemNameVector: { type: [Number], required: false },
   activeIngredient: { type: String, required: false, default: 'N/A' },
   category: { type: String, required: false, default: 'N/A' },
+  minSalesUnit: { type: String, required: false, default: '1 Carton' },
   amount: { type: Number, required: false, default: 0 },
   imageUrl: { type: String, default: '' },
   businessName: { type: String, required: true },
