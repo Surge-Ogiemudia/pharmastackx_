@@ -43,7 +43,9 @@ export default function AuthPage() {
     businessName: '',
     businessAddress: '',
     pharmacy: '',
-    mobile: '' // For pharmacists
+    mobile: '', // For pharmacists
+    repType: 'company', // 'company' | 'freelance'
+    companyName: '' // For medical reps
   });
 
   const [loading, setLoading] = useState(false);
@@ -184,6 +186,21 @@ export default function AuthPage() {
           phoneNumber: formData.phoneNumber, 
           license: formData.licenseNumber 
         };
+      } else if (role === 'medical_rep') {
+        const resolvedName = formData.repType === 'company'
+          ? (formData.companyName ? `${formData.companyName} (${formData.username})` : formData.username)
+          : (formData.companyName || `${formData.username} (Freelance Rep)`);
+
+        payload = {
+          ...payload,
+          role: 'medical_rep',
+          repType: formData.repType || 'company',
+          companyName: formData.companyName,
+          businessName: resolvedName,
+          businessAddress: formData.businessAddress,
+          state: formData.state,
+          phoneNumber: formData.phoneNumber,
+        };
       }
 
       await axios.post('/api/auth/signup', payload);
@@ -242,6 +259,15 @@ export default function AuthPage() {
     '&.Mui-focused': {
       borderColor: '#BA7517',
       boxShadow: '0 0 0 3px rgba(186,117,23,0.06)',
+      bgcolor: '#fff'
+    }
+  };
+
+  const inputBlueSx = {
+    ...inputSx,
+    '&.Mui-focused': {
+      borderColor: '#1E40AF',
+      boxShadow: '0 0 0 3px rgba(30,64,175,0.06)',
       bgcolor: '#fff'
     }
   };
@@ -412,6 +438,31 @@ export default function AuthPage() {
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#111', letterSpacing: '-0.4px', mb: 0.5 }}>Pharmacy</Typography>
               <Typography sx={{ fontSize: 11, color: '#888', lineHeight: 1.55, fontWeight: 300 }}>I want to manage my store, receive medicine requests and serve patients near me.</Typography>
+            </Box>
+            <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
+          </Box>
+
+          {/* Medical Rep Card */}
+          <Box 
+            component={motion.div} 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            transition={{ delay: 0.5 }}
+            sx={{ 
+              bgcolor: 'rgba(255,255,255,0.85)', border: '1.5px solid #ebebeb', borderRadius: '20px', p: '16px', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, backdropFilter: 'blur(4px)',
+              transition: 'all 0.25s ease',
+              '&:hover': { borderColor: '#1E40AF', bgcolor: '#fff', transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(30,64,175,0.08)' },
+              '&:hover .arrow': { color: '#1E40AF', transform: 'translateX(3px)' }
+            }}
+            onClick={() => setStep('medical-rep-signup')}
+          >
+            <Box sx={{ width: 44, height: 44, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, bgcolor: '#eff6ff' }}>
+              <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: '2.5px solid #1E40AF' }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontFamily: 'var(--font-sora), sans-serif', fontSize: 15, fontWeight: 700, color: '#111', letterSpacing: '-0.4px', mb: 0.5 }}>Medical Rep</Typography>
+              <Typography sx={{ fontSize: 11, color: '#888', lineHeight: 1.55, fontWeight: 300 }}>I represent pharma brands or detail and supply bulk medicines to pharmacies.</Typography>
             </Box>
             <KeyboardArrowRightIcon className="arrow" sx={{ color: '#ddd', transition: 'all 0.2s', fontSize: 20 }} />
           </Box>
@@ -985,6 +1036,250 @@ export default function AuthPage() {
     </motion.div>
   );
 
+  const renderMedicalRepSignup = () => (
+    <motion.div
+      key="medical-rep-signup"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+    >
+        {/* Back Button */}
+        <Box 
+          component={motion.div} 
+          initial={{ opacity: 0, y: -10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
+          onClick={() => setStep('role')}
+        >
+          <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
+            <ArrowBackIcon sx={{ fontSize: 16 }} />
+          </Box>
+          <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 500 }}>I am a...</Typography>
+        </Box>
+
+        {/* Progress Bar (Medical Rep) */}
+        <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} sx={{ mx: 3, mb: 2.5 }}>
+            <Box sx={{ bgcolor: '#ebebeb', borderRadius: 100, height: 3 }}>
+                <Box sx={{ width: '50%', height: 3, bgcolor: '#1E40AF', borderRadius: 100, transition: 'width 0.4s ease' }} />
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Typography sx={{ fontSize: 10, color: '#1E40AF', fontWeight: 600 }}>Medical Rep details</Typography>
+                <Typography sx={{ fontSize: 10, color: '#bbb', letterSpacing: '0.3px' }}>Step 1 of 2</Typography>
+            </Box>
+        </Box>
+
+        {/* Form Content */}
+        <Box component="form" onSubmit={(e) => handleSignUp(e, 'medical_rep')}>
+            {(error || success) && (
+                <Alert 
+                  severity={error ? 'error' : 'success'} 
+                  sx={{ mx: 3, mb: 2, borderRadius: '12px', fontSize: 13 }}
+                >
+                    {error || success}
+                </Alert>
+            )}
+
+            {renderSectionDivider('Representative info')}
+
+            <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <Typography sx={labelSx}>Full name (Representative)</Typography>
+                    <InputBase 
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Chinedu Okafor" 
+                        required
+                        sx={inputBlueSx} 
+                    />
+                </Box>
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                    <Typography sx={labelSx}>Phone number</Typography>
+                    <Box sx={{ display: 'flex' }}>
+                        <Box sx={{ bgcolor: 'rgba(255,255,255,0.85)', border: '1px solid #ebebeb', borderRight: 'none', borderRadius: '13px 0 0 13px', px: 2, display: 'flex', alignItems: 'center', gap: 0.5, color: '#888', fontWeight: 500, fontSize: 13 }}>
+                            🇳🇬 <span style={{ fontSize: 10 }}>+234</span>
+                        </Box>
+                        <InputBase 
+                            name="phoneNumber"
+                            value={formData.phoneNumber}
+                            onChange={handleInputChange}
+                            placeholder="800 000 0000" 
+                            required
+                            type="tel" 
+                            sx={{ ...inputBlueSx, borderRadius: '0 13px 13px 0' }} 
+                        />
+                    </Box>
+                </Box>
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                    <Typography sx={labelSx}>Email address</Typography>
+                    <InputBase 
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="rep@pharma.com or personal email" 
+                        type="email"
+                        required
+                        sx={inputBlueSx} 
+                    />
+                </Box>
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                    <Typography sx={labelSx}>Password</Typography>
+                    <Box sx={{ position: 'relative' }}>
+                        <InputBase 
+                            name="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            placeholder="Create a strong password" 
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            sx={{ ...inputBlueSx, pr: 5 }} 
+                        />
+                        <Box 
+                            onClick={() => setShowPassword(!showPassword)}
+                            sx={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#ccc', cursor: 'pointer' }}
+                        >
+                            <VisibilityIcon sx={{ fontSize: 16 }} />
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+
+            {renderSectionDivider('Representation & territory')}
+
+            <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Rep Type Selector */}
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                    <Typography sx={labelSx}>Affiliation status</Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                        <Box 
+                            onClick={() => setFormData(prev => ({ ...prev, repType: 'company' }))}
+                            sx={{ 
+                                p: 1.5, 
+                                borderRadius: '14px', 
+                                border: formData.repType === 'company' ? '2px solid #1E40AF' : '1px solid #ebebeb', 
+                                bgcolor: formData.repType === 'company' ? '#eff6ff' : 'rgba(255,255,255,0.85)', 
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.5
+                            }}
+                        >
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: formData.repType === 'company' ? '#1E40AF' : '#222' }}>
+                                Company Affiliated
+                            </Typography>
+                            <Typography sx={{ fontSize: 10, color: '#777', lineHeight: 1.3 }}>
+                                Represents a pharmaceutical manufacturer or brand
+                            </Typography>
+                        </Box>
+
+                        <Box 
+                            onClick={() => setFormData(prev => ({ ...prev, repType: 'freelance' }))}
+                            sx={{ 
+                                p: 1.5, 
+                                borderRadius: '14px', 
+                                border: formData.repType === 'freelance' ? '2px solid #1E40AF' : '1px solid #ebebeb', 
+                                bgcolor: formData.repType === 'freelance' ? '#eff6ff' : 'rgba(255,255,255,0.85)', 
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.5
+                            }}
+                        >
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: formData.repType === 'freelance' ? '#1E40AF' : '#222' }}>
+                                Freelance Detailer
+                            </Typography>
+                            <Typography sx={{ fontSize: 10, color: '#777', lineHeight: 1.3 }}>
+                                Independent rep pushing multiple brands or products
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+
+                {/* Company Name (if company affiliated) or Agency Name (if freelance) */}
+                {formData.repType === 'company' ? (
+                    <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+                        <Typography sx={labelSx}>Pharma Company Name</Typography>
+                        <InputBase 
+                            name="companyName"
+                            value={formData.companyName}
+                            onChange={handleInputChange}
+                            placeholder="e.g. Fidson, Emzor, Shalina, Juhel, Mega Lifesciences" 
+                            required
+                            sx={inputBlueSx} 
+                        />
+                    </Box>
+                ) : (
+                    <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+                        <Typography sx={labelSx}>Agency / Freelance Trading Name (Optional)</Typography>
+                        <InputBase 
+                            name="companyName"
+                            value={formData.companyName}
+                            onChange={handleInputChange}
+                            placeholder="e.g. Apex Pharma Agencies or leave blank" 
+                            sx={inputBlueSx} 
+                        />
+                    </Box>
+                )}
+
+                {/* State Active In */}
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                    <Typography sx={labelSx}>State active in</Typography>
+                    <NativeSelect 
+                        name="state"
+                        value={formData.state}
+                        onChange={handleSelectChange}
+                        disableUnderline 
+                        sx={inputBlueSx} 
+                        defaultValue=""
+                        required
+                    >
+                        <option value="" disabled>Select active state / territory</option>
+                        {nigerianStates.map(state => (
+                            <option key={state} value={state}>{state}</option>
+                        ))}
+                    </NativeSelect>
+                </Box>
+
+                {/* Operating / Stock Address */}
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+                    <Typography sx={labelSx}>Operating / Stock Address</Typography>
+                    <InputBase 
+                        name="businessAddress"
+                        value={formData.businessAddress}
+                        onChange={handleInputChange}
+                        placeholder="Warehouse, partner wholesaler address, or home base" 
+                        required
+                        sx={inputBlueSx} 
+                    />
+                    <Typography sx={{ fontSize: 10, color: '#999', mt: 0.6, lineHeight: 1.4 }}>
+                        If you have a warehouse in-state, enter it here. Otherwise, enter your home address or partner wholesaler depot where stock is held.
+                    </Typography>
+                </Box>
+
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }} sx={{ mt: 1 }}>
+                    <Box 
+                        component="button" 
+                        type="submit"
+                        disabled={loading}
+                        sx={{ width: '100%', bgcolor: '#1E40AF', color: '#fff', borderRadius: '14px', py: 2, fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sora), sans-serif', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s', '&:hover': { opacity: 0.88 }, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}
+                    >
+                        {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Create medical rep account'}
+                    </Box>
+                </Box>
+
+                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} sx={{ textAlign: 'center', mt: 1, mb: 2 }}>
+                    <Typography sx={{ fontSize: 12, color: '#bbb' }}>
+                        Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#1E40AF', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #1E40AF', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(30,64,175,0.08)' } }}>Sign in</Box>
+                    </Typography>
+                </Box>
+            </Box>
+        </Box>
+    </motion.div>
+  );
+
   const renderClinicSignup = () => (
     <motion.div
       key="clinic-signup"
@@ -1348,6 +1643,7 @@ export default function AuthPage() {
                 {step === 'patient-signup' && renderPatientSignup()}
                 {step === 'pharmacist-signup' && renderPharmacistSignup()}
                 {step === 'pharmacy-owner-signup' && renderPharmacyOwnerSignup()}
+                {step === 'medical-rep-signup' && renderMedicalRepSignup()}
                 {step === 'clinic-signup' && renderClinicSignup()}
                 {step === 'sign-in' && renderSignIn()}
                 {step === 'forgot-password' && renderForgotPassword()}
