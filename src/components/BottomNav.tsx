@@ -2,6 +2,7 @@
 import { Box, Typography } from "@mui/material";
 import { motion } from "framer-motion";
 import { useTrack } from '@/hooks/useTrack';
+import { useSession } from "@/context/SessionProvider";
 
 interface BottomNavProps {
   currentView: string;
@@ -10,7 +11,13 @@ interface BottomNavProps {
 
 const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
   const { track } = useTrack();
-  const tabs = [
+  const { user } = useSession();
+  const isMedicalRep = user?.role === 'medical_rep';
+
+  const tabs = isMedicalRep ? [
+    { id: 'home', label: 'HOME' },
+    { id: 'account', label: 'ACCOUNT' }
+  ] : [
     { id: 'home', label: 'HOME' },
     { id: 'orderMedicines', label: 'SEARCH' },
     { id: 'orders', label: 'ACTIVITY' },
@@ -24,9 +31,9 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
         bottom: { xs: 20, md: 32 },
         left: '50%',
         transform: 'translateX(-50%)',
-        width: { xs: 'calc(100% - 32px)', md: 'fit-content' },
-        minWidth: { md: '600px' },
-        maxWidth: { xs: '450px', md: '800px' },
+        width: { xs: isMedicalRep ? '240px' : 'calc(100% - 32px)', md: 'fit-content' },
+        minWidth: { md: isMedicalRep ? '280px' : '600px' },
+        maxWidth: { xs: isMedicalRep ? '280px' : '450px', md: isMedicalRep ? '340px' : '800px' },
         zIndex: 9999,
         display: 'flex',
         justifyContent: 'center',
