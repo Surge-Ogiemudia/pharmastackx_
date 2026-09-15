@@ -6,7 +6,9 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password?: string;
-  role: 'admin' | 'customer' | 'pharmacy' | 'clinic' | 'vendor' | 'agent' | 'stockManager' | 'pharmacist' | 'store_manager' | 'store_keeper' | 'staff';
+  role: 'admin' | 'customer' | 'pharmacy' | 'clinic' | 'vendor' | 'agent' | 'stockManager' | 'pharmacist' | 'store_manager' | 'store_keeper' | 'staff' | 'medical_rep';
+  repType?: 'company' | 'freelance';
+  companyName?: string;
   businessName?: string;
   slug?: string;
   oldGuestSlug?: string;
@@ -131,9 +133,14 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   password: { type: String, required: true },
   role: {
     type: String,
-    enum: ['admin', 'customer', 'pharmacy', 'clinic', 'vendor', 'agent', 'stockManager', 'pharmacist', 'store_manager', 'store_keeper', 'staff'],
+    enum: ['admin', 'customer', 'pharmacy', 'clinic', 'vendor', 'agent', 'stockManager', 'pharmacist', 'store_manager', 'store_keeper', 'staff', 'medical_rep'],
     required: true,
   },
+  repType: {
+    type: String,
+    enum: ['company', 'freelance'],
+  },
+  companyName: { type: String },
   businessName: { type: String },
   slug: { type: String, unique: true, sparse: true },
   oldGuestSlug: { type: String },

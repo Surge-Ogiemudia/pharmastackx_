@@ -24,8 +24,12 @@ export async function POST(req) {
 
     const email = originalEmail.toLowerCase();
 
-    if (role !== 'customer' && role !== 'pharmacist' && (!businessName || !businessAddress)) {
+    if (role !== 'customer' && role !== 'pharmacist' && role !== 'medical_rep' && (!businessName || !businessAddress)) {
       return NextResponse.json({ error: 'Business name and address are required for this role.' }, { status: 400 });
+    }
+
+    if (role === 'medical_rep' && (!allData.state || !allData.businessAddress)) {
+      return NextResponse.json({ error: 'State and operating address are required for medical representatives.' }, { status: 400 });
     }
     
     const existingUser = await User.findOne({ email });
@@ -52,8 +56,9 @@ export async function POST(req) {
      }
 
     let slug = undefined;
-    if (['pharmacy', 'clinic', 'vendor', 'agent'].includes(finalRole) && businessName) {
-      slug = businessName.trim().split(' ')[0].toLowerCase();
+    const nameForSlug = businessName || allData.companyName || username;
+    if (['pharmacy', 'clinic', 'vendor', 'agent', 'medical_rep'].includes(finalRole) && nameForSlug) {
+      slug = nameForSlug.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/gi, '');
       let slugExists = await User.findOne({ slug });
       let count = 1;
       let baseSlug = slug;
@@ -68,14 +73,17 @@ export async function POST(req) {
       delete allData.pharmacy;
     }
 
+    const resolvedBusinessName = businessName || (allData.companyName ? `${allData.companyName} (${username})` : `${username} (Medical Rep)`);
+
     const newUser = new User({
       ...allData,
+      businessName: resolvedBusinessName,
       username,
       email,
       password: hashedPassword,
       role: finalRole,
       slug,
-      isPublished: ['customer', 'pharmacist'].includes(finalRole)
+      isPublished: ['customer', 'pharmacist', 'medical_rep'].includes(finalRole)
     });
 
     await newUser.save();
