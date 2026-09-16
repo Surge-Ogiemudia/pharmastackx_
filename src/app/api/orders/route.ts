@@ -219,10 +219,27 @@ export async function POST(req: NextRequest) {
     await newOrder.save();
 
     // Trigger WhatsApp ChatOps for Bubblegum Concierge
-    if (resolvedPartnerSlug === 'bubblegum' && deliveryLat && deliveryLng) {
+    if (resolvedPartnerSlug === 'bubblegum') {
       try {
-        await createConciergeSession(newOrder, Number(deliveryLat), Number(deliveryLng));
-        console.log(`[Concierge] Triggered successfully for order ${newOrder._id}`);
+        let finalLat = deliveryLat ? Number(deliveryLat) : null;
+        let finalLng = deliveryLng ? Number(deliveryLng) : null;
+
+        if (!finalLat || !finalLng) {
+          const { geocodeAddress } = await import('@/lib/concierge');
+          const fullAddress = [deliveryAddress, deliveryCity, deliveryState].filter(Boolean).join(', ');
+          const coords = await geocodeAddress(fullAddress);
+          if (coords) {
+            finalLat = coords.lat;
+            finalLng = coords.lng;
+          }
+        }
+
+        if (finalLat && finalLng) {
+          await createConciergeSession(newOrder, finalLat, finalLng);
+          console.log(`[Concierge] Triggered successfully for order ${newOrder._id}`);
+        } else {
+          console.warn(`[Concierge] Skipping. Could not determine coordinates for ${deliveryAddress}`);
+        }
       } catch (err: any) {
         console.error(`[Concierge] Error triggering session:`, err?.message);
       }
