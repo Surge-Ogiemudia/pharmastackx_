@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (!destAddress.toLowerCase().includes('nigeria')) destAddress += `, Nigeria`;
 
     // 1. Dynamic Concierge Origin for Bubblegum
-    if (pharmacyName?.toLowerCase() === 'bubblegum') {
+    if (pharmacyName?.toLowerCase().includes('bubblegum')) {
         try {
             const { geocodeAddress, findClosestPharmacies } = await import('@/lib/concierge');
             const destCoords = await geocodeAddress(destAddress);
