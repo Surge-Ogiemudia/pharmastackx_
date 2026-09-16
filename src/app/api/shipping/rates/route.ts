@@ -50,7 +50,30 @@ export async function POST(req: NextRequest) {
     let originPhone = '08011223344';
     let originName = pharmacyName || 'PharmaStackX Hub';
 
-    if (pharmacyName) {
+    // Helper: Build Full Destination Address
+    let destAddress = deliveryAddress.trim();
+    if (deliveryCity && !destAddress.toLowerCase().includes(deliveryCity.trim().toLowerCase())) destAddress += `, ${deliveryCity.trim()}`;
+    if (deliveryState && !destAddress.toLowerCase().includes(deliveryState.trim().toLowerCase())) destAddress += `, ${deliveryState.trim()}`;
+    if (!destAddress.toLowerCase().includes('nigeria')) destAddress += `, Nigeria`;
+
+    // 1. Dynamic Concierge Origin for Bubblegum
+    if (pharmacyName?.toLowerCase() === 'bubblegum') {
+        try {
+            const { geocodeAddress, findClosestPharmacies } = await import('@/lib/concierge');
+            const destCoords = await geocodeAddress(destAddress);
+            if (destCoords) {
+                const nearest = await findClosestPharmacies(destCoords.lat, destCoords.lng, 1);
+                if (nearest && nearest.length > 0) {
+                    originAddress = nearest[0].address;
+                    originName = nearest[0].name;
+                    originPhone = nearest[0].phone;
+                    console.log(`[Rates] Concierge Origin determined dynamically: ${originName} -> ${originAddress}`);
+                }
+            }
+        } catch (e: any) {
+            console.error('[Rates] Failed to find dynamic concierge origin:', e.message);
+        }
+    } else if (pharmacyName) {
       try {
         const pharmacyUser = await User.findOne({
           $or: [
@@ -81,17 +104,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Format Recipient (Patient) destination address
-    let destAddress = deliveryAddress.trim();
-    if (deliveryCity && !destAddress.toLowerCase().includes(deliveryCity.trim().toLowerCase())) {
-      destAddress += `, ${deliveryCity.trim()}`;
-    }
-    if (deliveryState && !destAddress.toLowerCase().includes(deliveryState.trim().toLowerCase())) {
-      destAddress += `, ${deliveryState.trim()}`;
-    }
-    if (!destAddress.toLowerCase().includes('nigeria')) {
-      destAddress += `, Nigeria`;
-    }
+    // 2. Formatting was handled above.
 
     // Helper to call Shipbubble REST API
     const callShipbubble = async (endpoint: string, method: string, payload?: any) => {
