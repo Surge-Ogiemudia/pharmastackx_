@@ -42,6 +42,30 @@ export async function GET(req: NextRequest) {
       partner = created.toObject();
     }
 
+    // Auto-seed Airen Pharmacy Wholesale profile if requested
+    if (!partner && (slug === 'demo.airen' || slug === 'airen' || slug === 'airenpharmacy')) {
+      const created = await Partner.create({
+        name: 'Airen Pharmacy & Wholesale Depot',
+        slug: slug,
+        markupPercentage: 0,
+        logoUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=200&h=200&fit=crop',
+        primaryColor: '#059669',
+        tagline: 'Tier-1 Verified Distributor - Edo State',
+        contactEmail: 'depot@airenpharmacy.com',
+        contactPhone: '08037219904',
+        hideStockCount: false,
+        bankDetails: {
+          bankName: 'Access Bank',
+          accountNumber: '0812993410',
+          accountName: 'Airen Pharmacy Wholesale Hub',
+        },
+        allowedCategories: ['Antibiotics', 'Antimalarials', 'Analgesics & Pain', 'Infusions & Injectables', 'Consumables & Surgical', 'OTC'],
+        payoutBalance: 850000,
+        isActive: true,
+      });
+      partner = created.toObject();
+    }
+
     if (!partner) {
       return NextResponse.json({ success: false, error: 'Partner not found' }, { status: 404 });
     }

@@ -28,6 +28,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
   const isPartnerRoute = pathname?.startsWith('/p/') || 
                          pathname === '/partner-dashboard' || 
+                         pathname === '/airen-dashboard' ||
+                         pathname?.startsWith('/airen-dashboard') ||
                          isSubdomain || 
                          (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/'));
 
@@ -37,7 +39,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     pathname !== '/pulse' && 
     !pathname?.startsWith('/pulse/') &&
     pathname !== '/extension' &&
-    !pathname?.startsWith('/extension');
+    !pathname?.startsWith('/extension') &&
+    pathname !== '/airen-dashboard' &&
+    !pathname?.startsWith('/airen-dashboard');
   const router = useRouter();
 
   // Analytics: fire a page_view event on every route change

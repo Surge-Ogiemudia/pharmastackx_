@@ -9,6 +9,134 @@ import { debounce } from 'lodash';
 import { useSession } from '@/context/SessionProvider';
 import styles from '../app/find-medicines/FindMedicines.module.css';
 import BubblegumStorefront from './BubblegumStorefront';
+import AirenB2BStorefront from './AirenB2BStorefront';
+import {
+  Zap,
+  Boxes,
+  ShieldCheck,
+  Truck,
+  Layers,
+  Search as SearchIcon,
+  UploadCloud,
+  FileSpreadsheet,
+  FileText,
+  Camera,
+  CheckCircle2,
+  ArrowRight,
+  ExternalLink,
+  ChevronRight,
+  Percent,
+  Check,
+  Building2,
+  Phone,
+  MapPin,
+  Clock,
+  Sparkles,
+  Store,
+  BadgePercent,
+  TrendingDown
+} from 'lucide-react';
+
+// --- VERIFIED B2B WHOLESALE PARTNERS --- //
+export interface VerifiedWholesaler {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+  path: string;
+  location: string;
+  fullAddress: string;
+  phone: string;
+  isPremierTier1: boolean;
+  rating: number;
+  orderVolume: string;
+  badges: string[];
+  description: string;
+  leadTime: string;
+  categories: string[];
+  specs: { label: string; val: string }[];
+}
+
+const VERIFIED_WHOLESALERS: VerifiedWholesaler[] = [
+  {
+    id: 'airen-wholesale',
+    name: 'Airen Pharmacy & Wholesale Depot',
+    slug: 'demo.airen',
+    url: 'https://demo.airen.psx.ng',
+    path: '/p/demo.airen',
+    location: 'Benin City, Edo State',
+    fullAddress: '154 Forestry Road / New Benin Commercial Hub · Benin City, Edo State',
+    phone: '+234 803 345 8891',
+    isPremierTier1: true,
+    rating: 4.98,
+    orderVolume: '14,200+ orders fulfilled',
+    badges: [
+      'Verified Wholesaler',
+      'Same-Day Benin Dispatch',
+      '18+ Live Categories'
+    ],
+    description: 'Premier Tier-1 authorized distributor providing bulk pharmaceutical supply, verified cold-chain biologics, and direct manufacturer trade pricing across Edo State and South-South Nigeria.',
+    leadTime: 'Orders before 1:00 PM dispatched same-day across Benin Metropolis & Edo State',
+    categories: ['Antibiotics', 'Antimalarials', 'Analgesics', 'Infusions', 'Injectables', 'Cold-Chain Biologics', 'Surgical Consumables', 'OTC'],
+    specs: [
+      { label: 'Depot Hub', val: 'Benin City & Edo South' },
+      { label: 'Live Catalog', val: '4,200+ Trade SKUs' },
+      { label: 'Fulfillment', val: 'Same-Day Dispatch' }
+    ]
+  },
+  {
+    id: 'fidson-depot',
+    name: 'Fidson Direct Distribution Hub',
+    slug: 'fidson',
+    url: 'https://psx.ng/p/fidson',
+    path: '/p/fidson',
+    location: 'Lagos & Mid-West Corridor',
+    fullAddress: 'Oregun Industrial Avenue / Mid-West Transit Annex',
+    phone: '+234 802 112 3456',
+    isPremierTier1: false,
+    rating: 4.85,
+    orderVolume: '8,500+ orders',
+    badges: [
+      'Verified Wholesaler',
+      'Next-Day Inter-State',
+      '14 Categories'
+    ],
+    description: 'Direct manufacturer wholesale distribution channel supplying high-demand anti-infectives, cardio-metabolic therapies, and essential OTC lines.',
+    leadTime: '24–48 hours nationwide transit',
+    categories: ['Antibiotics', 'Analgesics', 'Cardiovascular', 'Supplements'],
+    specs: [
+      { label: 'Depot Hub', val: 'Lagos & Regional Depots' },
+      { label: 'Live Catalog', val: '1,800+ Trade SKUs' },
+      { label: 'Fulfillment', val: 'Next-Day Transit' }
+    ]
+  },
+  {
+    id: 'chimed-wholesalers',
+    name: 'Chi-Med Wholesale & Supply Corp',
+    slug: 'chimed',
+    url: 'https://psx.ng/p/chimed',
+    path: '/p/chimed',
+    location: 'Benin City, Edo State',
+    fullAddress: 'Commercial Avenue / Akpakpava Hub · Benin City',
+    phone: '+234 805 776 2210',
+    isPremierTier1: false,
+    rating: 4.79,
+    orderVolume: '6,100+ orders',
+    badges: [
+      'Verified Wholesaler',
+      'Same-Day Benin Dispatch',
+      '12 Categories'
+    ],
+    description: 'Specialized master distributor of parenteral solutions, emergency IV infusions, and sterile clinical consumables for retail pharmacies.',
+    leadTime: 'Same-day delivery within Benin Metropolis',
+    categories: ['Infusions', 'Injectables', 'Surgical Consumables', 'Wound Care'],
+    specs: [
+      { label: 'Depot Hub', val: 'Benin Metropolis' },
+      { label: 'Live Catalog', val: '1,200+ Trade SKUs' },
+      { label: 'Fulfillment', val: 'Same-Day Courier' }
+    ]
+  }
+];
 
 // --- CONFIGURATION --- //
 const AVERAGE_TRAVEL_SPEED_KMH = 40;
@@ -144,6 +272,72 @@ export default function FindMedicinesContent({
   );
 
   const drugClasses = ['all', 'Cardiovascular', 'Diabetes', 'Antibiotic', 'Pain Relief', 'Respiratory', 'Skincare', 'Supplements'];
+
+  // Source experience sub-tab: 'emergency' (Single-medicine urgent wait) vs 'restock' (B2B wholesale procurement)
+  const [sourceSubTab, setSourceSubTab] = useState<'emergency' | 'restock'>(() => {
+    const tabParam = searchParams?.get('tab');
+    return tabParam === 'restock' ? 'restock' : 'emergency';
+  });
+
+  // Medicine Restock state & filters
+  const [restockPartnerSearch, setRestockPartnerSearch] = useState('');
+  const [restockRegionFilter, setRestockRegionFilter] = useState('all');
+  const [uploadedRestockFile, setUploadedRestockFile] = useState<File | null>(null);
+  const [isProcessingAiMatch, setIsProcessingAiMatch] = useState(false);
+  const [matchedResults, setMatchedResults] = useState<any[] | null>(null);
+  const restockFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRestockFileSelect = (file: File) => {
+    setUploadedRestockFile(file);
+    setIsProcessingAiMatch(true);
+    setMatchedResults(null);
+
+    setTimeout(() => {
+      setIsProcessingAiMatch(false);
+      setMatchedResults([
+        {
+          drug: 'Augmentin 625mg Tablets',
+          packForm: 'Pack of 10',
+          qty: 25,
+          matchedDepot: 'Airen Pharmacy & Wholesale Depot',
+          wholesaleRate: 42500,
+          marketRate: 48000,
+          savingStr: '₦137,500 saved (11.5%)',
+          inStock: true
+        },
+        {
+          drug: 'Rocephin 1g IV/IM Vials',
+          packForm: 'Box of 10 Vials',
+          qty: 12,
+          matchedDepot: 'Airen Pharmacy & Wholesale Depot',
+          wholesaleRate: 58000,
+          marketRate: 65000,
+          savingStr: '₦84,000 saved (10.8%)',
+          inStock: true
+        },
+        {
+          drug: 'Ciprotab 500mg Caplets',
+          packForm: 'Pack of 10',
+          qty: 40,
+          matchedDepot: 'Airen Pharmacy & Wholesale Depot',
+          wholesaleRate: 19500,
+          marketRate: 22000,
+          savingStr: '₦100,000 saved (11.4%)',
+          inStock: true
+        },
+        {
+          drug: 'Metronidazole 500mg/100ml Infusion',
+          packForm: 'Carton of 20 Bottles',
+          qty: 10,
+          matchedDepot: 'Airen Pharmacy & Wholesale Depot',
+          wholesaleRate: 26500,
+          marketRate: 30000,
+          savingStr: '₦35,000 saved (11.7%)',
+          inStock: true
+        }
+      ]);
+    }, 1000);
+  };
 
   const fetchMedicines = useCallback(debounce(async (page: number, search: string, filter: string, sort: string) => {
     setIsLoading(true);
@@ -418,6 +612,35 @@ export default function FindMedicinesContent({
     return <BubblegumStorefront partnerSlug={partnerSlug || slug || 'bubblegum'} setView={setView} />;
   }
 
+  if (
+    slug === 'demo.airen' ||
+    slug === 'airen' ||
+    slug === 'airenpharmacy' ||
+    (slug && slug.includes('airen')) ||
+    partnerSlug === 'demo.airen' ||
+    partnerSlug === 'airen' ||
+    (partnerSlug && partnerSlug.includes('airen')) ||
+    partnerDetails?.slug === 'demo.airen' ||
+    partnerDetails?.slug === 'airen'
+  ) {
+    return <AirenB2BStorefront partnerSlug={partnerSlug || slug || 'demo.airen'} setView={setView} />;
+  }
+
+  const filteredWholesalers = VERIFIED_WHOLESALERS.filter(w => {
+    const matchesQuery = !restockPartnerSearch || 
+      w.name.toLowerCase().includes(restockPartnerSearch.toLowerCase()) ||
+      w.location.toLowerCase().includes(restockPartnerSearch.toLowerCase()) ||
+      w.categories.some(c => c.toLowerCase().includes(restockPartnerSearch.toLowerCase()));
+    
+    if (restockRegionFilter === 'benin') {
+      return matchesQuery && w.location.toLowerCase().includes('benin');
+    }
+    if (restockRegionFilter === 'tier1') {
+      return matchesQuery && w.isPremierTier1;
+    }
+    return matchesQuery;
+  });
+
   return (
     <div className={styles.root}>
       {/* HEADER */}
@@ -491,7 +714,62 @@ export default function FindMedicinesContent({
         </div>
       </header>
 
-      {/* HERO */}
+      {/* ── SUB-TABS NAVIGATION (EMERGENCY SOURCING VS MEDICINE RESTOCK) ── */}
+      <div className={styles.subTabNavWrapper}>
+        <div className={styles.subTabNavInner}>
+          <button
+            type="button"
+            className={`${styles.subTabBtn} ${sourceSubTab === 'emergency' ? styles.subTabBtnActive : ''}`}
+            onClick={() => {
+              setSourceSubTab('emergency');
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('tab');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
+          >
+            <div className={styles.subTabBtnIconWrap}>
+              <Zap size={20} />
+            </div>
+            <div className={styles.subTabBtnTextGroup}>
+              <div className={styles.subTabBtnTitleRow}>
+                <span className={styles.subTabBtnTitle}>Emergency Sourcing</span>
+                <span className={styles.subTabBadgeEmergency}>Urgent Patient Wait</span>
+              </div>
+              <span className={styles.subTabBtnDesc}>Single-medicine search · Real-time nearby stock · Fast dispatch</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.subTabBtn} ${sourceSubTab === 'restock' ? styles.subTabBtnActive : ''}`}
+            onClick={() => {
+              setSourceSubTab('restock');
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', 'restock');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
+          >
+            <div className={styles.subTabBtnIconWrapRestock}>
+              <Boxes size={20} />
+            </div>
+            <div className={styles.subTabBtnTextGroup}>
+              <div className={styles.subTabBtnTitleRow}>
+                <span className={styles.subTabBtnTitle}>Medicine Restock</span>
+                <span className={styles.subTabBadgeRestock}>B2B Wholesale</span>
+              </div>
+              <span className={styles.subTabBtnDesc}>Bulk procurement · Verified Tier-1 Depots · Smart restock matching</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {sourceSubTab === 'emergency' ? (
+        <>
+          {/* HERO */}
       <section className={styles.hero}>
         <div className={styles.heroPattern}></div>
         <div className={styles.heroGlow}></div>
@@ -780,6 +1058,424 @@ export default function FindMedicinesContent({
         )}
 
       </main>
+        </>
+      ) : (
+        /* ── RESTOCK HUB (B2B WHOLESALE PROCUREMENT) ── */
+        <div className={styles.restockContainer}>
+          
+          {/* Restock Hero Banner */}
+          <div className={styles.restockHero}>
+            <div className={styles.restockHeroPattern}></div>
+            <div className={styles.restockHeroContent}>
+              <div className={styles.restockEyebrow}>
+                <Building2 size={13} />
+                <span>B2B Wholesale Procurement · Verified Network</span>
+              </div>
+              <h1 className={styles.restockHeroTitle}>
+                Direct Pharmacy Restock &<br />
+                <em>Wholesale Procurement Hub.</em>
+              </h1>
+              <p className={styles.restockHeroSub}>
+                Procure directly from accredited pharmaceutical distributors and Tier-1 wholesale depots.
+                Access direct manufacturer pricing, automated volume tiers, and same-day depot dispatch across Edo State and nationwide.
+              </p>
+
+              {/* Quick Stats Grid */}
+              <div className={styles.restockStatsGrid}>
+                <div className={styles.restockStatCard}>
+                  <span className={styles.restockStatVal}>12+</span>
+                  <span className={styles.restockStatLbl}>Verified Wholesale Depots</span>
+                </div>
+                <div className={styles.restockStatCard}>
+                  <span className={styles.restockStatVal}>Same-Day</span>
+                  <span className={styles.restockStatLbl}>Regional Benin Dispatch</span>
+                </div>
+                <div className={styles.restockStatCard}>
+                  <span className={styles.restockStatVal}>Up to 22%</span>
+                  <span className={styles.restockStatLbl}>Better Margin vs Open Market</span>
+                </div>
+                <div className={styles.restockStatCard}>
+                  <span className={styles.restockStatVal}>100%</span>
+                  <span className={styles.restockStatLbl}>NAFDAC-Verified Genuine Batches</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              OPTION 1: "SOURCE FROM VERIFIED PARTNERS" (FEATURED)
+             ═══════════════════════════════════════════════════════════════════ */}
+          <section className={styles.restockSection}>
+            <div className={styles.restockSectionHeader}>
+              <div className={styles.restockSectionTitleGroup}>
+                <span className={styles.restockSectionBadge}>Option 1 · Direct Depot Procurement</span>
+                <h2 className={styles.restockSectionTitle}>Source from Verified Partners</h2>
+                <p className={styles.restockSectionSubtitle}>
+                  Order directly from accredited pharmaceutical wholesale depots with guaranteed authentic stock and direct delivery.
+                </p>
+              </div>
+            </div>
+
+            {/* Wholesaler Search Bar & Filter Chips */}
+            <div className={styles.partnerSearchBar}>
+              <SearchIcon size={18} color="#9CA3AF" />
+              <input
+                type="text"
+                placeholder="Search verified wholesalers, depots, or distributors (e.g. Airen, Benin, Lagos)..."
+                value={restockPartnerSearch}
+                onChange={(e) => setRestockPartnerSearch(e.target.value)}
+              />
+              {restockPartnerSearch && (
+                <button
+                  type="button"
+                  onClick={() => setRestockPartnerSearch('')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 13 }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className={styles.partnerFilterPills}>
+              {[
+                { id: 'all', label: 'All Wholesalers & Depots' },
+                { id: 'benin', label: '📍 Benin City / Edo State' },
+                { id: 'tier1', label: '★ Premier Tier-1 Partners' },
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  className={`${styles.partnerPill} ${restockRegionFilter === pill.id ? styles.partnerPillActive : ''}`}
+                  onClick={() => setRestockRegionFilter(pill.id)}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            {/* PREMIER FEATURED TIER-1 CARD: AIREN PHARMACY & WHOLESALE DEPOT */}
+            <div className={styles.premierFeaturedCard}>
+              <div className={styles.premierTierTag}>
+                <Sparkles size={13} />
+                <span>Premier Tier-1 Verified Partner</span>
+              </div>
+
+              <div className={styles.premierMainRow}>
+                <div className={styles.premierLogoAvatar}>
+                  <span>A</span>
+                  <span className={styles.premierLogoSubtitle}>DEPOT</span>
+                </div>
+
+                <div className={styles.premierInfoCol}>
+                  <div className={styles.premierNameRow}>
+                    <h3 className={styles.premierWholesalerName}>Airen Pharmacy & Wholesale Depot</h3>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
+                      ★ 4.98 Rating · 14,200+ Wholesale Orders
+                    </span>
+                  </div>
+
+                  <div className={styles.premierLocationRow}>
+                    <MapPin size={15} color="#059669" />
+                    <span>154 Forestry Road / New Benin Commercial Depot Hub · Benin City, Edo State</span>
+                  </div>
+
+                  {/* 3 Core Badges explicitly required */}
+                  <div className={styles.premierBadgesList}>
+                    <span className={styles.badgeWholesaler}>
+                      <ShieldCheck size={14} />
+                      Verified Wholesaler
+                    </span>
+                    <span className={styles.badgeDispatch}>
+                      <Truck size={14} />
+                      Same-Day Benin Dispatch
+                    </span>
+                    <span className={styles.badgeCategories}>
+                      <Layers size={14} />
+                      18+ Live Categories
+                    </span>
+                  </div>
+
+                  <p className={styles.premierDescText}>
+                    Premier Tier-1 authorized distributor providing bulk pharmaceutical supply, verified cold-chain biologics, 
+                    and direct manufacturer trade pricing across Edo State and South-South Nigeria. Direct partner integration 
+                    enables instantaneous digital stock allocation and prioritized dispatch.
+                  </p>
+                </div>
+              </div>
+
+              {/* Specs Grid */}
+              <div className={styles.premierDetailsGrid}>
+                <div className={styles.premierDetailItem}>
+                  <span className={styles.premierDetailLabel}>Depot Coverage</span>
+                  <span className={styles.premierDetailValue}>Benin City, Ekpoma, Auchi, Warri, Asaba</span>
+                </div>
+                <div className={styles.premierDetailItem}>
+                  <span className={styles.premierDetailLabel}>Live Inventory</span>
+                  <span className={styles.premierDetailValue}>4,200+ Active Wholesale SKUs</span>
+                </div>
+                <div className={styles.premierDetailItem}>
+                  <span className={styles.premierDetailLabel}>Minimum Order</span>
+                  <span className={styles.premierDetailValue} style={{ color: '#059669' }}>No MOQ for Network Pharmacies</span>
+                </div>
+              </div>
+
+              {/* Action Buttons & Transitions */}
+              <div className={styles.premierActionRow}>
+                <div className={styles.premierDispatchNote}>
+                  <Clock size={16} />
+                  <span>Orders placed before 1:00 PM dispatched same-day across Benin City</span>
+                </div>
+
+                <div className={styles.premierActionButtons}>
+                  <a
+                    href="tel:+2348033458891"
+                    className={styles.btnAirenSecondary}
+                    title="Direct phone dispatch line"
+                  >
+                    <Phone size={15} />
+                    <span>Call Depot</span>
+                  </a>
+                  
+                  {/* Clicking Airen transitions directly to https://demo.airen.psx.ng or /p/demo.airen */}
+                  <button
+                    type="button"
+                    className={styles.btnAirenPrimary}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        router.push('/p/demo.airen');
+                      }
+                    }}
+                  >
+                    <span>Open Airen Wholesale Depot</span>
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Other Verified Wholesalers (if search or filter matches) */}
+            {filteredWholesalers.filter(w => !w.isPremierTier1).length > 0 && (
+              <div className={styles.otherWholesalersGrid}>
+                {filteredWholesalers.filter(w => !w.isPremierTier1).map(wholesaler => (
+                  <div key={wholesaler.id} className={styles.wholesalerCard}>
+                    <div className={styles.wholesalerCardHeader}>
+                      <div>
+                        <h4 className={styles.wholesalerCardTitle}>{wholesaler.name}</h4>
+                        <div className={styles.wholesalerCardLoc}>
+                          <MapPin size={13} />
+                          <span>{wholesaler.location}</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: 6 }}>
+                        Verified Partner
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.5 }}>
+                      {wholesaler.description}
+                    </p>
+
+                    <div className={styles.wholesalerCardBadges}>
+                      {wholesaler.badges.map((b, i) => (
+                        <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, background: '#F3F4F6', color: '#374151' }}>
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #F3F4F6' }}>
+                      <span style={{ fontSize: 12, color: '#6B7280' }}>{wholesaler.leadTime}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            router.push(wholesaler.path);
+                          }
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#059669',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        <span>View Catalog</span>
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              DUAL GRID: OPTION 2 & OPTION 3
+             ═══════════════════════════════════════════════════════════════════ */}
+          <div className={styles.restockDualGrid}>
+
+            {/* OPTION 2: "BROWSE WHOLESALE CATALOG" */}
+            <div className={styles.catalogExploreCard}>
+              <div>
+                <span className={styles.catalogCardBadge}>Option 2 · Nationwide Exploration</span>
+                <h3 className={styles.catalogCardTitle}>Browse Wholesale Catalog</h3>
+                <p className={styles.catalogCardDesc}>
+                  Explore and compare certified wholesale inventories across accredited pharmaceutical distributors and manufacturers throughout Nigeria.
+                </p>
+
+                <div className={styles.catalogFeaturesList}>
+                  <div className={styles.catalogFeatureItem}>
+                    <div className={styles.catalogFeatureIcon}><Boxes size={14} /></div>
+                    <span>40,000+ Unified SKUs from verified Nigerian distributors</span>
+                  </div>
+                  <div className={styles.catalogFeatureItem}>
+                    <div className={styles.catalogFeatureIcon}><Percent size={14} /></div>
+                    <span>Automated pack, carton & master container volume breaks</span>
+                  </div>
+                  <div className={styles.catalogFeatureItem}>
+                    <div className={styles.catalogFeatureIcon}><Truck size={14} /></div>
+                    <span>Cold-chain temperature tracking for insulin & biologics</span>
+                  </div>
+                  <div className={styles.catalogFeatureItem}>
+                    <div className={styles.catalogFeatureIcon}><ShieldCheck size={14} /></div>
+                    <span>NAFDAC genuine batch verification on every trade line</span>
+                  </div>
+                </div>
+
+                <div className={styles.catalogCategoryPillsRow}>
+                  {['Antibiotics', 'Antimalarials', 'Infusions', 'Cardiovascular', 'Pain Relief', 'Surgicals'].map((cat) => (
+                    <span key={cat} className={styles.catalogCatChip}>{cat}</span>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className={styles.btnBrowseCatalog}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    router.push('/p/demo.airen');
+                  }
+                }}
+              >
+                <span>Browse Nationwide Wholesale Catalog</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+
+            {/* OPTION 3: "UPLOAD / SMART RESTOCK LIST" */}
+            <div className={styles.smartUploadCard}>
+              <span className={styles.uploadCardBadge}>Option 3 · AI Price Matching</span>
+              <h3 className={styles.uploadCardTitle}>Upload / Smart Restock List</h3>
+              <p className={styles.uploadCardDesc}>
+                Upload your weekly restock list (Excel/PDF/Snap Photo) - AI will match prices from verified wholesalers.
+              </p>
+
+              {/* Interactive Drop Area */}
+              <input
+                type="file"
+                ref={restockFileInputRef}
+                style={{ display: 'none' }}
+                accept=".xlsx,.xls,.csv,.pdf,image/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleRestockFileSelect(e.target.files[0]);
+                  }
+                }}
+              />
+
+              <div
+                className={styles.uploadDropArea}
+                onClick={() => restockFileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleRestockFileSelect(e.dataTransfer.files[0]);
+                  }
+                }}
+              >
+                <div className={styles.uploadDropIcon}>
+                  {isProcessingAiMatch ? (
+                    <Sparkles className="animate-spin" size={24} />
+                  ) : (
+                    <UploadCloud size={26} />
+                  )}
+                </div>
+                <div className={styles.uploadDropPrompt}>
+                  {isProcessingAiMatch
+                    ? 'AI is analyzing lines & matching depot rates...'
+                    : uploadedRestockFile
+                    ? `File selected: ${uploadedRestockFile.name}`
+                    : 'Drag & Drop your restock file or Click to Browse'}
+                </div>
+                <div className={styles.uploadDropFormats}>
+                  Supports Excel (.xlsx, .csv), PDF Invoices, or Camera Snap Photo
+                </div>
+              </div>
+
+              {/* Matched AI Results Preview */}
+              {matchedResults && (
+                <div className={styles.matchedResultsCard}>
+                  <div className={styles.matchedHeaderRow}>
+                    <span>✓ AI Matched 4 Products with Airen Wholesale Depot</span>
+                    <span>Saved ₦356,500 Total</span>
+                  </div>
+                  <div className={styles.matchedItemList}>
+                    {matchedResults.map((res, idx) => (
+                      <div key={idx} className={styles.matchedItemRow}>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#111827' }}>{res.drug}</div>
+                          <div style={{ fontSize: 11, color: '#6B7280' }}>
+                            {res.qty} × {res.packForm} · {res.status}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, color: '#059669' }}>{res.wholesaleRate}</div>
+                          <div style={{ fontSize: 10, color: '#047857', fontWeight: 600 }}>{res.savingStr}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={styles.btnSubmitRestockPO}
+                onClick={() => {
+                  if (matchedResults) {
+                    if (typeof window !== 'undefined') {
+                      router.push('/p/demo.airen');
+                    }
+                  } else {
+                    restockFileInputRef.current?.click();
+                  }
+                }}
+              >
+                {matchedResults ? (
+                  <>
+                    <span>Proceed to Consolidated Order (Airen Depot)</span>
+                    <ArrowRight size={16} />
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={16} />
+                    <span>Upload Restock List for AI Price Match</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className={styles.footer}>

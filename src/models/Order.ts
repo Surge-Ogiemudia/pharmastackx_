@@ -38,6 +38,15 @@ export interface IOrder extends Document {
   partnerMarkupAmount?: number;
   partnerSettlementStatus?: 'pending' | 'settled';
   status: 'Pending' | 'Accepted' | 'Dispatched' | 'In Transit' | 'Completed' | 'Cancelled';
+  paymentMethod?: string;
+  paymentReference?: string;
+  isB2B?: boolean;
+  buyerPharmacyName?: string;
+  buyerPcnLicense?: string;
+  sellerDepotName?: string;
+  distanceKm?: number;
+  estimatedTransitTime?: string;
+  waybillNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +60,7 @@ const OrderSchema: Schema<IOrder> = new Schema({
     image: { type: String },
     isQuoteItem: { type: Boolean, default: false },
     pharmacy: { type: String },
+    packForm: { type: String },
   }],
   patientName: { type: String, required: true },
   patientAge: { type: String },
@@ -90,6 +100,15 @@ const OrderSchema: Schema<IOrder> = new Schema({
     enum: ['pending', 'settled'], 
     default: 'pending' 
   },
+  paymentMethod: { type: String, default: 'paystack' },
+  paymentReference: { type: String },
+  isB2B: { type: Boolean, default: false },
+  buyerPharmacyName: { type: String },
+  buyerPcnLicense: { type: String },
+  sellerDepotName: { type: String },
+  distanceKm: { type: Number },
+  estimatedTransitTime: { type: String },
+  waybillNumber: { type: String, index: true },
   status: { 
     type: String, 
     required: true, 
