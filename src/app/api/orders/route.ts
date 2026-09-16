@@ -6,6 +6,7 @@ import User from '@/models/User';
 import Partner from '@/models/Partner';
 import jwt from 'jsonwebtoken';
 import { triggerNewOrder } from '@/lib/pusher';
+import { createConciergeSession } from '@/lib/concierge';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
@@ -111,7 +112,8 @@ export async function POST(req: NextRequest) {
     requestId, quoteId, sfcAmount, partnerSlug,
     courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken,
     paymentMethod, paymentReference, isB2B, buyerPharmacyName, buyerPcnLicense,
-    sellerDepotName, distanceKm, estimatedTransitTime, waybillNumber
+    sellerDepotName, distanceKm, estimatedTransitTime, waybillNumber,
+    deliveryLat, deliveryLng
   } = body;
 
   // If not logged in, allow guest checkout if partnerSlug or delivery contact is provided
@@ -215,6 +217,16 @@ export async function POST(req: NextRequest) {
 
     const newOrder = new Order(orderData);
     await newOrder.save();
+
+    // Trigger WhatsApp ChatOps for Bubblegum Concierge
+    if (resolvedPartnerSlug === 'bubblegum' && deliveryLat && deliveryLng) {
+      try {
+        await createConciergeSession(newOrder, Number(deliveryLat), Number(deliveryLng));
+        console.log(`[Concierge] Triggered successfully for order ${newOrder._id}`);
+      } catch (err: any) {
+        console.error(`[Concierge] Error triggering session:`, err?.message);
+      }
+    }
 
     // If linked to a request, update the request status
     if (requestId && requestId.length === 24) {

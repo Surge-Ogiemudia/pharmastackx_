@@ -317,6 +317,9 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
   const [deliveryPhone, setDeliveryPhone] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('psx_checkout_phone') || '' : ''));
   const [deliveryEmail, setDeliveryEmail] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('psx_checkout_email') || '' : ''));
   const [deliveryAddress, setDeliveryAddress] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('psx_checkout_address') || '' : ''));
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [deliveryCity, setDeliveryCity] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('psx_checkout_city') || '' : ''));
   const [deliveryState, setDeliveryState] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('psx_checkout_state') || '' : ''));
 
@@ -572,6 +575,8 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       patientCondition: b2bMode ? 'B2B Wholesale Pharmacy Restocking Order' : patientCondition,
       deliveryEmail: b2bMode ? currentPharmacy.email : deliveryEmail,
       deliveryPhone: b2bMode ? currentPharmacy.phone : deliveryPhone,
+      deliveryLat,
+      deliveryLng,
       deliveryCity: b2bMode ? currentPharmacy.city : deliveryCity,
       deliveryState: b2bMode ? currentPharmacy.state : deliveryState,
       items: itemsForBackend,
@@ -716,6 +721,28 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       router.replace(window.location.pathname, { scroll: false });
     }
   }, [user, items, b2bMode, selectedDemoPharmacyId, b2bDeliveryMethodId, patientName, patientAge, patientCondition, deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState, activePromo, deliveryOption, actualOrderType, uniquePharmacies, requestId, quoteId, addOrder, clearCart, removePromo, router, selectedCourier, deliveryFee, requestToken, searchParams, total, setView]);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        setDeliveryLat(position.coords.latitude);
+        setDeliveryLng(position.coords.longitude);
+        setDeliveryAddress(`[GPS: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}]`);
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error("Error getting location", error);
+        alert("Unable to retrieve your location. Please type your address.");
+        setIsGettingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const handleSimulateBankTransfer = async () => {
     setIsSimulatingTransfer(true);
@@ -1216,13 +1243,35 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
                   <div style={{fontSize: 12, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5}}>
                     Delivery Destination
                   </div>
-                  <input 
-                    className="co-address-field" 
-                    type="text" 
-                    placeholder="Street address (e.g. 15 Admiralty Way, Lekki Phase 1)" 
-                    value={deliveryAddress} 
-                    onChange={e => setDeliveryAddress(e.target.value)} 
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input 
+                      className="co-address-field" 
+                      style={{ flex: 1, paddingRight: '140px' }}
+                      type="text" 
+                      placeholder="Street address (e.g. 15 Admiralty Way, Lekki Phase 1)" 
+                      value={deliveryAddress} 
+                      onChange={e => setDeliveryAddress(e.target.value)} 
+                    />
+                    <button
+                      onClick={handleGetLocation}
+                      disabled={isGettingLocation}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--green)',
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {isGettingLocation ? '📍 Locating...' : '📍 Use My Location'}
+                    </button>
+                  </div>
                   <div style={{display: 'flex', gap: 10}}>
                     <input className="co-address-field" style={{flex: 1}} type="text" placeholder="City (e.g. Lekki / Ikeja / Benin)" value={deliveryCity} onChange={e => setDeliveryCity(e.target.value)} />
                     <input className="co-address-field" style={{flex: 1}} type="text" placeholder="State (e.g. Lagos / Edo)" value={deliveryState} onChange={e => setDeliveryState(e.target.value)} />

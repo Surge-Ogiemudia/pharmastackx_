@@ -697,6 +697,27 @@ export async function POST(req: NextRequest) {
             }
 
             for (const msg of messages) {
+                // --- CONCIERGE INTERCEPT ---
+                const ADMIN_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER || '2349050006638';
+                const fromPhone = msg.from ? msg.from.split('@')[0] : '';
+                
+                if (fromPhone === ADMIN_NUMBER && msg.type === 'text' && msg.text?.body) {
+                    const text = msg.text.body.trim();
+                    // Match "1", "2", "3", or "1 0905000066"
+                    const match = text.match(/^([1-5])(?:\s+([\d\s\+\-]+))?$/);
+                    if (match) {
+                        try {
+                            const { handleConciergeReply } = await import('@/lib/conciergeWebhookHelper');
+                            const result = await handleConciergeReply(match[1], match[2] || null);
+                            console.log('[Concierge Webhook] Processed admin reply:', result);
+                            continue; // Skip the rest of the generic bot logic
+                        } catch (err: any) {
+                            console.error('[Concierge Webhook] Error:', err?.message);
+                        }
+                    }
+                }
+                // ---------------------------
+
                 // 0. Ignore old backlogged messages
                 if (msg.timestamp && msg.timestamp < FIVE_MINUTES_AGO) {
                     console.log(`⌛ Skipping backlogged message: ${msg.id}`);
