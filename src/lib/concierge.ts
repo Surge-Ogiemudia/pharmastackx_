@@ -16,6 +16,26 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     return R * c; // Distance in km
 }
 
+export async function geocodeAddress(addressStr: string): Promise<{ lat: number, lng: number } | null> {
+    try {
+        const query = encodeURIComponent(addressStr);
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
+        const res = await axios.get(url, {
+            headers: { 'User-Agent': 'Pharmastackx-App/1.0 (Business Routing)' }
+        });
+        if (res.data && res.data.length > 0) {
+            return {
+                lat: parseFloat(res.data[0].lat),
+                lng: parseFloat(res.data[0].lon)
+            };
+        }
+        return null;
+    } catch (err) {
+        console.error('[Geocoder] Failed to geocode address:', err);
+        return null;
+    }
+}
+
 export async function findClosestPharmacies(lat: number, lng: number, limit = 5) {
     // 1. We fetch all active concierge pharmacies (or use $near if index is ready)
     // For MVP with 420 items, fetching all and sorting in JS is extremely fast and avoids 2dsphere index sync issues.
