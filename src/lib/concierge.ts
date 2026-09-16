@@ -18,20 +18,32 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export async function geocodeAddress(addressStr: string): Promise<{ lat: number, lng: number } | null> {
     try {
-        const query = encodeURIComponent(addressStr);
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
-        const res = await axios.get(url, {
+        let query = encodeURIComponent(addressStr);
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
+        let res = await axios.get(url, {
             headers: { 'User-Agent': 'Pharmastackx-App/1.0 (Business Routing)' }
         });
+        
+        if (!res.data || res.data.length === 0) {
+            // Fallback: The user might have typed a mismatched city (e.g. Admiralty Way, Ikeja). Try just the street + Nigeria
+            const street = addressStr.split(',')[0].trim();
+            query = encodeURIComponent(`${street}, Lagos, Nigeria`);
+            url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}`;
+            res = await axios.get(url, {
+                headers: { 'User-Agent': 'Pharmastackx-App/1.0 (Business Routing)' }
+            });
+        }
+
         if (res.data && res.data.length > 0) {
             return {
                 lat: parseFloat(res.data[0].lat),
                 lng: parseFloat(res.data[0].lon)
             };
         }
+        console.warn(`[Geocoder] API returned zero results for: ${addressStr}`);
         return null;
-    } catch (err) {
-        console.error('[Geocoder] Failed to geocode address:', err);
+    } catch (err: any) {
+        console.error('[Geocoder] Failed to geocode address:', err.message);
         return null;
     }
 }
