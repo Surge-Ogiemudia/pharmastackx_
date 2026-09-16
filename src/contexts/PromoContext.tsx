@@ -96,6 +96,18 @@ export const PromoProvider: React.FC<PromoProviderProps> = ({ children }) => {
       maxUses: 5,
       expiryDate: '2025-12-31',
       minOrderAmount: 100
+    },
+    {
+      id: 5,
+      code: 'BYPASS',
+      type: 'percentage',
+      discount: 0, // Doesn't reduce price, just triggers the bypass check
+      description: 'Developer Bypass Code (Skips Paystack)',
+      isActive: true,
+      usageCount: 0,
+      maxUses: 1000,
+      expiryDate: '2026-12-31',
+      minOrderAmount: 0
     }
   ]);
   
