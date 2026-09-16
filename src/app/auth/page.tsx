@@ -1057,18 +1057,47 @@ export default function AuthPage() {
       exit={{ opacity: 0, x: 20 }}
       style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
     >
-        {/* Back Button */}
+        {/* Top Bar: Back Button & Sign In Link */}
         <Box 
           component={motion.div} 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
-          onClick={() => setStep('role')}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
         >
-          <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
-            <ArrowBackIcon sx={{ fontSize: 16 }} />
+          <Box 
+            onClick={() => setStep('role')}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+          >
+            <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
+              <ArrowBackIcon sx={{ fontSize: 16 }} />
+            </Box>
+            <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 500 }}>I am a...</Typography>
           </Box>
-          <Typography sx={{ fontSize: 12, color: '#888', fontWeight: 500 }}>I am a...</Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+            <Typography sx={{ fontSize: 12, color: '#888' }}>
+              Already have an account?
+            </Typography>
+            <Box 
+              component="span" 
+              onClick={() => setStep('sign-in')} 
+              sx={{ 
+                color: '#1E40AF', 
+                fontWeight: 700, 
+                fontSize: 12,
+                cursor: 'pointer', 
+                transition: 'all 0.2s', 
+                py: 0.5, 
+                px: 1.5, 
+                border: '1.5px solid #1E40AF', 
+                borderRadius: '8px', 
+                bgcolor: 'rgba(30,64,175,0.04)',
+                '&:hover': { bgcolor: 'rgba(30,64,175,0.12)' } 
+              }}
+            >
+              Sign in
+            </Box>
+          </Box>
         </Box>
 
         {/* Progress Bar (Medical Rep) */}
@@ -1281,12 +1310,6 @@ export default function AuthPage() {
                     >
                         {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Create medical rep account'}
                     </Box>
-                </Box>
-
-                <Box component={motion.div} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} sx={{ textAlign: 'center', mt: 1, mb: 2 }}>
-                    <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                        Already have an account? <Box component="span" onClick={() => setStep('sign-in')} sx={{ color: '#1E40AF', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', ml: 0.5, py: 0.5, px: 1.5, border: '1px solid #1E40AF', borderRadius: '8px', '&:hover': { bgcolor: 'rgba(30,64,175,0.08)' } }}>Sign in</Box>
-                    </Typography>
                 </Box>
             </Box>
         </Box>
