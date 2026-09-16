@@ -26,8 +26,13 @@ export default function AuthPage() {
   const { refreshSession } = useSession();
   
   // State machine for onboarding flow
+  const roleParam = searchParams?.get('role');
   const claimSlug = searchParams?.get('claim_slug');
-  const initialStep = claimSlug ? 'pharmacy-owner-signup' : (searchParams?.get('mode') === 'login' ? 'sign-in' : 'role');
+  const initialStep = claimSlug 
+    ? 'pharmacy-owner-signup' 
+    : (roleParam === 'medical_rep'
+        ? (searchParams?.get('mode') === 'login' ? 'sign-in' : 'medical-rep-signup')
+        : (searchParams?.get('mode') === 'login' ? 'sign-in' : 'role'));
   const [step, setStep] = useState(initialStep as any);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -64,6 +69,14 @@ export default function AuthPage() {
     }
     return () => clearInterval(interval);
   }, [resetTimer]);
+
+  useEffect(() => {
+    const role = searchParams?.get('role');
+    const mode = searchParams?.get('mode');
+    if (role === 'medical_rep' && !claimSlug) {
+      setStep(mode === 'login' ? 'sign-in' : 'medical-rep-signup');
+    }
+  }, [searchParams, claimSlug]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
