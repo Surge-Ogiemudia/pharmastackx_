@@ -1237,3 +1237,911 @@
     font-size: 13px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUB-TABS NAVIGATION (EMERGENCY SOURCING VS MEDICINE RESTOCK)
+   ═══════════════════════════════════════════════════════════════════ */
+.subTabNavWrapper {
+  background: var(--white);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px 24px;
+  position: sticky;
+  top: 64px;
+  z-index: 90;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.subTabNavInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.subTabBtn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+  outline: none;
+}
+
+.subTabBtn:hover {
+  border-color: rgba(15, 110, 86, 0.3);
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.subTabBtnActive {
+  background: #ffffff !important;
+  border-color: var(--green) !important;
+  box-shadow: 0 4px 16px rgba(15, 110, 86, 0.12) !important;
+}
+
+.subTabBtnIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.subTabBtnIconWrapRestock {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(15, 110, 86, 0.12);
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.subTabBtnActive .subTabBtnIconWrapRestock {
+  background: var(--green);
+  color: #ffffff;
+}
+
+.subTabBtnActive .subTabBtnIconWrap {
+  background: #D97706;
+  color: #ffffff;
+}
+
+.subTabBtnTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.subTabBtnTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.subTabBtnTitle {
+  font-family: 'Geist', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.subTabBadgeEmergency {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #B45309;
+}
+
+.subTabBadgeRestock {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(15, 110, 86, 0.12);
+  color: var(--green);
+}
+
+.subTabBtnDesc {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MEDICINE RESTOCK B2B WHOLESALE UI
+   ═══════════════════════════════════════════════════════════════════ */
+.restockContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+/* Hero Section */
+.restockHero {
+  background: linear-gradient(135deg, #07261E 0%, #0F6E56 60%, #164E63 100%);
+  border-radius: 20px;
+  padding: 40px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(7, 38, 30, 0.18);
+  margin-bottom: 32px;
+}
+
+.restockHeroPattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.restockHeroContent {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+}
+
+.restockEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6EE7B7;
+  background: rgba(110, 231, 183, 0.15);
+  padding: 4px 12px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+
+.restockHeroTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1.15;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.restockHeroTitle em {
+  font-style: italic;
+  color: #A7F3D0;
+}
+
+.restockHeroSub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 24px;
+}
+
+.restockStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.restockStatCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.restockStatVal {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.restockStatLbl {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* ── OPTION 1: PREMIER FEATURED PARTNER CARD (AIREN) ── */
+.restockSection {
+  margin-bottom: 40px;
+}
+
+.restockSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.restockSectionTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.restockSectionBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.restockSectionTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.restockSectionSubtitle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.premierFeaturedCard {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 2px solid #10B981;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.premierFeaturedCard:hover {
+  box-shadow: 0 16px 40px rgba(16, 185, 129, 0.14);
+  transform: translateY(-2px);
+}
+
+.premierTierTag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 18px;
+  border-bottom-left-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.premierMainRow {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.premierLogoAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #047857 0%, #065F46 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 900;
+  box-shadow: 0 6px 16px rgba(4, 120, 87, 0.25);
+  flex-shrink: 0;
+}
+
+.premierLogoSubtitle {
+  font-size: 8px;
+  font-family: 'Geist', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-top: -2px;
+}
+
+.premierInfoCol {
+  flex: 1;
+}
+
+.premierNameRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.premierWholesalerName {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.premierLocationRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #4B5563;
+  margin-bottom: 12px;
+}
+
+/* 3 Core Badges */
+.premierBadgesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.badgeWholesaler {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.badgeDispatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #EFF6FF;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+
+.badgeCategories {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #FAF5FF;
+  color: #6B21A8;
+  border: 1px solid #E9D5FF;
+}
+
+.premierDescText {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.premierDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  background: var(--paper);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.premierDetailItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.premierDetailLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.premierDetailValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.premierActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.premierDispatchNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #065F46;
+  font-weight: 600;
+}
+
+.premierActionButtons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btnAirenPrimary {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-family: 'Geist', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  text-decoration: none;
+}
+
+.btnAirenPrimary:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.35);
+  color: #ffffff;
+}
+
+.btnAirenSecondary {
+  background: transparent;
+  color: #374151;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-family: 'Geist', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btnAirenSecondary:hover {
+  background: var(--paper);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* ── SEARCH BAR FOR WHOLESALERS ── */
+.partnerSearchBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.partnerSearchBar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Geist', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: transparent;
+}
+
+.partnerFilterPills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 24px;
+}
+
+.partnerPill {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4B5563;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.partnerPill:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.partnerPillActive {
+  background: var(--green) !important;
+  color: #ffffff !important;
+  border-color: var(--green) !important;
+}
+
+/* ── OTHER VERIFIED WHOLESALERS GRID ── */
+.otherWholesalersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.wholesalerCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.wholesalerCard:hover {
+  border-color: rgba(15, 110, 86, 0.3);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.wholesalerCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wholesalerCardTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.wholesalerCardLoc {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.wholesalerCardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── OPTION 2 & OPTION 3: LOWER SECTION ── */
+.restockDualGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 40px;
+}
+
+/* Option 2: Wholesale Catalog Card */
+.catalogExploreCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.catalogCardBadge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #2563EB;
+  background: #EFF6FF;
+  padding: 3px 10px;
+  border-radius: 100px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.catalogCardTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.catalogCardDesc {
+  font-size: 13px;
+  color: #4B5563;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.catalogFeaturesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.catalogFeatureItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.catalogFeatureIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #EFF6FF;
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.catalogCategoryPillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.catalogCatChip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--paper);
+  color: #4B5563;
+  font-weight: 600;
+}
+
+.btnBrowseCatalog {
+  background: #1E40AF;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btnBrowseCatalog:hover {
+  background: #1D4ED8;
+}
+
+/* Option 3: Upload / Smart Restock Card */
+.smartUploadCard {
+  background: #ffffff;
+  border: 1.5px dashed #10B981;
+  border-radius: 20px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.04);
+}
+
+.uploadCardBadge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #059669;
+  background: #ECFDF5;
+  padding: 3px 10px;
+  border-radius: 100px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.uploadCardTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.uploadCardDesc {
+  font-size: 13px;
+  color: #4B5563;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+.uploadDropArea {
+  border: 2px dashed rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.03);
+  border-radius: 14px;
+  padding: 28px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 18px;
+}
+
+.uploadDropArea:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10B981;
+}
+
+.uploadDropIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #ECFDF5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.uploadDropPrompt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.uploadDropFormats {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.matchedResultsCard {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.matchedHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.matchedItemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.matchedItemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.btnSubmitRestockPO {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btnSubmitRestockPO:hover {
+  background: #047857;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE ADJUSTMENTS
+   ═══════════════════════════════════════════════════════════════════ */
+@media(max-width: 800px) {
+  .subTabNavInner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .restockStatsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .premierMainRow {
+    flex-direction: column;
+  }
+  .premierDetailsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .otherWholesalersGrid {
+    grid-template-columns: 1fr;
+  }
+  .restockDualGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+

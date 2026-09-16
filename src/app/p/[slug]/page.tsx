@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import FindMedicinesContent from '@/components/FindMedicinesContent';
 import BubblegumStorefront from '@/components/BubblegumStorefront';
+import AirenB2BStorefront from '@/components/AirenB2BStorefront';
 import ConfirmOrderContent from '@/components/ConfirmOrderContent';
 import BubblegumOrders from '@/components/BubblegumOrders';
 
@@ -58,6 +59,10 @@ function PartnerStorefrontInner() {
 
   if (slug === 'bubblegum' || slug === 'bubblegumhealth') {
     return <BubblegumStorefront partnerSlug={slug} setView={handleSetView} />;
+  }
+
+  if (slug === 'demo.airen' || slug === 'airen' || slug === 'airenpharmacy' || slug.includes('airen')) {
+    return <AirenB2BStorefront partnerSlug={slug} setView={handleSetView} />;
   }
 
   return <FindMedicinesContent partnerSlug={slug} setView={handleSetView} />;

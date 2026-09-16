@@ -832,6 +832,28 @@ function DashboardContent() {
           </div>
         </div>
 
+        {/* AIREN WHOLESALE HUB QUICK-SWITCH BANNER */}
+        {slug.toLowerCase().includes('airen') && (
+          <div className="bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 text-white px-4 py-3 shadow-sm border-t border-b border-emerald-700/60">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded-md bg-emerald-500 text-slate-950 font-bold text-[10px] uppercase tracking-wider">
+                  Depot Fulfillment Hub
+                </span>
+                <span className="font-medium text-emerald-100">
+                  Switch to the dedicated <strong>Airen Wholesale Fulfillment Hub (Benin Depot)</strong> for live orders, picking slips, and dispatch management.
+                </span>
+              </div>
+              <a
+                href="/airen-dashboard"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold rounded-xl transition shadow-xs whitespace-nowrap"
+              >
+                <span>Open Airen Wholesale Hub ➔</span>
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* NAVIGATION TABS */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 border-t border-slate-100 overflow-x-auto">
           <button

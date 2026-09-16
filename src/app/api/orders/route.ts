@@ -109,11 +109,13 @@ export async function POST(req: NextRequest) {
     deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
     items, coupon, deliveryOption, orderType, businesses,
     requestId, quoteId, sfcAmount, partnerSlug,
-    courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken
+    courierName, courierId, courierLogo, deliveryFee, shipbubbleRequestToken,
+    paymentMethod, paymentReference, isB2B, buyerPharmacyName, buyerPcnLicense,
+    sellerDepotName, distanceKm, estimatedTransitTime, waybillNumber
   } = body;
 
   // If not logged in, allow guest checkout if partnerSlug or delivery contact is provided
-  if (!session && !partnerSlug && !deliveryEmail) {
+  if (!session && !partnerSlug && !deliveryEmail && !buyerPharmacyName) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
@@ -122,7 +124,7 @@ export async function POST(req: NextRequest) {
     // Calculate total amount if not provided or to verify
     const totalAmount = (items || []).reduce((sum: number, item: any) => {
         const price = Number(item.price) || 0;
-        const qty = Number(item.qty) || 0;
+        const qty = Number(item.qty || item.quantity) || 0;
         return sum + (price * qty);
     }, 0);
 
@@ -142,7 +144,7 @@ export async function POST(req: NextRequest) {
             const itemId = String(item.id || item._id || item.productId || '');
             const itemPct = productMarkupsMap[itemId] !== undefined ? Number(productMarkupsMap[itemId]) : defaultPct;
             const price = Number(item.price) || 0;
-            const qty = Number(item.qty) || 0;
+            const qty = Number(item.qty || item.quantity) || 0;
             const itemTotal = price * qty;
             // Retail price includes the markup: retail = base * (1 + pct / 100) -> markup = retail * (pct / (100 + pct))
             const itemProfit = itemPct > 0 ? Math.round(itemTotal * (itemPct / (100 + itemPct))) : 0;
@@ -160,13 +162,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const generatedWaybill = waybillNumber || (isB2B ? `AIR-WB-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}` : undefined);
+
+    const formattedItems = (items || []).map((item: any) => ({
+      name: item.name,
+      price: Number(item.price) || 0,
+      qty: Number(item.qty || item.quantity) || 1,
+      image: item.image,
+      isQuoteItem: !!item.isQuoteItem,
+      pharmacy: item.pharmacy,
+      packForm: item.packForm || item.pack || undefined,
+    }));
+
     const orderData = {
       user: session?.userId || undefined,
-      patientName, patientAge, patientCondition,
-      deliveryEmail, deliveryPhone, deliveryAddress, deliveryCity, deliveryState,
-      items: items || [],
-      coupon, deliveryOption, orderType, 
-      businesses: businesses || [],
+      patientName: patientName || buyerPharmacyName || 'B2B Client', 
+      patientAge, 
+      patientCondition,
+      deliveryEmail, 
+      deliveryPhone, 
+      deliveryAddress, 
+      deliveryCity, 
+      deliveryState,
+      items: formattedItems,
+      coupon, 
+      deliveryOption, 
+      orderType: orderType || (isB2B ? 'S' : 'MN'), 
+      businesses: businesses || (sellerDepotName ? [sellerDepotName] : []),
       totalAmount,
       sfcAmount: sfcAmount || 0,
       deliveryFee: deliveryFee || 0,
@@ -179,7 +201,16 @@ export async function POST(req: NextRequest) {
       partnerSlug: resolvedPartnerSlug,
       partnerMarkupAmount,
       partnerSettlementStatus: 'pending',
-      status: 'Pending'
+      paymentMethod: paymentMethod || 'paystack',
+      paymentReference: paymentReference || undefined,
+      isB2B: !!isB2B,
+      buyerPharmacyName: buyerPharmacyName || undefined,
+      buyerPcnLicense: buyerPcnLicense || undefined,
+      sellerDepotName: sellerDepotName || (isB2B ? 'Airen Wholesale Depot' : undefined),
+      distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
+      estimatedTransitTime: estimatedTransitTime || undefined,
+      waybillNumber: generatedWaybill,
+      status: paymentReference ? 'Accepted' : 'Pending'
     };
 
     const newOrder = new Order(orderData);
