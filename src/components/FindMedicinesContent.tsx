@@ -10,6 +10,7 @@ import { useSession } from '@/context/SessionProvider';
 import styles from '../app/find-medicines/FindMedicines.module.css';
 import BubblegumStorefront from './BubblegumStorefront';
 import AirenB2BStorefront from './AirenB2BStorefront';
+import AirenStorefront from './AirenStorefront';
 import {
   Zap,
   Boxes,
@@ -614,16 +615,19 @@ export default function FindMedicinesContent({
 
   if (
     slug === 'demo.airen' ||
-    slug === 'airen' ||
-    slug === 'airenpharmacy' ||
-    (slug && slug.includes('airen')) ||
     partnerSlug === 'demo.airen' ||
-    partnerSlug === 'airen' ||
-    (partnerSlug && partnerSlug.includes('airen')) ||
-    partnerDetails?.slug === 'demo.airen' ||
-    partnerDetails?.slug === 'airen'
+    partnerDetails?.slug === 'demo.airen'
   ) {
     return <AirenB2BStorefront partnerSlug={partnerSlug || slug || 'demo.airen'} setView={setView} />;
+  }
+
+  if (
+    slug === 'airen' ||
+    slug === 'airenpharmacy' ||
+    partnerSlug === 'airen' ||
+    partnerDetails?.slug === 'airen'
+  ) {
+    return <AirenStorefront partnerSlug={partnerSlug || slug || 'airen'} setView={setView} />;
   }
 
   const filteredWholesalers = VERIFIED_WHOLESALERS.filter(w => {

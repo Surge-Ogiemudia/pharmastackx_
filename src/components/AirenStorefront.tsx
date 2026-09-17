@@ -1,0 +1,897 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/contexts/CartContext';
+
+interface AirenStorefrontProps {
+  partnerSlug?: string;
+  setView?: (view: string) => void;
+}
+
+// Clean packshot image renderer with graceful fallback to a stylish stylized pill/capsule badge
+function ProductImageWithFallback({
+  src,
+  alt,
+  category,
+  className = "w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105",
+  containerClassName = "relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors",
+  iconSize = "w-6 h-6",
+  badgeSize = "w-12 h-12",
+  showLabel = true,
+}: {
+  src?: string;
+  alt: string;
+  category?: string;
+  className?: string;
+  containerClassName?: string;
+  iconSize?: string;
+  badgeSize?: string;
+  showLabel?: boolean;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const validSrc = src && typeof src === 'string' && src.trim() !== '' && !src.includes('placeholder.com');
+
+  if (!validSrc || hasError) {
+    return (
+      <div className={containerClassName}>
+        <div className="flex flex-col items-center justify-center text-center p-2 select-none">
+          <div className={`${badgeSize} rounded-2xl bg-gradient-to-tr from-rose-100 to-rose-50 text-rose-500 flex items-center justify-center shadow-2xs border border-rose-200/50 ${showLabel ? 'mb-1.5' : ''}`}>
+            {/* Stylish stylized pill/capsule SVG badge */}
+            <svg className={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+              <path d="m8.5 8.5 7 7" />
+            </svg>
+          </div>
+          {showLabel && (
+            <span className="text-[10px] font-extrabold text-rose-400 uppercase tracking-wider line-clamp-1">
+              {category || 'Medication'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerClassName}>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onError={() => setHasError(true)}
+        className={className}
+      />
+    </div>
+  );
+}
+
+export default function AirenStorefront({ partnerSlug = 'airen', setView }: AirenStorefrontProps) {
+  const router = useRouter();
+  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart();
+
+  const [partner, setPartner] = useState<any>({
+    name: 'Airen Pharmacy & Wholesale Depot',
+    slug: 'airen',
+    logoUrl: 'https://vestv.nyc3.cdn.digitaloceanspaces.com/airen.png',
+    primaryColor: '#F43F5E',
+    tagline: 'Expert Women’s Reproductive Health & Wellness',
+    contactPhone: '07067593825',
+    contactEmail: 'Business@airen.health',
+  });
+
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Extended Network Fallback states (Option B)
+  const [isNetworkMode, setIsNetworkMode] = useState(false);
+  const [networkLoading, setNetworkLoading] = useState(false);
+  const [networkProducts, setNetworkProducts] = useState<any[]>([]);
+
+  const categories = useMemo(() => [
+    'all',
+    'Contraceptive Kits',
+    'Pain Relief',
+    'Reproductive Health',
+    'Supplements',
+    'Skincare',
+    'Antibiotic'
+  ], []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Initial load: fetch partner & catalog in parallel before revealing UI
+  useEffect(() => {
+    let active = true;
+    async function initStore() {
+      try {
+        const [partnerRes, productsRes] = await Promise.all([
+          fetch(`/api/partner?slug=${encodeURIComponent(partnerSlug)}`),
+          fetch(`/api/products?slug=${encodeURIComponent(partnerSlug)}&limit=500`)
+        ]);
+
+        if (partnerRes.ok) {
+          const pData = await partnerRes.json();
+          if (active && pData.success && pData.partner) {
+            setPartner(pData.partner);
+          }
+        }
+
+        if (productsRes.ok) {
+          const prodData = await productsRes.json();
+          if (active && prodData.success && Array.isArray(prodData.data)) {
+            setProducts(prodData.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize partner store:', err);
+      } finally {
+        if (active) {
+          setIsReady(true);
+          setLoading(false);
+        }
+      }
+    }
+
+    initStore();
+    return () => { active = false; };
+  }, [partnerSlug]);
+
+  // Subsequent searches & category filters
+  const fetchProducts = useCallback(async (query: string = '', category: string = 'all') => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        slug: partnerSlug,
+        limit: '500',
+      });
+      if (query.trim()) params.append('search', query.trim());
+      if (category !== 'all') params.append('drugClass', category);
+
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setProducts(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [partnerSlug]);
+
+  // Option B: Search extended network (50,000+ items across partner pharmacies)
+  const handleSearchNetwork = async (queryToSearch?: string) => {
+    const q = (typeof queryToSearch === 'string' ? queryToSearch : searchQuery).trim();
+    if (!q) return;
+    setNetworkLoading(true);
+    setIsNetworkMode(true);
+    try {
+      const params = new URLSearchParams({
+        slug: partnerSlug,
+        search: q,
+        network: 'true',
+        limit: '60',
+      });
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setNetworkProducts(data.data);
+        } else {
+          setNetworkProducts([]);
+        }
+      } else {
+        setNetworkProducts([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch network products:', err);
+      setNetworkProducts([]);
+    } finally {
+      setNetworkLoading(false);
+    }
+  };
+
+  const exitNetworkMode = () => {
+    setIsNetworkMode(false);
+    setNetworkProducts([]);
+  };
+
+  useEffect(() => {
+    if (!isReady) return;
+    setIsNetworkMode(false);
+    setNetworkProducts([]);
+    const handler = setTimeout(() => {
+      fetchProducts(searchQuery, activeCategory);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchQuery, activeCategory, fetchProducts, isReady]);
+
+  const handleAddToCart = (product: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    addToCart({
+      id: product.id || product._id,
+      name: product.name,
+      price: product.price,
+      image: product.image || product.imageUrl || '',
+      activeIngredients: product.activeIngredients || '',
+      drugClass: product.category || product.drugClass || '',
+      pharmacy: partner.name || 'Airen Pharmacy & Wholesale Depot',
+    });
+    showToast(`Added "${product.name}" to cart`);
+  };
+
+  const handleCheckout = () => {
+    setIsCartOpen(false);
+    if (setView) {
+      setView('confirmOrder');
+    } else {
+      router.push(`/?view=confirmOrder&slug=${encodeURIComponent(partnerSlug)}`);
+    }
+  };
+
+  const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Check if item is already in cart
+  const getCartItemQty = (productId: string) => {
+    const found = cart.find(i => i.id === productId);
+    return found ? found.quantity : 0;
+  };
+
+  if (!isReady) {
+    return (
+      <div className="fixed inset-0 z-[999999] bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="flex items-center gap-2.5">
+          <span className="w-3 h-3 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          <span className="w-3 h-3 rounded-full bg-slate-700 animate-bounce" style={{ animationDelay: '450ms' }}></span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24">
+      {/* FLOATING TOAST */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold animate-fade-in border border-slate-700">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+          <span>{toast}</span>
+        </div>
+      )}
+
+      {/* TOP NAVBAR (Mirrors Dashboard Header) */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+          
+          {/* LEFT: BRAND INFO */}
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 pr-2">
+            <div 
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-xs overflow-hidden shrink-0"
+              style={{ backgroundColor: partner.primaryColor || '#F43F5E' }}
+            >
+              {partner.logoUrl ? (
+                <img src={partner.logoUrl} alt={partner.name} className="w-full h-full object-contain p-1" />
+              ) : (
+                partner.name.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-slate-900 truncate">{partner.name}</h1>
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate">{partner.tagline || 'Expert Women’s Reproductive Health & Wellness'}</p>
+            </div>
+          </div>
+
+          {/* RIGHT: STOREFRONT BADGE, ORDERS & CART BUTTON */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {partner.contactPhone && (
+              <a
+                href={`https://wa.me/234${partner.contactPhone.replace(/^0+/, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition"
+              >
+                <span>💬</span>
+                <span>Support</span>
+              </a>
+            )}
+
+            {setView && (
+              <button
+                type="button"
+                onClick={() => setView('orders')}
+                className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap"
+                title="Track your active delivery"
+              >
+                <span>📦</span>
+                <span className="hidden xs:inline sm:inline">Track Orders</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-900 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95 whitespace-nowrap"
+            >
+              <span>🛒 Bag</span>
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-rose-500 text-white">
+                {cartTotalCount}
+              </span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTAINER */}
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3.5 sm:pt-8 space-y-4 sm:space-y-8">
+
+        {/* HERO BANNER (Mobile-Optimized & Compact) */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 sm:space-y-3 max-w-2xl z-10">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500 text-white uppercase tracking-wider">
+                Official Patient Store
+              </span>
+              <span className="text-[11px] sm:text-xs text-slate-400">
+                Verified Women&apos;s Health Catalog
+              </span>
+            </div>
+            <h2 className="text-base sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug">
+              Confidential & Verified Women’s Healthcare Essentials
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed hidden sm:block">
+              Order genuine reproductive healthcare, emergency contraception, pain relief, and wellness essentials curated by {partner.name}. Delivered swiftly and privately to your door.
+            </p>
+            {/* Slim inline status on mobile */}
+            <div className="flex md:hidden items-center gap-2 text-[11px] text-emerald-400 font-medium pt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>{products.length} Products In Stock & Ready to Dispatch</span>
+            </div>
+          </div>
+
+          {/* Desktop stats box only */}
+          <div className="hidden md:flex bg-slate-800/80 backdrop-blur border border-slate-700 p-5 rounded-2xl flex-col items-center justify-center text-center space-y-2 min-w-[220px] z-10">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live On Storefront</span>
+            <span className="text-3xl font-extrabold text-rose-400">{products.length} Products</span>
+            <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold pt-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>In Stock & Ready to Dispatch</span>
+            </div>
+          </div>
+
+          {/* Subtle background glow */}
+          <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        </div>
+
+        {/* CATALOG & SEARCH CONTAINER (Mirrors Dashboard Master Inventory Card) */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-8 space-y-4 sm:space-y-6">
+          
+          {/* HEADER & SEARCH BAR */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Browse Curated Medications
+              </h3>
+              <p className="text-xs text-slate-500">
+                Select products below to add directly to your order bag
+              </p>
+            </div>
+
+            {/* SEARCH INPUT */}
+            <div className="relative w-full sm:w-80">
+              <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                🔍
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search medicines, ingredients..."
+                className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* CATEGORY FILTER PILLS */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {categories.map((cat) => {
+              const isActive = !isNetworkMode && activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    if (isNetworkMode) exitNetworkMode();
+                    setActiveCategory(cat);
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {cat === 'all' ? 'All Medicines' : cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* EXTENDED NETWORK SEARCH BAR / BANNER */}
+          {isNetworkMode ? (
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 text-white p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-slate-700">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+                    Extended Network
+                  </span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    {networkLoading ? 'Searching network inventory...' : `${networkProducts.length} verified ${networkProducts.length === 1 ? 'medicine' : 'medicines'} found for "${searchQuery}"`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Sourced from licensed partner pharmacies across Nigeria. Handled with private packaging and delivered swiftly through {partner.name}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exitNetworkMode}
+                className="self-start sm:self-center px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition whitespace-nowrap cursor-pointer border border-white/10"
+              >
+                ← Back to Curated Shelf
+              </button>
+            </div>
+          ) : (
+            searchQuery.trim() && !loading && products.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 pt-0.5 pb-1 px-1">
+                <span>Showing {products.length} {products.length === 1 ? 'medicine' : 'medicines'} on curated shelf</span>
+                <button
+                  type="button"
+                  onClick={() => handleSearchNetwork(searchQuery)}
+                  disabled={networkLoading}
+                  className="text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer flex items-center gap-1.5 self-start sm:self-auto text-[11px] sm:text-xs"
+                >
+                  <span>Search 50,000+ items across extended partner network</span>
+                  <span>→</span>
+                </button>
+              </div>
+            )
+          )}
+
+          {/* PRODUCTS GRID (Mirrors Dashboard Tile Design) */}
+          {(isNetworkMode ? networkLoading : loading) ? (
+            <div className="py-20 text-center space-y-3">
+              <div className="w-9 h-9 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-xs font-medium text-slate-500">
+                {isNetworkMode ? 'Searching 50,000+ partner network products...' : 'Loading curated catalog...'}
+              </p>
+            </div>
+          ) : (isNetworkMode ? networkProducts : products).length === 0 ? (
+            isNetworkMode ? (
+              /* Network search also returned 0 results -> WhatsApp Concierge Fallback */
+              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-4 bg-rose-50/60 rounded-3xl border border-rose-100 shadow-xs">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto text-2xl border border-rose-100 shadow-xs">
+                  💬
+                </div>
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                    <span>Not in Online Catalog</span>
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    "{searchQuery}" Isn't Listed Online Yet
+                  </h4>
+                  <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+                    Don't worry — our care specialists can source almost any genuine medication or prescription privately through our licensed distributor network.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                  <a
+                    href={`https://wa.me/234${partner.contactPhone ? partner.contactPhone.replace(/^0+/, '') : '7067593825'}?text=${encodeURIComponent(`Hi Airen Pharmacy & Wholesale Depot, I was searching for "${searchQuery}" on your storefront and could not find it. Can you help me source and deliver this privately?`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+                  >
+                    <span>💬</span>
+                    <span>Request & Order via WhatsApp</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={exitNetworkMode}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 py-2 px-3 cursor-pointer"
+                  >
+                    Back to curated catalog
+                  </button>
+                </div>
+              </div>
+            ) : searchQuery.trim() ? (
+              /* Curated shelf returned 0 results -> Option B: Prompt to search extended network */
+              <div className="py-12 px-4 max-w-lg mx-auto text-center space-y-4">
+                <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-rose-100 shadow-xs">
+                  🔍
+                </div>
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                    <span>Not on Curated Shelf</span>
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    Looking for "{searchQuery}"?
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    This item isn't on airen's primary women's health shelf, but it may be in stock across our partner network of 50,000+ verified pharmacy products.
+                  </p>
+                </div>
+                
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSearchNetwork(searchQuery)}
+                    disabled={networkLoading}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    {networkLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>Searching Partner Network...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🌐</span>
+                        <span>Search 50,000+ Network Products</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 py-2 px-3 cursor-pointer"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-16 text-center space-y-3">
+                <div className="text-4xl">🛍️</div>
+                <h4 className="text-sm font-bold text-slate-800">No matching medicines found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Check back shortly as new items are added to this category.
+                </p>
+              </div>
+            )
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+              {(isNetworkMode ? networkProducts : products).map((p) => {
+                const qtyInCart = getCartItemQty(p.id || p._id);
+                return (
+                  <div
+                    key={p.id || p._id}
+                    onClick={() => setSelectedProduct(p)}
+                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                  >
+                    <div>
+                      {/* CARD TOP ROW */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        {p.isNetworkItem || isNetworkMode ? (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/80 flex items-center gap-1">
+                            <span>🌐</span>
+                            <span>Network Partner</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">
+                            {p.category || 'Medicine'}
+                          </span>
+                        )}
+                        {p.POM && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/60">
+                            Rx Required
+                          </span>
+                        )}
+                      </div>
+
+                      {/* PRODUCT PACKSHOT IMAGE */}
+                      <ProductImageWithFallback
+                        src={p.image || p.imageUrl}
+                        alt={p.name}
+                        category={p.category || p.drugClass}
+                        containerClassName="relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors"
+                        className="w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+                      />
+
+                      {/* TITLE (Mirrors bold uppercase style from dashboard) */}
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-rose-600 transition leading-snug line-clamp-2">
+                        {p.name}
+                      </h4>
+
+                      {/* ACTIVE INGREDIENT */}
+                      {p.activeIngredients && p.activeIngredients !== 'N/A' && (
+                        <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                          <span>💊</span>
+                          <span className="truncate">{p.activeIngredients}</span>
+                        </p>
+                      )}
+
+                      {/* AVAILABILITY STATUS (Clean, no raw numbers) */}
+                      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>In Stock</span>
+                      </div>
+                    </div>
+
+                    {/* CARD FOOTER (Price & + Add Button) */}
+                    <div className="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Price</div>
+                        <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                          {p.formattedPrice || `₦${Number(p.price || 0).toLocaleString()}`}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleAddToCart(p, e)}
+                        className={`text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                          qtyInCart > 0
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            : 'bg-slate-900 hover:bg-rose-600 text-white'
+                        }`}
+                      >
+                        {qtyInCart > 0 ? (
+                          <>
+                            <span>✓ Added</span>
+                            <span className="bg-emerald-800/60 px-1.5 py-0.2 rounded-md text-[10px] font-extrabold">x{qtyInCart}</span>
+                          </>
+                        ) : (
+                          <span>+ Add</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* PRODUCT DETAILS MODAL */}
+      {selectedProduct && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                  {selectedProduct.category || 'Medicine'}
+                </span>
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 pt-1">
+                  {selectedProduct.name}
+                </h3>
+                {selectedProduct.activeIngredients && (
+                  <p className="text-xs text-slate-500 font-medium">
+                    Active Ingredient: <strong className="text-slate-700">{selectedProduct.activeIngredients}</strong>
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* MODAL PRODUCT PACKSHOT */}
+            <ProductImageWithFallback
+              src={selectedProduct.image || selectedProduct.imageUrl}
+              alt={selectedProduct.name}
+              category={selectedProduct.category || selectedProduct.drugClass}
+              containerClassName="relative w-full h-52 sm:h-60 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/40 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-4"
+              className="w-full h-full object-contain drop-shadow-sm"
+              iconSize="w-8 h-8"
+              badgeSize="w-16 h-16"
+            />
+
+            {(selectedProduct.isNetworkItem || isNetworkMode) && (
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 font-semibold">
+                <span>🌐</span>
+                <span>Extended Partner Network • Verified Sourcing & Discreet Dispatch</span>
+              </div>
+            )}
+
+            {selectedProduct.info && selectedProduct.info !== 'N/A' && (
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed max-h-40 overflow-y-auto">
+                <p className="font-semibold text-slate-800 mb-1">Product Description / Usage:</p>
+                {selectedProduct.info}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div>
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Availability</span>
+                <div className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>In stock & verified</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Retail Price</span>
+                <div className="text-xl font-extrabold text-slate-900">
+                  {selectedProduct.formattedPrice || `₦${Number(selectedProduct.price || 0).toLocaleString()}`}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  handleAddToCart(selectedProduct);
+                  setSelectedProduct(null);
+                }}
+                className="flex-1 py-3 bg-slate-900 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer"
+              >
+                + Add to Order Bag
+              </button>
+              <button
+                onClick={() => {
+                  handleAddToCart(selectedProduct);
+                  setSelectedProduct(null);
+                  setIsCartOpen(true);
+                }}
+                className="py-3 px-5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer"
+              >
+                Buy Now ⚡
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDE-OVER ORDER BAG (CART DRAWER) */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsCartOpen(false)}
+          ></div>
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+            <div className="w-full sm:w-screen sm:max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between">
+              
+              {/* DRAWER HEADER */}
+              <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">Your Order Bag</h3>
+                  <p className="text-xs text-slate-500">{cartTotalCount} item(s) from {partner.name}</p>
+                </div>
+                <button
+                  onClick={() => setIsCartOpen(false)}
+                  className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* DRAWER ITEMS LIST */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {cart.length === 0 ? (
+                  <div className="py-20 text-center space-y-3">
+                    <div className="text-4xl">🛍️</div>
+                    <h4 className="text-sm font-bold text-slate-800">Your bag is empty</h4>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                      Explore our women&apos;s healthcare catalog and tap <strong className="text-slate-700">+ Add</strong> to begin.
+                    </p>
+                  </div>
+                ) : (
+                  cart.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between gap-2 sm:gap-3"
+                    >
+                      {/* CART THUMBNAIL */}
+                      <ProductImageWithFallback
+                        src={item.image}
+                        alt={item.name}
+                        containerClassName="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden"
+                        className="w-full h-full object-contain"
+                        badgeSize="w-8 h-8"
+                        iconSize="w-4 h-4"
+                        showLabel={false}
+                      />
+
+                      <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1 pr-1">
+                        <h5 className="text-xs font-bold text-slate-900 truncate">
+                          {item.name}
+                        </h5>
+                        <p className="text-[11px] sm:text-xs font-semibold text-slate-700">
+                          ₦{(item.price || 0).toLocaleString()} each
+                        </p>
+                      </div>
+
+                      {/* QUANTITY CONTROLS */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-2xs">
+                          <button
+                            onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                            className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-l-xl cursor-pointer"
+                          >
+                            −
+                          </button>
+                          <span className="w-6 sm:w-7 text-center text-xs font-bold text-slate-800">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-r-xl cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer transition"
+                          title="Remove item"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* DRAWER FOOTER (CHECKOUT) */}
+              {cart.length > 0 && (
+                <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50 space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Packaging & Privacy</span>
+                    <span className="font-semibold text-emerald-600">100% Discreet & Sealed</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">Subtotal</span>
+                      <p className="text-[11px] text-slate-400">Delivery calculated at checkout</p>
+                    </div>
+                    <div className="text-lg sm:text-xl font-extrabold text-slate-900">
+                      ₦{getCartTotal().toLocaleString()}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition cursor-pointer active:scale-98"
+                  >
+                    Proceed to Secure Checkout →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
