@@ -11,6 +11,7 @@ export async function GET() {
       await mongoose.connect(MONGO_URI);
     }
     const db = mongoose.connection.db;
+    if (!db) throw new Error('Database connection failed');
     
     // Hash the new password
     const newPassword = 'courageousizzy';
