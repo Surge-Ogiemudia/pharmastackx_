@@ -22,6 +22,7 @@ export interface IOrder extends Document {
   deliveryOption: 'standard' | 'express' | 'pickup' | 'courier' | string;
   courierName?: string;
   courierId?: string;
+  serviceCode?: string;
   courierLogo?: string;
   deliveryFee?: number;
   shipbubbleRequestToken?: string;
@@ -77,6 +78,7 @@ const OrderSchema: Schema<IOrder> = new Schema({
   },
   courierName: { type: String },
   courierId: { type: String },
+  serviceCode: { type: String },
   courierLogo: { type: String },
   deliveryFee: { type: Number, default: 0 },
   shipbubbleRequestToken: { type: String },

@@ -591,6 +591,7 @@ export default function ConfirmOrderContent({ setView }: { setView: (view: strin
       partnerSlug: activePartnerSlug,
       courierName: b2bMode ? selectedB2BMethod.name : (selectedCourier ? selectedCourier.courierName : 'Standard Courier'),
       courierId: b2bMode ? selectedB2BMethod.id : selectedCourier?.courierId,
+      serviceCode: selectedCourier?.serviceCode,
       courierLogo: selectedCourier?.courierImage,
       deliveryFee: deliveryFee,
       shipbubbleRequestToken: requestToken || undefined,

@@ -43,14 +43,15 @@ export async function handleConciergeReply(selectionStr: string, overridePhone: 
     }
 
     // Book Rider on Shipbubble
-    if (!order.shipbubbleRequestToken || !order.courierId) {
-        await sendWhatsAppResponse('❌ Order is missing Shipbubble Token or Courier ID. Cannot dispatch automatically.');
+    if (!order.shipbubbleRequestToken || !order.courierId || !order.serviceCode) {
+        await sendWhatsAppResponse('❌ Order is missing Shipbubble Token, Courier ID, or Service Code. Cannot dispatch automatically.');
         return 'Missing shipping token';
     }
 
     const shipbubbleRes = await createShipbubbleLabel({
         requestToken: order.shipbubbleRequestToken,
         courierId: order.courierId,
+        serviceCode: order.serviceCode,
         originName: `PharmaStackx (c/o ${selectedPharmacy.name})`,
         originPhone: finalPhone, // As requested: Use pharmacy's verified number
         originAddress: selectedPharmacy.address,
