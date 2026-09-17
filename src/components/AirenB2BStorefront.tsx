@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShoppingCart, Package, Search, Users, Sparkles, Settings, LogOut, X } from 'lucide-react';
+import { ShoppingCart, Package, Search, Users, Sparkles, Settings, LogOut, X, Menu } from 'lucide-react';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -37,13 +37,13 @@ interface AirenB2BStorefrontProps {
 
 export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BStorefrontProps) {
   return (
-    <div className="flex h-screen bg-[#000000] text-white overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#050505] text-white overflow-hidden font-sans">
       
       {/* Sidebar */}
       <div className="w-[300px] bg-[#121622] flex flex-col justify-between h-full border-r border-white/5">
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-6 border-b border-white/5">
+          <div className="flex items-center justify-between px-6 py-6 border-b border-white/5 h-[73px]">
             <div>
               <h2 className="text-[15px] font-semibold text-white tracking-wide">Retail Pharmacy User</h2>
               <p className="text-[13px] text-slate-400 mt-1">Retail Pharmacy User</p>
@@ -70,9 +70,44 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
         </div>
       </div>
 
-      {/* Main Content Area (Blank Slate) */}
-      <div className="flex-1 bg-[#050505]">
-        {/* We will build this area step by step */}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Header Bar */}
+        <div className="h-[73px] flex items-center px-6 border-b border-white/5 bg-[#121622]">
+          <button className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 mr-4 transition-colors">
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-bold text-[15px] text-white">Terminal</span>
+        </div>
+
+        {/* Page Content */}
+        <div className="flex-1 p-8 flex flex-col">
+          <h1 className="text-xl font-bold text-white mb-2">B2B Sourcing</h1>
+          <p className="text-slate-400 text-[14px] mb-8">
+            Check neighboring pharmacy stock in real-time and source out-of-stock medicines instantly.
+          </p>
+
+          {/* Search Bar */}
+          <div className="flex items-center bg-[#0d121c] border border-white/10 rounded-xl p-1.5 focus-within:border-slate-500 transition-colors">
+            <div className="pl-4 pr-3 text-slate-400">
+              <Search className="w-5 h-5" />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Search for out-of-stock medicine..."
+              className="flex-1 bg-transparent text-white text-[15px] outline-none placeholder:text-slate-500 py-2"
+            />
+            <button className="bg-[#1e293b] hover:bg-[#334155] text-slate-300 px-7 py-2.5 rounded-lg text-sm font-medium transition-colors">
+              Find
+            </button>
+          </div>
+
+          {/* Empty State */}
+          <div className="flex-1 flex flex-col items-center justify-center mt-12 mb-20">
+            <Search className="w-[72px] h-[72px] text-slate-800 mb-6" strokeWidth={1.5} />
+            <p className="text-[#3b82f6]/60 text-[15px] font-medium">Type a medicine name to see who has it in stock nearby.</p>
+          </div>
+        </div>
       </div>
 
     </div>
