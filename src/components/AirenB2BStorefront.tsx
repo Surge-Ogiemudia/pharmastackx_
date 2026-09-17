@@ -165,13 +165,15 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                     {searchResults.map((item, idx) => (
                       <div key={idx} className="bg-[#121622] border border-white/5 p-5 rounded-xl hover:border-white/10 transition-colors">
                         <div className="flex justify-between items-start mb-3">
-                          <h3 className="font-semibold text-white text-[16px] leading-tight">{item.itemName}</h3>
-                          <span className="font-bold text-[#10b981] text-[15px]">N{item.amount?.toLocaleString()}</span>
+                          <h3 className="font-semibold text-white text-[16px] leading-tight">{item.name || 'Unknown Item'}</h3>
+                          <span className="font-bold text-[#10b981] text-[15px]">{item.formattedPrice || `N${item.price?.toLocaleString()}`}</span>
                         </div>
-                        <p className="text-slate-400 text-sm mb-4 line-clamp-2">{item.info || 'No description available.'}</p>
+                        <p className="text-slate-400 text-sm mb-4 line-clamp-2">
+                          {item.info && item.info.trim() !== '' ? item.info : 'No description available.'}
+                        </p>
                         <div className="flex items-center gap-2 text-xs text-slate-500 mb-4 bg-white/5 w-fit px-2.5 py-1 rounded-md">
                           <MapPin className="w-3.5 h-3.5" />
-                          <span>{item.pharmacyName || 'Unknown Pharmacy'}</span>
+                          <span>{item.businessName || item.pharmacy || 'Unknown Pharmacy'}</span>
                         </div>
                         <button className="w-full py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors">
                           Source Item
