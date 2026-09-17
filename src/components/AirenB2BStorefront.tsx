@@ -115,9 +115,8 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
         </div>
 
         {/* Page Content */}
-        {terminalView === 'sourcing' ? (
-          <div className="flex-1 p-8 flex flex-col overflow-y-auto">
-            <h1 className="text-2xl font-bold text-white mb-2">B2B Sourcing</h1>
+        <div className="flex-1 p-8 flex flex-col overflow-y-auto">
+          <h1 className="text-2xl font-bold text-white mb-2">B2B Sourcing</h1>
             <p className="text-slate-400 text-[15px] mb-8">
               Check neighboring pharmacy stock in real-time and source out-of-stock medicines instantly.
             </p>
@@ -143,9 +142,11 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   
                   {/* Airen Wholesale Card */}
-                  <div 
-                    onClick={() => setTerminalView('airen-catalog')}
-                    className="bg-[#0f172a] border border-[#10b981]/30 p-6 rounded-xl hover:border-[#10b981]/70 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all cursor-pointer group"
+                  <a 
+                    href="/p/airen"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-[#0f172a] border border-[#10b981]/30 p-6 rounded-xl hover:border-[#10b981]/70 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all cursor-pointer group block"
                   >
                     <div className="flex justify-between items-start mb-5">
                       <div className="w-12 h-12 bg-[#10b981]/10 rounded-xl flex items-center justify-center">
@@ -166,10 +167,10 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                       <span className="text-xs text-slate-300 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5">24h Dispatch</span>
                     </div>
                     
-                    <button className="w-full bg-[#1e293b] group-hover:bg-[#10b981] group-hover:text-black text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                    <button type="button" className="w-full bg-[#1e293b] group-hover:bg-[#10b981] group-hover:text-black text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
                       View Catalog <ArrowRight className="w-4 h-4" />
                     </button>
-                  </div>
+                  </a>
                   
                 </div>
               </div>
@@ -235,27 +236,8 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
               </div>
             </div>
           )}
-
-          </div>
-        ) : (
-          <div className="flex-1 p-8 flex flex-col overflow-y-auto">
-            <button 
-              onClick={() => setTerminalView('sourcing')} 
-              className="text-slate-400 hover:text-white mb-8 flex items-center gap-2 w-fit font-medium transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Sourcing Directory
-            </button>
-            <h1 className="text-2xl font-bold text-white mb-2">Airen Pharmacy & Wholesale Depot</h1>
-            <p className="text-slate-400 text-[15px] mb-8">
-              Official B2B storefront. Purchase bulk cartons directly from the warehouse.
-            </p>
-            <div className="flex-1 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center bg-[#0d121c]">
-               <p className="text-slate-500 font-medium">Airen Wholesale Catalog UI goes here next...</p>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-
     </div>
   );
 }
