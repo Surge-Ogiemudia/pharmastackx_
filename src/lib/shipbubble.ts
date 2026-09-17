@@ -6,6 +6,7 @@ const SHIPBUBBLE_BASE_URL = 'https://api.shipbubble.com/v1';
 export async function createShipbubbleLabel(payload: {
     requestToken: string;
     courierId: string;
+    serviceCode: string;
     originName: string;
     originPhone: string;
     originAddress: string;
@@ -24,6 +25,7 @@ export async function createShipbubbleLabel(payload: {
     const labelPayload = {
         request_token: payload.requestToken,
         courier_id: payload.courierId,
+        service_code: payload.serviceCode,
         sender_details: {
             name: payload.originName,
             phone: payload.originPhone,
