@@ -50,7 +50,15 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
       try {
         const res = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}&limit=10`);
         const json = await res.json();
-        setSearchResults(json.data || []);
+        
+        // Filter out wholesale pharmacies (like Airen) for this retail-only tab
+        const retailOnlyData = (json.data || []).filter((item: any) => {
+          const pharName = (item.businessName || item.pharmacy || '').toLowerCase();
+          const pSlug = (item.slug || '').toLowerCase();
+          return !pharName.includes('wholesale') && pSlug !== 'demo.airen' && pSlug !== 'airen';
+        });
+
+        setSearchResults(retailOnlyData);
       } catch (err) {
         console.error("Search failed", err);
       } finally {
