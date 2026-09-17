@@ -30,7 +30,12 @@ function NavItem({ icon: Icon, label, active, isDanger }: NavItemProps) {
   );
 }
 
-export default function AirenB2BStorefront() {
+interface AirenB2BStorefrontProps {
+  partnerSlug?: string;
+  setView?: (view: string) => void;
+}
+
+export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BStorefrontProps) {
   return (
     <div className="flex h-screen bg-[#000000] text-white overflow-hidden font-sans">
       
