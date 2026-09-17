@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ShoppingCart, Package, Search, Users, Sparkles, Settings, LogOut, X, Menu, Loader2, MapPin, Building2, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface NavItemProps {
@@ -142,10 +143,9 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   
                   {/* Airen Wholesale Card */}
-                  <a 
+                  <Link 
                     href="/p/airen"
                     target="_blank"
-                    rel="noopener noreferrer"
                     className="bg-[#0f172a] border border-[#10b981]/30 p-6 rounded-xl hover:border-[#10b981]/70 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all cursor-pointer group block"
                   >
                     <div className="flex justify-between items-start mb-5">
@@ -167,10 +167,10 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                       <span className="text-xs text-slate-300 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5">24h Dispatch</span>
                     </div>
                     
-                    <button type="button" className="w-full bg-[#1e293b] group-hover:bg-[#10b981] group-hover:text-black text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                    <div className="w-full bg-[#1e293b] group-hover:bg-[#10b981] group-hover:text-black text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
                       View Catalog <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </a>
+                    </div>
+                  </Link>
                   
                 </div>
               </div>
