@@ -13,7 +13,7 @@ const AIREN_PRODUCTS = [
     quantity: 500,
     POM: false,
     manufacturer: "Emzor Pharmaceuticals",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/p/a/pan0016.jpg",
+    imageUrl: "https://images.pexels.com/photos/3683053/pexels-photo-3683053.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale carton containing 100 packs. Fast and effective relief from aches and pains."
   },
   {
@@ -25,7 +25,7 @@ const AIREN_PRODUCTS = [
     quantity: 150,
     POM: false,
     manufacturer: "Elbe Pharma",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/l/u/lum0034.jpg",
+    imageUrl: "https://images.pexels.com/photos/3683041/pexels-photo-3683041.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale bundle. First-line ACT antimalarial softgel for faster absorption."
   },
   {
@@ -37,7 +37,7 @@ const AIREN_PRODUCTS = [
     quantity: 80,
     POM: true,
     manufacturer: "GSK",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/a/u/aug0010.jpg",
+    imageUrl: "https://images.pexels.com/photos/3652097/pexels-photo-3652097.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale Pack of 6 boxes. Broad-spectrum penicillin antibiotic."
   },
   {
@@ -49,7 +49,7 @@ const AIREN_PRODUCTS = [
     quantity: 100,
     POM: true,
     manufacturer: "Johnson & Johnson",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/b/e/ben0072.jpg",
+    imageUrl: "https://images.pexels.com/photos/3683107/pexels-photo-3683107.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale carton of 24 bottles. Effective relief for dry, irritating coughs."
   },
   {
@@ -61,7 +61,7 @@ const AIREN_PRODUCTS = [
     quantity: 200,
     POM: false,
     manufacturer: "Vitabiotics",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/w/e/wel0109.jpg",
+    imageUrl: "https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale bundle of 5. Comprehensive multivitamin for women's health."
   },
   {
@@ -73,7 +73,7 @@ const AIREN_PRODUCTS = [
     quantity: 300,
     POM: true,
     manufacturer: "Fidson Healthcare",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/a/m/aml0181.jpg",
+    imageUrl: "https://images.pexels.com/photos/159211/headache-pain-pills-medication-159211.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale carton of 50 packs. Calcium channel blocker for hypertension."
   },
   {
@@ -85,7 +85,7 @@ const AIREN_PRODUCTS = [
     quantity: 200,
     POM: true,
     manufacturer: "Greenlife Pharmaceuticals",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/c/o/coa0009.jpg",
+    imageUrl: "https://images.pexels.com/photos/3683081/pexels-photo-3683081.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale Pack of 12 boxes. Double strength ACT for acute uncomplicated malaria."
   },
   {
@@ -97,7 +97,7 @@ const AIREN_PRODUCTS = [
     quantity: 400,
     POM: false,
     manufacturer: "GSK",
-    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/c/r/cro0035_1_1.jpg",
+    imageUrl: "https://images.pexels.com/photos/139398/thermometer-headache-pain-pills-139398.jpeg?auto=compress&cs=tinysrgb&w=640",
     info: "Wholesale carton containing 100 packs. Extra strength pain relief with caffeine."
   }
 ];
