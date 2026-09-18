@@ -13,7 +13,7 @@ const AIREN_PRODUCTS = [
     quantity: 500,
     POM: false,
     manufacturer: "Emzor Pharmaceuticals",
-    imageUrl: "https://www.emzorpharma.com/wp-content/uploads/2018/03/Emzor-Paracetamol-Tablet-500mg.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/p/a/pan0016.jpg",
     info: "Wholesale carton containing 100 packs. Fast and effective relief from aches and pains."
   },
   {
@@ -25,7 +25,7 @@ const AIREN_PRODUCTS = [
     quantity: 150,
     POM: false,
     manufacturer: "Elbe Pharma",
-    imageUrl: "https://www.medplusnigeria.com/cdn/shop/files/amatem.webp",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/l/u/lum0034.jpg",
     info: "Wholesale bundle. First-line ACT antimalarial softgel for faster absorption."
   },
   {
@@ -37,7 +37,7 @@ const AIREN_PRODUCTS = [
     quantity: 80,
     POM: true,
     manufacturer: "GSK",
-    imageUrl: "https://www.drugs.com/images/pills/mtm/Augmentin%20875%20mg.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/a/u/aug0010.jpg",
     info: "Wholesale Pack of 6 boxes. Broad-spectrum penicillin antibiotic."
   },
   {
@@ -49,7 +49,7 @@ const AIREN_PRODUCTS = [
     quantity: 100,
     POM: true,
     manufacturer: "Johnson & Johnson",
-    imageUrl: "https://shop.mymedicines.com/wp-content/uploads/2021/04/Benylin-with-Codeine.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/b/e/ben0072.jpg",
     info: "Wholesale carton of 24 bottles. Effective relief for dry, irritating coughs."
   },
   {
@@ -61,7 +61,7 @@ const AIREN_PRODUCTS = [
     quantity: 200,
     POM: false,
     manufacturer: "Vitabiotics",
-    imageUrl: "https://www.vitabiotics.com/cdn/shop/files/WW_Original_30s_Carton-4623.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/w/e/wel0109.jpg",
     info: "Wholesale bundle of 5. Comprehensive multivitamin for women's health."
   },
   {
@@ -73,7 +73,7 @@ const AIREN_PRODUCTS = [
     quantity: 300,
     POM: true,
     manufacturer: "Fidson Healthcare",
-    imageUrl: "https://5.imimg.com/data5/SELLER/Default/2021/11/OW/UX/WJ/138139598/amlodipine-5mg-tablet.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/a/m/aml0181.jpg",
     info: "Wholesale carton of 50 packs. Calcium channel blocker for hypertension."
   },
   {
@@ -85,7 +85,7 @@ const AIREN_PRODUCTS = [
     quantity: 200,
     POM: true,
     manufacturer: "Greenlife Pharmaceuticals",
-    imageUrl: "https://www.medplusnigeria.com/cdn/shop/files/lonart-ds.png",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/c/o/coa0009.jpg",
     info: "Wholesale Pack of 12 boxes. Double strength ACT for acute uncomplicated malaria."
   },
   {
@@ -97,7 +97,7 @@ const AIREN_PRODUCTS = [
     quantity: 400,
     POM: false,
     manufacturer: "GSK",
-    imageUrl: "https://shop.mymedicines.com/wp-content/uploads/2020/09/Panadol-Extra-Tablets.jpg",
+    imageUrl: "https://images.apollo247.in/pub/media/catalog/product/c/r/cro0035_1_1.jpg",
     info: "Wholesale carton containing 100 packs. Extra strength pain relief with caffeine."
   }
 ];
