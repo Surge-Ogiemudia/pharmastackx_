@@ -170,7 +170,7 @@ export async function POST(req) {
             userName: newUser.username,
             userRole: newUser.role,
         }),
-    });
+    }).catch(err => console.error('Failed to notify admin:', err));
 
     // Use the reliable verification method from the "resend" flow.
     const emailVerificationToken = crypto.randomBytes(32).toString('hex');
@@ -182,13 +182,19 @@ export async function POST(req) {
 
     const verificationUrl = `${baseUrl}/api/auth/verify-and-redirect?token=${emailVerificationToken}`;
 
-    await transporter.sendMail({
-        ...mailOptions,
-        to: newUser.email,
-        subject: 'Welcome to PharmastackX! Please Verify Your Email',
-        text: `Welcome to PharmastackX!\n\nPlease click the following link to verify your email address: ${verificationUrl}`,
-        html: `<h2>Welcome to PharmastackX!</h2><p>Please click the following link to verify your email address: <a href="${verificationUrl}">${verificationUrl}</a></p>`,
-    });
+    try {
+      await transporter.sendMail({
+          ...mailOptions,
+          to: newUser.email,
+          subject: 'Welcome to PharmastackX! Please Verify Your Email',
+          text: `Welcome to PharmastackX!\n\nPlease click the following link to verify your email address: ${verificationUrl}`,
+          html: `<h2>Welcome to PharmastackX!</h2><p>Please click the following link to verify your email address: <a href="${verificationUrl}">${verificationUrl}</a></p>`,
+      });
+    } catch (emailError) {
+      console.error('Welcome email failed to send, but user was created:', emailError);
+      // We still return 201 because the user account creation was successful.
+      return NextResponse.json({ message: 'User created successfully. (Email delivery delayed)', user: newUser }, { status: 201 });
+    }
 
     return NextResponse.json({ message: 'User created successfully. A verification email has been sent.', user: newUser }, { status: 201 });
 
