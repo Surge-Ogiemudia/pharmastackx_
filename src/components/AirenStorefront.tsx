@@ -9,6 +9,52 @@ interface AirenStorefrontProps {
   setView?: (view: string) => void;
 }
 
+// Inline editable text component for demo overrides
+function EditableText({
+  id,
+  field,
+  originalValue,
+  className,
+  as: Tag = 'span',
+}: {
+  id?: string;
+  field: string;
+  originalValue: React.ReactNode;
+  className?: string;
+  as?: any;
+}) {
+  const [localVal, setLocalVal] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (id) {
+      const saved = localStorage.getItem(`demo_text_${id}_${field}`);
+      if (saved) setLocalVal(saved);
+    }
+  }, [id, field]);
+
+  const displayVal = localVal !== null ? localVal : originalValue;
+
+  const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
+    const newVal = e.currentTarget.textContent || '';
+    setLocalVal(newVal);
+    if (id) {
+      localStorage.setItem(`demo_text_${id}_${field}`, newVal);
+    }
+  };
+
+  return (
+    <Tag
+      className={`${className || ''} hover:outline hover:outline-rose-300 hover:bg-rose-50/50 cursor-text transition-all rounded px-0.5 -ml-0.5`}
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={handleBlur}
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+    >
+      {displayVal}
+    </Tag>
+  );
+}
+
 // Clean packshot image renderer with graceful fallback to a stylish stylized pill/capsule badge
 function ProductImageWithFallback({
   src,
@@ -659,9 +705,13 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                       />
 
                       {/* TITLE (Mirrors bold uppercase style from dashboard) */}
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-rose-600 transition leading-snug line-clamp-2">
-                        {p.name}
-                      </h4>
+                      <EditableText
+                        as="h4"
+                        className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-rose-600 transition leading-snug line-clamp-2"
+                        id={p.id || p._id}
+                        field="name"
+                        originalValue={p.name}
+                      />
 
                       {/* ACTIVE INGREDIENT */}
                       {p.activeIngredients && p.activeIngredients !== 'N/A' && (
@@ -671,20 +721,32 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                         </p>
                       )}
 
-                      {/* AVAILABILITY STATUS (Clean, no raw numbers) */}
-                      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>In Stock</span>
+                      <div className="mt-2 flex items-center justify-between">
+                        {p.inStock ? (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            In Stock
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500">
+                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                            Out of Stock
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* CARD FOOTER (Price & + Add Button) */}
-                    <div className="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {/* BOTTOM ROW: PRICE & CTA */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-end justify-between">
                       <div>
                         <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Price</div>
-                        <div className="text-sm sm:text-base font-extrabold text-slate-900">
-                          {p.formattedPrice || `₦${Number(p.price || 0).toLocaleString()}`}
-                        </div>
+                        <EditableText
+                          as="div"
+                          className="text-sm sm:text-base font-extrabold text-slate-900"
+                          id={p.id || p._id}
+                          field="price"
+                          originalValue={p.formattedPrice || `₦${Number(p.price || 0).toLocaleString()}`}
+                        />
                       </div>
 
                       <button
@@ -729,12 +791,16 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                 <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg uppercase tracking-wider">
                   {selectedProduct.category || 'Medicine'}
                 </span>
-                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 pt-1">
-                  {selectedProduct.name}
-                </h3>
+                <EditableText
+                  as="h3"
+                  className="text-lg sm:text-xl font-extrabold text-slate-900 pt-1"
+                  id={selectedProduct.id || selectedProduct._id}
+                  field="name"
+                  originalValue={selectedProduct.name}
+                />
                 {selectedProduct.activeIngredients && (
                   <p className="text-xs text-slate-500 font-medium">
-                    Active Ingredient: <strong className="text-slate-700">{selectedProduct.activeIngredients}</strong>
+                    {selectedProduct.activeIngredients}
                   </p>
                 )}
               </div>
@@ -782,9 +848,13 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
               </div>
               <div className="text-right">
                 <span className="text-[11px] text-slate-400 font-semibold uppercase">Retail Price</span>
-                <div className="text-xl font-extrabold text-slate-900">
-                  {selectedProduct.formattedPrice || `₦${Number(selectedProduct.price || 0).toLocaleString()}`}
-                </div>
+                <EditableText
+                  as="div"
+                  className="text-xl font-extrabold text-slate-900"
+                  id={selectedProduct.id || selectedProduct._id}
+                  field="price"
+                  originalValue={selectedProduct.formattedPrice || `₦${Number(selectedProduct.price || 0).toLocaleString()}`}
+                />
               </div>
             </div>
 
@@ -867,12 +937,20 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                       />
 
                       <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1 pr-1">
-                        <h5 className="text-xs font-bold text-slate-900 truncate">
-                          {item.name}
-                        </h5>
-                        <p className="text-[11px] sm:text-xs font-semibold text-slate-700">
-                          ₦{(item.price || 0).toLocaleString()} each
-                        </p>
+                        <EditableText
+                          as="h5"
+                          className="text-xs font-bold text-slate-900 truncate"
+                          id={item.id || (item as any)._id}
+                          field="name"
+                          originalValue={item.name}
+                        />
+                        <EditableText
+                          as="p"
+                          className="text-[11px] sm:text-xs font-semibold text-slate-700"
+                          id={item.id || (item as any)._id}
+                          field="price"
+                          originalValue={`₦${(item.price || 0).toLocaleString()} each`}
+                        />
                       </div>
 
                       {/* QUANTITY CONTROLS */}
