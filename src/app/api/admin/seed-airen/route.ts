@@ -133,7 +133,19 @@ export async function GET() {
       isPublished: true
     }));
 
-    await Product.insertMany(docs);
+    const insertedProducts = await Product.insertMany(docs);
+    const productIds = insertedProducts.map((p: any) => p._id);
+
+    // Add them to the partner's curated shelf and set isActive: true
+    await Partner.updateOne(
+      { slug: 'airen' },
+      { 
+        $set: { 
+          curatedProductIds: productIds,
+          isActive: true
+        }
+      }
+    );
 
     return NextResponse.json({ success: true, count: docs.length, message: 'Airen products seeded' });
   } catch (err: any) {
