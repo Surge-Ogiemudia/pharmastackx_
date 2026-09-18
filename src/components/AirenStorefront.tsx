@@ -14,6 +14,7 @@ function ProductImageWithFallback({
   src,
   alt,
   category,
+  productId,
   className = "w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105",
   containerClassName = "relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors",
   iconSize = "w-6 h-6",
@@ -23,6 +24,7 @@ function ProductImageWithFallback({
   src?: string;
   alt: string;
   category?: string;
+  productId?: string;
   className?: string;
   containerClassName?: string;
   iconSize?: string;
@@ -30,11 +32,34 @@ function ProductImageWithFallback({
   showLabel?: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
-  const validSrc = src && typeof src === 'string' && src.trim() !== '' && !src.includes('placeholder.com');
+  const [localImage, setLocalImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (productId) {
+      const saved = localStorage.getItem(`demo_img_${productId}`);
+      if (saved) setLocalImage(saved);
+    }
+  }, [productId]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && productId) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const b64 = reader.result as string;
+        setLocalImage(b64);
+        localStorage.setItem(`demo_img_${productId}`, b64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const currentSrc = localImage || src;
+  const validSrc = currentSrc && typeof currentSrc === 'string' && currentSrc.trim() !== '' && !currentSrc.includes('placeholder.com');
 
   if (!validSrc || hasError) {
     return (
-      <div className={containerClassName}>
+      <div className={`${containerClassName} group/img`}>
         <div className="flex flex-col items-center justify-center text-center p-2 select-none">
           <div className={`${badgeSize} rounded-2xl bg-gradient-to-tr from-rose-100 to-rose-50 text-rose-500 flex items-center justify-center shadow-2xs border border-rose-200/50 ${showLabel ? 'mb-1.5' : ''}`}>
             {/* Stylish stylized pill/capsule SVG badge */}
@@ -49,19 +74,37 @@ function ProductImageWithFallback({
             </span>
           )}
         </div>
+        {productId && (
+          <label 
+            className="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer opacity-0 group-hover/img:opacity-100 transition-opacity z-10"
+            onClick={e => e.stopPropagation()}
+          >
+            Upload Image
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </label>
+        )}
       </div>
     );
   }
 
   return (
-    <div className={containerClassName}>
+    <div className={`${containerClassName} group/img`}>
       <img
-        src={src}
+        src={currentSrc}
         alt={alt}
         loading="lazy"
         onError={() => setHasError(true)}
         className={className}
       />
+      {productId && (
+        <label 
+          className="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded cursor-pointer opacity-0 group-hover/img:opacity-100 transition-opacity z-10 shadow"
+          onClick={e => e.stopPropagation()}
+        >
+          Upload Image
+          <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        </label>
+      )}
     </div>
   );
 }
@@ -610,6 +653,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                         src={p.image || p.imageUrl}
                         alt={p.name}
                         category={p.category || p.drugClass}
+                        productId={p.id || p._id}
                         containerClassName="relative w-full h-44 sm:h-48 mb-3 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/30 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-3 group-hover:bg-rose-50/40 transition-colors"
                         className="w-full h-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
                       />
@@ -707,6 +751,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
               src={selectedProduct.image || selectedProduct.imageUrl}
               alt={selectedProduct.name}
               category={selectedProduct.category || selectedProduct.drugClass}
+              productId={selectedProduct.id || selectedProduct._id}
               containerClassName="relative w-full h-52 sm:h-60 rounded-2xl overflow-hidden bg-gradient-to-b from-rose-50/40 via-slate-50 to-rose-50/20 border border-slate-100 flex items-center justify-center p-4"
               className="w-full h-full object-contain drop-shadow-sm"
               iconSize="w-8 h-8"
@@ -813,6 +858,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                       <ProductImageWithFallback
                         src={item.image}
                         alt={item.name}
+                        productId={item.id || item._id}
                         containerClassName="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden"
                         className="w-full h-full object-contain"
                         badgeSize="w-8 h-8"
