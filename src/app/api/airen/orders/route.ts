@@ -32,7 +32,7 @@ export interface AirenOrder {
   settlementStatus: '100% Upfront Verified' | 'Settled via Escrow';
   paymentRef: string;
   paymentMethod: string;
-  deliveryStatus: 'Payment Confirmed - Ready for Packing' | 'Rider Assigned' | 'Delivered';
+  deliveryStatus: 'Payment Confirmed - Ready for Packing' | 'Cargo Van Assigned' | 'Delivered';
   assignedRider?: {
     name: string;
     phone: string;
@@ -180,7 +180,7 @@ export const INITIAL_AIREN_ORDERS: AirenOrder[] = [
     settlementStatus: '100% Upfront Verified',
     paymentRef: 'NIP_TXN_8819204018',
     paymentMethod: 'Direct NIP Instant Wholesale Transfer',
-    deliveryStatus: 'Rider Assigned',
+    deliveryStatus: 'Cargo Van Assigned',
     assignedRider: {
       name: 'Osaze Idahosa',
       phone: '+234 805 112 3490',
@@ -492,14 +492,14 @@ export async function GET(req: NextRequest) {
     if (filter === 'pending') {
       orders = orders.filter(o => o.deliveryStatus === 'Payment Confirmed - Ready for Packing');
     } else if (filter === 'dispatched') {
-      orders = orders.filter(o => o.deliveryStatus === 'Rider Assigned');
+      orders = orders.filter(o => o.deliveryStatus === 'Cargo Van Assigned');
     } else if (filter === 'delivered') {
       orders = orders.filter(o => o.deliveryStatus === 'Delivered');
     }
 
     const totalRevenue = INITIAL_AIREN_ORDERS.reduce((acc, curr) => acc + curr.settlementAmount, 0);
     const pendingCount = INITIAL_AIREN_ORDERS.filter(o => o.deliveryStatus === 'Payment Confirmed - Ready for Packing').length;
-    const dispatchedCount = INITIAL_AIREN_ORDERS.filter(o => o.deliveryStatus === 'Rider Assigned' || o.deliveryStatus === 'Delivered').length;
+    const dispatchedCount = INITIAL_AIREN_ORDERS.filter(o => o.deliveryStatus === 'Cargo Van Assigned' || o.deliveryStatus === 'Delivered').length;
     const activeCustomersCount = new Set(INITIAL_AIREN_ORDERS.map(o => o.buyer.name)).size;
 
     return NextResponse.json({
@@ -537,7 +537,7 @@ export async function POST(req: NextRequest) {
         success: true,
         message: `Order marked Ready for Pickup. Courier assigned.`,
         orderId,
-        newStatus: 'Rider Assigned',
+        newStatus: 'Cargo Van Assigned',
         assignedRider: rider || {
           name: 'Osaze Idahosa (PharmaStackX Intra-Benin Rapid Fleet)',
           phone: '+234 805 112 3490',

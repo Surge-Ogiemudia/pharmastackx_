@@ -82,7 +82,7 @@ export default function AirenDashboardPage() {
       (o) => o.deliveryStatus === 'Payment Confirmed - Ready for Packing'
     ).length;
     const dispatchedOrdersCount = orders.filter(
-      (o) => o.deliveryStatus === 'Rider Assigned' || o.deliveryStatus === 'Delivered'
+      (o) => o.deliveryStatus === 'Cargo Van Assigned' || o.deliveryStatus === 'Delivered'
     ).length;
     const activeRetailCustomersCount = new Set(orders.map((o) => o.buyer.name)).size;
 
@@ -101,7 +101,7 @@ export default function AirenDashboardPage() {
       if (activeTab === 'pending' && order.deliveryStatus !== 'Payment Confirmed - Ready for Packing') {
         return false;
       }
-      if (activeTab === 'dispatched' && order.deliveryStatus !== 'Rider Assigned') {
+      if (activeTab === 'dispatched' && order.deliveryStatus !== 'Cargo Van Assigned') {
         return false;
       }
       if (activeTab === 'delivered' && order.deliveryStatus !== 'Delivered') {
@@ -309,7 +309,7 @@ export default function AirenDashboardPage() {
         ord.id === pickupModalOrder.id
           ? {
               ...ord,
-              deliveryStatus: 'Rider Assigned',
+              deliveryStatus: 'Cargo Van Assigned',
               assignedRider: riderDetails,
             }
           : ord
@@ -319,7 +319,7 @@ export default function AirenDashboardPage() {
     setIsAssigningRider(false);
     setPickupModalOrder(null);
     setToast({
-      msg: `Courier assigned to Order ${pickupModalOrder.orderRef}. Package staged at Dispatch Bay #2.`,
+      msg: `B2B Cargo Van assigned to Order ${pickupModalOrder.orderRef}. Package staged at Dispatch Bay #2.`,
       type: 'success',
     });
   };
@@ -338,7 +338,7 @@ export default function AirenDashboardPage() {
       'Total Settlement (NGN)',
       'Payment Status',
       'Delivery Status',
-      'Assigned Courier',
+      'Assigned B2B Cargo Van',
     ];
 
     const rows = filteredOrders.map((o) => {
@@ -397,9 +397,9 @@ ${itemsList}
 🚚 *Fulfillment Status:* ${order.deliveryStatus}
 ${
   order.assignedRider
-    ? `🛵 *Assigned Courier:* ${order.assignedRider.name} (${order.assignedRider.phone})
+    ? `🛵 *Assigned B2B Cargo Van:* ${order.assignedRider.name} (${order.assignedRider.phone})
 📦 *Waybill Code:* ${order.assignedRider.trackingCode}`
-    : `📦 *Packing Status:* Packed in tamper-sealed carton. Courier assignment in progress.`
+    : `📦 *Packing Status:* Packed in tamper-sealed carton. B2B Cargo Van assignment in progress.`
 }
 
 🏢 *Depot Hub:* Airen Central Fulfillment Hub, Sapele Rd / Ring Road Axis, Benin City
@@ -707,43 +707,57 @@ _Airen Pharmacy Operations Terminal_`;
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 sm:p-12 text-center max-w-4xl mx-auto">
           <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-100">
-            <svg className="w-10 h-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            <ShieldCheck className="w-10 h-10 text-emerald-600" />
           </div>
           <h2 className="text-3xl font-extrabold text-slate-900 mb-4">Synkk Terminal Bridge is Active</h2>
           <p className="text-slate-500 text-lg mb-10 max-w-2xl mx-auto">
-            Your local retail POS system is seamlessly connected. Synkk continuously pushes your surplus stock to the B2B catalog without any disruption to your existing workflow.
+            Your local retail POS system is seamlessly connected. Synkk strictly reads surplus stock to generate B2B sales without disrupting your existing warehouse operations.
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 text-left">
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-              <div className="flex items-center gap-3 mb-3">
+            {/* Spook 1: Privacy & Spying */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10"><ShieldCheck className="w-16 h-16" /></div>
+              <div className="flex items-center gap-3 mb-3 relative z-10">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                <h4 className="font-bold text-slate-900">Local POS Detected</h4>
+                <h4 className="font-bold text-slate-900">One-Way Privacy Shield</h4>
               </div>
-              <p className="text-sm text-slate-500">Connected to <strong>Medlife Pharmacy Retail POS</strong> via Synkk Secure Tunnel on Port 1433.</p>
+              <p className="text-sm text-slate-500 relative z-10">
+                Connected to Medlife POS via a strict <strong>read-only</strong> tunnel. We only read SKUs, Prices, and Quantities. <strong className="text-slate-700">Cost-prices, supplier data, and walk-in sales are 100% firewalled.</strong>
+              </p>
             </div>
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-              <div className="flex items-center gap-3 mb-3">
-                <RefreshCw className="w-6 h-6 text-blue-600 animate-spin-slow" />
-                <h4 className="font-bold text-slate-900">Live Syncing</h4>
+            
+            {/* Spook 2: Double Selling */}
+            <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 text-amber-900"><AlertCircle className="w-16 h-16" /></div>
+              <div className="flex items-center gap-3 mb-3 relative z-10">
+                <RefreshCw className="w-6 h-6 text-amber-600 animate-spin-slow" />
+                <h4 className="font-bold text-amber-900">Safety Buffer Active</h4>
               </div>
-              <p className="text-sm text-slate-500">Inventory counts are synced every 3 minutes. <strong>12,450 SKUs</strong> currently mirrored online.</p>
+              <p className="text-sm text-amber-700/80 relative z-10">
+                Real-time syncing enabled. To prevent overselling, any item with <strong>&lt; 5 cartons</strong> is automatically hidden online. Your walk-in stock is always protected.
+              </p>
             </div>
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-              <div className="flex items-center gap-3 mb-3">
-                <ShieldCheck className="w-6 h-6 text-emerald-600" />
-                <h4 className="font-bold text-slate-900">Zero Data Entry</h4>
+
+            {/* Spook 3: Staff Training */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10"><Printer className="w-16 h-16" /></div>
+              <div className="flex items-center gap-3 mb-3 relative z-10">
+                <Printer className="w-6 h-6 text-emerald-600" />
+                <h4 className="font-bold text-slate-900">Zero Workflow Changes</h4>
               </div>
-              <p className="text-sm text-slate-500">Prices, stock, and item names are mapped automatically. You only manage fulfillment.</p>
+              <p className="text-sm text-slate-500 relative z-10">
+                No software training required for your staff. New B2B orders auto-print directly to your existing warehouse receipt printers. They just pack and hand to the cargo van.
+              </p>
             </div>
           </div>
 
           <div className="bg-slate-900 text-emerald-400 font-mono text-xs sm:text-sm text-left p-6 rounded-2xl overflow-hidden shadow-inner">
-            <p className="mb-2 text-slate-500">// Synkk Bridge Live Log (Tail)</p>
-            <p className="mb-1">[{new Date().toLocaleTimeString()}] connection_established: Medlife_POS_DB</p>
-            <p className="mb-1">[{new Date().toLocaleTimeString()}] synkk_daemon: Checking diff...</p>
-            <p className="mb-1 text-emerald-300">[{new Date().toLocaleTimeString()}] success: Synced 14 price changes to Synkk Cloud</p>
-            <p className="mb-1">[{new Date().toLocaleTimeString()}] heartbeat: OK (Latency 14ms)</p>
+            <p className="mb-2 text-slate-500">// Synkk Security Bridge Live Log</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] connection_established: Medlife_POS_DB (Read-Only Mode)</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] firewall_status: Strict (Blocking Cost-Price & Supplier Data)</p>
+            <p className="mb-1 text-emerald-300">[{new Date().toLocaleTimeString()}] success: Synced 12,450 SKUs. Applied &lt; 5 carton safety buffer.</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] printer_routing: Active (Warehouse Bay 1)</p>
           </div>
         </div>
       </main>
@@ -762,9 +776,19 @@ _Airen Pharmacy Operations Terminal_`;
               <p className="text-emerald-300 text-sm font-semibold mb-2 uppercase tracking-wider flex items-center gap-2">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div> Available Payout
               </p>
-              <h2 className="text-4xl sm:text-5xl font-black mb-6">₦2,450,800</h2>
+              <h2 className="text-4xl sm:text-5xl font-black mb-4">₦2,450,800</h2>
+
+              <div className="flex flex-col gap-2 mb-6">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-200 bg-emerald-950/50 px-3 py-1.5 rounded-lg border border-emerald-800/50 w-fit">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Zero Platform Withdrawal Fees
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-200 bg-emerald-950/50 px-3 py-1.5 rounded-lg border border-emerald-800/50 w-fit">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> T+0 Instant Bank Settlement
+                </span>
+              </div>
+
               <button className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition shadow-lg cursor-pointer flex justify-center items-center gap-2">
-                Withdraw to FirstBank
+                Withdraw to FirstBank (Free)
                 <ArrowUpRight className="w-4 h-4" />
               </button>
             </div>
@@ -997,9 +1021,9 @@ _Airen Pharmacy Operations Terminal_`;
                     : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
                 }`}
               >
-                <span>Rider Assigned</span>
+                <span>Cargo Van Assigned</span>
                 <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-bold">
-                  {orders.filter((o) => o.deliveryStatus === 'Rider Assigned').length}
+                  {orders.filter((o) => o.deliveryStatus === 'Cargo Van Assigned').length}
                 </span>
               </button>
               <button
@@ -1082,7 +1106,7 @@ _Airen Pharmacy Operations Terminal_`;
                 ) : (
                   filteredOrders.map((order) => {
                     const isReadyForPacking = order.deliveryStatus === 'Payment Confirmed - Ready for Packing';
-                    const isRiderAssigned = order.deliveryStatus === 'Rider Assigned';
+                    const isRiderAssigned = order.deliveryStatus === 'Cargo Van Assigned';
                     const isDelivered = order.deliveryStatus === 'Delivered';
 
                     return (
@@ -1187,7 +1211,7 @@ _Airen Pharmacy Operations Terminal_`;
                             <div>
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                                 <Truck className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Rider Assigned</span>
+                                <span>Cargo Van Assigned</span>
                               </span>
                               {order.assignedRider && (
                                 <div className="text-[10px] text-slate-600 mt-1">
@@ -1241,11 +1265,11 @@ _Airen Pharmacy Operations Terminal_`;
                                   ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
                                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                               } ${isDelivered ? 'opacity-40 cursor-not-allowed' : ''}`}
-                              title="Assign courier and trigger warehouse pickup"
+                              title="Assign B2B cargo van and trigger warehouse pickup"
                             >
                               <Truck className="w-3.5 h-3.5" />
                               <span className="hidden xl:inline">
-                                {isReadyForPacking ? 'Mark Pickup' : 'Reassign Rider'}
+                                {isReadyForPacking ? 'Mark Pickup' : 'Reassign Van'}
                               </span>
                             </button>
 
@@ -1469,7 +1493,7 @@ _Airen Pharmacy Operations Terminal_`;
                         PharmaStackX Intra-Benin Rapid Fleet
                       </div>
                       <p className="text-slate-500 text-[11px]">
-                        Courier: Osaze Idahosa • +234 805 112 3490 (Bajaj Boxer 150cc)
+                        Cargo Van: Osaze Idahosa • +234 805 112 3490 (Bajaj Boxer 150cc)
                       </p>
                       <span className="inline-block mt-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.2 rounded">
                         Available at Benin Depot Gate • 35m Metro ETA
@@ -1497,7 +1521,7 @@ _Airen Pharmacy Operations Terminal_`;
                         Airen In-house Express Fleet
                       </div>
                       <p className="text-slate-500 text-[11px]">
-                        Courier: Osahon E. • +234 814 990 1234 (TVS Metro #2)
+                        Cargo Van: Osahon E. • +234 814 990 1234 (TVS Metro #2)
                       </p>
                       <span className="inline-block mt-1 text-[10px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.2 rounded">
                         Internal Wholesale Dispatch Team
@@ -1600,7 +1624,7 @@ _Airen Pharmacy Operations Terminal_`;
                 ) : (
                   <Truck className="w-4 h-4" />
                 )}
-                <span>Confirm Courier Pickup Handover</span>
+                <span>Confirm Cargo Van Pickup Handover</span>
               </button>
             </div>
           </div>

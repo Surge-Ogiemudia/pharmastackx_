@@ -1074,7 +1074,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView, isTerm
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Delivery</span>
-                    <span className="font-bold text-amber-400">Automated Courier Dispatch</span>
+                    <span className="font-bold text-amber-400">Verified B2B Fleet Dispatch</span>
                   </div>
                 </div>
 
@@ -1109,7 +1109,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView, isTerm
                   <p className="text-emerald-400 font-medium">₦{getCartTotal().toLocaleString()} Paid to Airen Wholesale via Synkk.</p>
                 </div>
                 <div className="bg-[#0f172a] rounded-xl p-4 border border-slate-700/50 inline-block mx-auto text-left space-y-2 mt-4">
-                  <p className="text-sm text-slate-300"><span className="text-slate-500">Dispatch:</span> Courier assigned. ETA 45 mins.</p>
+                  <p className="text-sm text-slate-300"><span className="text-slate-500">Dispatch:</span> B2B Cargo Van assigned. ETA 45 mins.</p>
                   <p className="text-sm text-slate-300"><span className="text-slate-500">Order ID:</span> SNK-B2B-{Math.floor(1000 + Math.random() * 9000)}</p>
                 </div>
               </div>
