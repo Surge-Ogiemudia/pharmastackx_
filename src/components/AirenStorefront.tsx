@@ -251,7 +251,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
 
   if (!isReady) {
     return (
-      <div className="fixed inset-0 z-[999999] bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="flex-1 w-full h-full min-h-[60vh] bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="flex items-center gap-2.5">
           <span className="w-3 h-3 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
           <span className="w-3 h-3 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
