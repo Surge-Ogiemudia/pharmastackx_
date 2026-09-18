@@ -7,6 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 interface AirenStorefrontProps {
   partnerSlug?: string;
   setView?: (view: string) => void;
+  isTerminalMode?: boolean;
 }
 
 // Inline editable text component for demo overrides
@@ -155,9 +156,9 @@ function ProductImageWithFallback({
   );
 }
 
-export default function AirenStorefront({ partnerSlug = 'airen', setView }: AirenStorefrontProps) {
+export default function AirenStorefront({ partnerSlug = 'airen', setView, isTerminalMode }: AirenStorefrontProps) {
   const router = useRouter();
-  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal } = useCart();
+  const { items: cart, addToCart, removeFromCart, updateQuantity, getTotalPrice: getCartTotal, clearCart } = useCart();
 
   const [partner, setPartner] = useState<any>({
     name: 'Airen Pharmacy & Wholesale Depot',
@@ -167,8 +168,9 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
     tagline: 'Leading Pharmaceutical Wholesale & Distribution',
     contactPhone: '07067593825',
     contactEmail: 'Business@airen.health',
+    businessType: 'Wholesale Depot',
   });
-
+  
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -177,6 +179,10 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // B2B Terminal Checkout States
+  const [isB2BCheckoutOpen, setIsB2BCheckoutOpen] = useState(false);
+  const [isB2BSuccess, setIsB2BSuccess] = useState(false);
 
   // Extended Network Fallback states (Option B)
   const [isNetworkMode, setIsNetworkMode] = useState(false);
@@ -323,7 +329,10 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
 
   const handleCheckout = () => {
     setIsCartOpen(false);
-    if (setView) {
+    if (isTerminalMode) {
+      setIsB2BCheckoutOpen(true);
+      setIsB2BSuccess(false);
+    } else if (setView) {
       setView('confirmOrder');
     } else {
       router.push(`/?view=confirmOrder&slug=${encodeURIComponent(partnerSlug)}`);
@@ -1013,6 +1022,98 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TERMINAL B2B CHECKOUT MODAL */}
+      {isB2BCheckoutOpen && (
+        <div className="fixed inset-0 z-[99999] bg-[#0f172a]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
+          <div className="bg-[#1e293b] w-full max-w-xl rounded-3xl border border-slate-700 shadow-2xl p-6 sm:p-8 relative overflow-hidden">
+            
+            {/* Top right close button (only if not success) */}
+            {!isB2BSuccess && (
+              <button 
+                onClick={() => setIsB2BCheckoutOpen(false)}
+                className="absolute top-6 right-6 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+
+            {!isB2BSuccess ? (
+              <div className="space-y-8">
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-[#10b981]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">Wholesale Sourcing Checkout</h2>
+                  <p className="text-slate-400 text-sm">Secure Terminal Settlement via Synkk Network</p>
+                </div>
+
+                <div className="bg-[#0f172a] rounded-2xl p-5 border border-slate-700/50 space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">Distributor</span>
+                    <span className="font-bold text-white">Airen Pharmacy & Wholesale</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">Total Sourcing Cost</span>
+                    <span className="font-bold text-[#10b981] text-lg">₦{getCartTotal().toLocaleString()}</span>
+                  </div>
+                  <div className="h-px bg-slate-800 w-full"></div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">Settlement Method</span>
+                    <span className="font-bold text-white flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                      Synkk Upfront Wallet
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400">Delivery</span>
+                    <span className="font-bold text-amber-400">Automated Courier Dispatch</span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-950/30 border border-emerald-900/50 rounded-xl p-4 flex gap-3 text-emerald-200 text-xs leading-relaxed">
+                  <svg className="w-5 h-5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span>100% Upfront Payout guaranteed to Airen Wholesale Depot. Zero credit risk. Settlement is instant.</span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsB2BSuccess(true);
+                    setTimeout(() => {
+                      clearCart();
+                      setIsB2BCheckoutOpen(false);
+                      setIsB2BSuccess(false);
+                    }, 4000);
+                  }}
+                  className="w-full py-4 bg-[#10b981] hover:bg-[#059669] text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition cursor-pointer active:scale-95"
+                >
+                  Confirm Sourcing Order & Pay ₦{getCartTotal().toLocaleString()}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-10 space-y-6 animate-fade-in">
+                <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+                  <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-extrabold text-white mb-2">Order Confirmed!</h2>
+                  <p className="text-emerald-400 font-medium">₦{getCartTotal().toLocaleString()} Paid to Airen Wholesale via Synkk.</p>
+                </div>
+                <div className="bg-[#0f172a] rounded-xl p-4 border border-slate-700/50 inline-block mx-auto text-left space-y-2 mt-4">
+                  <p className="text-sm text-slate-300"><span className="text-slate-500">Dispatch:</span> Courier assigned. ETA 45 mins.</p>
+                  <p className="text-sm text-slate-300"><span className="text-slate-500">Order ID:</span> SNK-B2B-{Math.floor(1000 + Math.random() * 9000)}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

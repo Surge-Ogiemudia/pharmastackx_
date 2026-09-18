@@ -248,9 +248,9 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
           </div>
         ) : (
           <div className="flex-1 flex flex-col overflow-y-auto relative bg-slate-50">
-            <div className="flex-1 [&>div]:min-h-full">
-              <AirenStorefront partnerSlug="airen" setView={() => {}} />
-            </div>
+              <div className="flex-1 [&>div]:min-h-full">
+                <AirenStorefront partnerSlug="airen" setView={() => {}} isTerminalMode={true} />
+              </div>
           </div>
         )}
       </div>
