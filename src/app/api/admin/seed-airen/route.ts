@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { dbConnect } from '@/lib/mongoConnect';
+import Partner from '@/models/Partner';
+import Product from '@/models/Product';
 
 const AIREN_PRODUCTS = [
   {
@@ -102,25 +104,22 @@ const AIREN_PRODUCTS = [
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db('test');
+    await dbConnect();
     
     // Check if partner exists
-    const partner = await db.collection('partners').findOne({ slug: 'airen' });
+    let partner = await Partner.findOne({ slug: 'airen' });
     if (!partner) {
-      await db.collection('partners').insertOne({
+      partner = await Partner.create({
         name: 'Airen Pharmacy & Wholesale Depot',
         slug: 'airen',
         contactPhone: '07067593825',
         contactEmail: 'Business@airen.health',
         businessType: 'Wholesale Depot',
-        createdAt: new Date(),
-        updatedAt: new Date()
       });
     }
 
     // Delete existing products to avoid duplicates
-    await db.collection('products').deleteMany({ slug: 'airen' });
+    await Product.deleteMany({ slug: 'airen' });
 
     // Insert new products
     const docs = AIREN_PRODUCTS.map(p => ({
@@ -129,11 +128,11 @@ export async function GET() {
       price: p.amount,
       slug: 'airen',
       businessName: 'Airen Pharmacy & Wholesale Depot',
-      createdAt: new Date(),
-      updatedAt: new Date()
+      partnerId: partner._id,
+      inStock: true
     }));
 
-    await db.collection('products').insertMany(docs);
+    await Product.insertMany(docs);
 
     return NextResponse.json({ success: true, count: docs.length, message: 'Airen products seeded' });
   } catch (err: any) {
