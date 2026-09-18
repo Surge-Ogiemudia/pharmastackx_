@@ -31,7 +31,7 @@ export default function AuthPage() {
   const initialStep = claimSlug 
     ? 'pharmacy-owner-signup' 
     : (roleParam === 'medical_rep'
-        ? (searchParams?.get('mode') === 'login' ? 'sign-in' : 'medical-rep-signup')
+        ? (searchParams?.get('mode') === 'signup' ? 'medical-rep-signup' : 'sign-in')
         : (searchParams?.get('mode') === 'login' ? 'sign-in' : 'role'));
   const [step, setStep] = useState(initialStep as any);
   const [showPassword, setShowPassword] = useState(false);
@@ -500,7 +500,7 @@ export default function AuthPage() {
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
         >
           <Box 
-            onClick={() => setStep('role')}
+            onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
           >
             <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -684,7 +684,7 @@ export default function AuthPage() {
               sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
             >
               <Box 
-                onClick={() => setStep('role')}
+                onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
               >
                 <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -923,7 +923,7 @@ export default function AuthPage() {
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
         >
           <Box 
-            onClick={() => setStep('role')}
+            onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
           >
             <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1134,7 +1134,7 @@ export default function AuthPage() {
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
         >
           <Box 
-            onClick={() => setStep('role')}
+            onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
           >
             <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1401,7 +1401,7 @@ export default function AuthPage() {
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '12px 24px 16px', mt: { xs: 0, sm: 2 } }}
         >
           <Box 
-            onClick={() => setStep('role')}
+            onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
           >
             <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
@@ -1560,7 +1560,7 @@ export default function AuthPage() {
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }} 
           sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '12px 24px 16px', cursor: 'pointer', mt: { xs: 0, sm: 2 } }}
-          onClick={() => setStep('role')}
+          onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')}
         >
           <Box sx={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.8)', color: '#888' }}>
             <ArrowBackIcon sx={{ fontSize: 16 }} />
@@ -1647,7 +1647,7 @@ export default function AuthPage() {
 
             <Box sx={{ textAlign: 'center', mt: 3, mb: 1 }}>
                 <Typography sx={{ fontSize: 12, color: '#bbb' }}>
-                    Don't have an account? <span onClick={() => setStep('role')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Create one</span>
+                    Don't have an account? <span onClick={() => setStep(roleParam === 'medical_rep' ? 'medical-rep-signup' : 'role')} style={{ color: '#0F6E56', fontWeight: 500, cursor: 'pointer' }}>Create one</span>
                 </Typography>
             </Box>
         </Box>
