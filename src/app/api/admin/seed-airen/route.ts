@@ -129,7 +129,8 @@ export async function GET() {
       slug: 'airen',
       businessName: 'Airen Pharmacy & Wholesale Depot',
       partnerId: partner._id,
-      inStock: true
+      inStock: true,
+      isPublished: true
     }));
 
     await Product.insertMany(docs);
