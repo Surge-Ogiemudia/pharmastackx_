@@ -98,13 +98,14 @@ export default function HomePage() {
     if (searchParams?.get('requestId')) return 'orderMedicines';
     if (v) return v;
     if (searchParams?.get('slug')) return 'findMedicines';
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname.startsWith('/p/')) return 'findMedicines';
-      const h = window.location.hostname;
-      const isSub = ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && !h.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
-      if (isSub) return 'findMedicines';
-    }
-    return 'home';
+      if (typeof window !== 'undefined') {
+        if (window.location.pathname.startsWith('/p/')) return 'findMedicines';
+        const h = window.location.hostname;
+        const isSub = ['pharmastackx.com', 'psx.ng'].some(d => h.endsWith(d)) && !h.startsWith('www.') && !['pharmastackx.com', 'psx.ng', 'localhost'].includes(h);
+        const slug = h.split('.')[0];
+        if (isSub && slug !== 'rep' && slug !== 'airen') return 'findMedicines';
+      }
+      return 'home';
   });
   const [otherUser, setOtherUser] = useState<UnifiedUser | null>(null);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -171,10 +172,10 @@ const [globalSettings, setGlobalSettings] = useState<any>(null);
       }
     }
 
-      // Medical reps only have access to storeManagement and account views
+      // Medical reps only have access to home, storeManagement, and account views
       if (!isLoading && user?.role === 'medical_rep') {
-        if (['home', 'orders', 'orderMedicines', 'orderRequests', 'requestsList', 'medicineRestock', 'findMedicines'].includes(view)) {
-          setView('storeManagement');
+        if (['orders', 'orderMedicines', 'orderRequests', 'requestsList', 'medicineRestock', 'findMedicines'].includes(view)) {
+          setView('home');
         }
       }
     
