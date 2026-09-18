@@ -42,9 +42,13 @@ export async function middleware(request: NextRequest) {
     // Dedicated Rep portal: rep.psx.ng -> Medical Rep auth & signup
     if (slug === 'rep') {
       if (pathname === '/' || pathname === '') {
-        url.pathname = '/auth';
-        url.searchParams.set('role', 'medical_rep');
-        return NextResponse.redirect(url);
+        const sessionToken = request.cookies.get('session_token')?.value;
+        const payload = sessionToken ? await verifyToken(sessionToken) : null;
+        if (!payload) {
+          url.pathname = '/auth';
+          url.searchParams.set('role', 'medical_rep');
+          return NextResponse.redirect(url);
+        }
       }
     } else if (slug && (pathname === '/' || pathname === '')) {
       console.log(`[Middleware] Subdomain root hit. Rewriting to /p/${slug}`);
