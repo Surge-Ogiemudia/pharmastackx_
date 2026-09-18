@@ -74,8 +74,8 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
     name: 'Airen Pharmacy & Wholesale Depot',
     slug: 'airen',
     logoUrl: 'https://vestv.nyc3.cdn.digitaloceanspaces.com/airen.png',
-    primaryColor: '#F43F5E',
-    tagline: 'Expert Women’s Reproductive Health & Wellness',
+    primaryColor: '#10b981',
+    tagline: 'Leading Pharmaceutical Wholesale & Distribution',
     contactPhone: '07067593825',
     contactEmail: 'Business@airen.health',
   });
@@ -96,12 +96,12 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
 
   const categories = useMemo(() => [
     'all',
-    'Contraceptive Kits',
+    'Antimalarial',
+    'Antibiotics',
     'Pain Relief',
-    'Reproductive Health',
-    'Supplements',
-    'Skincare',
-    'Antibiotic'
+    'Cough & Cold',
+    'Vitamins & Supplements',
+    'Cardiovascular'
   ], []);
 
   const showToast = (msg: string) => {
@@ -341,17 +341,17 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
           <div className="space-y-1.5 sm:space-y-3 max-w-2xl z-10">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500 text-white uppercase tracking-wider">
-                Official Patient Store
+                Official Wholesale Depot
               </span>
               <span className="text-[11px] sm:text-xs text-slate-400">
-                Verified Women&apos;s Health Catalog
+                Verified B2B Pharmacy Catalog
               </span>
             </div>
             <h2 className="text-base sm:text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug">
-              Confidential & Verified Women’s Healthcare Essentials
+              Premium Wholesale Medicines & Pharmacy Supplies
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed hidden sm:block">
-              Order genuine reproductive healthcare, emergency contraception, pain relief, and wellness essentials curated by {partner.name}. Delivered swiftly and privately to your door.
+              Source authentic pharmaceutical products in bulk cartons or single units curated by {partner.name}. Guaranteed quality with 24-hour dispatch.
             </p>
             {/* Slim inline status on mobile */}
             <div className="flex md:hidden items-center gap-2 text-[11px] text-emerald-400 font-medium pt-0.5">
@@ -534,7 +534,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                     Looking for "{searchQuery}"?
                   </h4>
                   <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                    This item isn't on airen's primary women's health shelf, but it may be in stock across our partner network of 50,000+ verified pharmacy products.
+                    This item isn't on airen's primary wholesale shelf, but it may be in stock across our partner network of 50,000+ verified pharmacy products.
                   </p>
                 </div>
                 
