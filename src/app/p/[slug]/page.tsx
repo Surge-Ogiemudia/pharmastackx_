@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import FindMedicinesContent from '@/components/FindMedicinesContent';
 import BubblegumStorefront from '@/components/BubblegumStorefront';
 import AirenB2BStorefront from '@/components/AirenB2BStorefront';
+import AirenStorefront from '@/components/AirenStorefront';
 import ConfirmOrderContent from '@/components/ConfirmOrderContent';
 import BubblegumOrders from '@/components/BubblegumOrders';
 
@@ -61,8 +62,12 @@ function PartnerStorefrontInner() {
     return <BubblegumStorefront partnerSlug={slug} setView={handleSetView} />;
   }
 
-  if (slug === 'demo.airen' || slug === 'airen' || slug === 'airenpharmacy' || slug.includes('airen')) {
+  if (slug === 'demo.airen') {
     return <AirenB2BStorefront partnerSlug={slug} setView={handleSetView} />;
+  }
+
+  if (slug === 'airen' || slug === 'airenpharmacy' || slug.includes('airen')) {
+    return <AirenStorefront partnerSlug={slug} setView={handleSetView} />;
   }
 
   return <FindMedicinesContent partnerSlug={slug} setView={handleSetView} />;
