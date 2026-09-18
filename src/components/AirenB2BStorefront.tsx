@@ -143,9 +143,12 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   
                   {/* Airen Wholesale Card */}
-                  <Link 
-                    href="/p/airen"
-                    target="_blank"
+                  <div 
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.open('https://airen.psx.ng', '_blank');
+                      }
+                    }}
                     className="bg-[#0f172a] border border-[#10b981]/30 p-6 rounded-xl hover:border-[#10b981]/70 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all cursor-pointer group block"
                   >
                     <div className="flex justify-between items-start mb-5">
@@ -170,7 +173,7 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                     <div className="w-full bg-[#1e293b] group-hover:bg-[#10b981] group-hover:text-black text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2">
                       View Catalog <ArrowRight className="w-4 h-4" />
                     </div>
-                  </Link>
+                  </div>
                   
                 </div>
               </div>
