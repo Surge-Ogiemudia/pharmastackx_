@@ -171,12 +171,12 @@ const [globalSettings, setGlobalSettings] = useState<any>(null);
       }
     }
 
-    // Medical reps only have access to home and account views
-    if (!isLoading && user?.role === 'medical_rep') {
-      if (['orders', 'orderMedicines', 'orderRequests', 'requestsList', 'medicineRestock', 'findMedicines'].includes(view)) {
-        setView('home');
+      // Medical reps only have access to storeManagement and account views
+      if (!isLoading && user?.role === 'medical_rep') {
+        if (['home', 'orders', 'orderMedicines', 'orderRequests', 'requestsList', 'medicineRestock', 'findMedicines'].includes(view)) {
+          setView('storeManagement');
+        }
       }
-    }
     
     // Don't do anything else until the user's session is loaded.
     if (!user) return;
