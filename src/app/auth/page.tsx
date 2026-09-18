@@ -74,7 +74,7 @@ export default function AuthPage() {
     const role = searchParams?.get('role');
     const mode = searchParams?.get('mode');
     if (role === 'medical_rep' && !claimSlug) {
-      setStep(mode === 'login' ? 'sign-in' : 'medical-rep-signup');
+      setStep(mode === 'signup' ? 'medical-rep-signup' : 'sign-in');
     }
   }, [searchParams, claimSlug]);
 
