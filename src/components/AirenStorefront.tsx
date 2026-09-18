@@ -858,7 +858,7 @@ export default function AirenStorefront({ partnerSlug = 'airen', setView }: Aire
                       <ProductImageWithFallback
                         src={item.image}
                         alt={item.name}
-                        productId={item.id || item._id}
+                        productId={item.id || (item as any)._id}
                         containerClassName="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shrink-0 p-1 flex items-center justify-center overflow-hidden"
                         className="w-full h-full object-contain"
                         badgeSize="w-8 h-8"
