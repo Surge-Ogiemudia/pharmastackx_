@@ -114,6 +114,14 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
             <Menu className="w-5 h-5" />
           </button>
           <span className="font-bold text-[15px] text-white">Terminal</span>
+          {terminalView === 'airen-catalog' && (
+            <button 
+              onClick={() => setTerminalView('sourcing')}
+              className="ml-auto bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-white/10"
+            >
+              <ArrowLeft size={16} /> Back to Sourcing
+            </button>
+          )}
         </div>
 
         {/* Page Content */}
@@ -240,12 +248,6 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
           </div>
         ) : (
           <div className="flex-1 flex flex-col overflow-y-auto relative bg-slate-50">
-            <button 
-              onClick={() => setTerminalView('sourcing')}
-              className="absolute top-4 left-6 z-50 bg-slate-900/70 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 backdrop-blur-md transition-all shadow-lg"
-            >
-              <ArrowLeft size={16} /> Back to Directory
-            </button>
             <div className="flex-1 [&>div]:min-h-full">
               <AirenStorefront partnerSlug="airen" setView={() => {}} />
             </div>
