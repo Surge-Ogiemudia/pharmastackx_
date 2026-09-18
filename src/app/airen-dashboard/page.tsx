@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 
 export default function AirenDashboardPage() {
+  const [dashboardView, setDashboardView] = useState<'onboarding' | 'fulfillment' | 'payouts'>('onboarding');
   const [orders, setOrders] = useState<AirenOrder[]>(INITIAL_AIREN_ORDERS);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'dispatched' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -672,10 +673,156 @@ _Airen Pharmacy Operations Terminal_`;
               </Link>
             </div>
           </div>
-        </div>
-      </header>
+      </div>
+    </header>
 
-      {/* MAIN CONTAINER */}
+    {/* DASHBOARD TOP NAVIGATION TABS */}
+    <div className="bg-white border-b border-slate-200 sticky top-20 z-20 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex gap-8 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setDashboardView('onboarding')}
+            className={`py-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 ${dashboardView === 'onboarding' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+          >
+            <ShieldCheck className="w-4 h-4" /> 1. POS Integration (Zero Disruption)
+          </button>
+          <button
+            onClick={() => setDashboardView('fulfillment')}
+            className={`py-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 ${dashboardView === 'fulfillment' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+          >
+            <Package className="w-4 h-4" /> 2. Wholesale Fulfillment Queue
+          </button>
+          <button
+            onClick={() => setDashboardView('payouts')}
+            className={`py-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 ${dashboardView === 'payouts' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+          >
+            <DollarSign className="w-4 h-4" /> 3. Upfront Settlements & Wallet
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* ONBOARDING VIEW */}
+    {dashboardView === 'onboarding' && (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 sm:p-12 text-center max-w-4xl mx-auto">
+          <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-100">
+            <svg className="w-10 h-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          </div>
+          <h2 className="text-3xl font-extrabold text-slate-900 mb-4">Synkk Terminal Bridge is Active</h2>
+          <p className="text-slate-500 text-lg mb-10 max-w-2xl mx-auto">
+            Your local retail POS system is seamlessly connected. Synkk continuously pushes your surplus stock to the B2B catalog without any disruption to your existing workflow.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 text-left">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-3 mb-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                <h4 className="font-bold text-slate-900">Local POS Detected</h4>
+              </div>
+              <p className="text-sm text-slate-500">Connected to <strong>Medlife Pharmacy Retail POS</strong> via Synkk Secure Tunnel on Port 1433.</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-3 mb-3">
+                <RefreshCw className="w-6 h-6 text-blue-600 animate-spin-slow" />
+                <h4 className="font-bold text-slate-900">Live Syncing</h4>
+              </div>
+              <p className="text-sm text-slate-500">Inventory counts are synced every 3 minutes. <strong>12,450 SKUs</strong> currently mirrored online.</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-3 mb-3">
+                <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                <h4 className="font-bold text-slate-900">Zero Data Entry</h4>
+              </div>
+              <p className="text-sm text-slate-500">Prices, stock, and item names are mapped automatically. You only manage fulfillment.</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 text-emerald-400 font-mono text-xs sm:text-sm text-left p-6 rounded-2xl overflow-hidden shadow-inner">
+            <p className="mb-2 text-slate-500">// Synkk Bridge Live Log (Tail)</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] connection_established: Medlife_POS_DB</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] synkk_daemon: Checking diff...</p>
+            <p className="mb-1 text-emerald-300">[{new Date().toLocaleTimeString()}] success: Synced 14 price changes to Synkk Cloud</p>
+            <p className="mb-1">[{new Date().toLocaleTimeString()}] heartbeat: OK (Latency 14ms)</p>
+          </div>
+        </div>
+      </main>
+    )}
+
+    {/* PAYOUTS VIEW */}
+    {dashboardView === 'payouts' && (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-gradient-to-br from-emerald-900 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 opacity-20">
+                <DollarSign className="w-24 h-24" />
+              </div>
+              <p className="text-emerald-300 text-sm font-semibold mb-2 uppercase tracking-wider flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div> Available Payout
+              </p>
+              <h2 className="text-4xl sm:text-5xl font-black mb-6">₦2,450,800</h2>
+              <button className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl transition shadow-lg cursor-pointer flex justify-center items-center gap-2">
+                Withdraw to FirstBank
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <h3 className="font-bold text-slate-900">Settlement Account</h3>
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-bold text-slate-900 border border-slate-200">FB</div>
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">First Bank of Nigeria</p>
+                  <p className="text-xs text-slate-500 font-mono">**** **** 1294</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 flex items-center gap-1.5 pt-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Auto-sweep enabled (Daily 6:00 PM)
+              </p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-lg">Upfront Settlement History</h3>
+                <span className="text-xs font-semibold px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full">Zero Credit Risk</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {[
+                  { ref: 'SNK-B2B-8912', dest: 'Apcare Pharmacy', amount: 84000, date: 'Today, 2:14 PM' },
+                  { ref: 'SNK-B2B-1092', dest: 'Medlife Pharmacy', amount: 215500, date: 'Today, 10:45 AM' },
+                  { ref: 'SNK-B2B-4412', dest: 'KOP Pharmacy', amount: 92000, date: 'Yesterday' },
+                  { ref: 'SNK-B2B-0911', dest: 'Ernosa Pharmacy', amount: 154000, date: 'Yesterday' },
+                  { ref: 'SNK-B2B-9812', dest: 'Emed Pharmacy', amount: 33000, date: 'Sep 15, 2024' },
+                ].map((s, i) => (
+                  <div key={i} className="p-5 flex items-center justify-between hover:bg-slate-50 transition">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                        <Check className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{s.ref}</p>
+                        <p className="text-xs text-slate-500">Prepaid by {s.dest}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-emerald-600">+₦{s.amount.toLocaleString()}</p>
+                      <p className="text-xs text-slate-400">{s.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    )}
+
+    {/* MAIN CONTAINER */}
+    {dashboardView === 'fulfillment' && (
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* HERO BENCHMARK ANNOUNCEMENT BANNER */}
         <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-7 text-white shadow-xl shadow-emerald-950/10 border border-emerald-700/40 relative overflow-hidden mb-8">
@@ -1135,8 +1282,9 @@ _Airen Pharmacy Operations Terminal_`;
           </div>
         </div>
       </main>
+    )}
 
-      {/* MODAL 1: WAREHOUSE PICKING SLIP PREVIEW & PRINT MODAL */}
+    {/* MODAL 1: WAREHOUSE PICKING SLIP PREVIEW & PRINT MODAL */}
       {pickingSlipOrder && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:hidden">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95">
