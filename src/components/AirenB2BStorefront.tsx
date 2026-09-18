@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShoppingCart, Package, Search, Users, Sparkles, Settings, LogOut, X, Menu, Loader2, MapPin, Building2, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import AirenStorefront from './AirenStorefront';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -116,8 +117,9 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 p-8 flex flex-col overflow-y-auto">
-          <h1 className="text-2xl font-bold text-white mb-2">B2B Sourcing</h1>
+        {terminalView === 'sourcing' ? (
+          <div className="flex-1 p-8 flex flex-col overflow-y-auto">
+            <h1 className="text-2xl font-bold text-white mb-2">B2B Sourcing</h1>
             <p className="text-slate-400 text-[15px] mb-8">
               Check neighboring pharmacy stock in real-time and source out-of-stock medicines instantly.
             </p>
@@ -144,11 +146,7 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
                   
                   {/* Airen Wholesale Card */}
                   <div 
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.open('https://airen.psx.ng', '_blank');
-                      }
-                    }}
+                    onClick={() => setTerminalView('airen-catalog')}
                     className="bg-[#0f172a] border border-[#10b981]/30 p-6 rounded-xl hover:border-[#10b981]/70 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all cursor-pointer group block"
                   >
                     <div className="flex justify-between items-start mb-5">
@@ -239,7 +237,20 @@ export default function AirenB2BStorefront({ partnerSlug, setView }: AirenB2BSto
               </div>
             </div>
           )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-y-auto relative bg-slate-50">
+            <button 
+              onClick={() => setTerminalView('sourcing')}
+              className="absolute top-4 left-6 z-50 bg-slate-900/70 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 backdrop-blur-md transition-all shadow-lg"
+            >
+              <ArrowLeft size={16} /> Back to Directory
+            </button>
+            <div className="flex-1 [&>div]:min-h-full">
+              <AirenStorefront partnerSlug="airen" setView={() => {}} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
