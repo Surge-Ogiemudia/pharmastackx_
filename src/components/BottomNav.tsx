@@ -15,7 +15,7 @@ const BottomNav = ({ currentView, onTabClick }: BottomNavProps) => {
   const isMedicalRep = user?.role === 'medical_rep';
 
   const tabs = isMedicalRep ? [
-    { id: 'home', label: 'HOME' },
+    { id: 'storeManagement', label: 'CATALOG' },
     { id: 'account', label: 'ACCOUNT' }
   ] : [
     { id: 'home', label: 'HOME' },
