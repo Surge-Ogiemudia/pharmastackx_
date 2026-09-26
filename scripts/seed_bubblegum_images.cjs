@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const uri = 'mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/test?appName=Cluster0';
+const uri = process.env.MONGO_URI;
 
 const verifiedImages = {
   postinor: "https://d3ckuu7lxvlwp2.cloudfront.net/products_alt_img/10950660906166f994eccddproduct_alt.webp",

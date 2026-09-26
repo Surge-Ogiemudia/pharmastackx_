@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const URI = 'mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/test?appName=Cluster0';
+const URI = process.env.MONGO_URI;
 
 const KEYWORD_GROUPS = [
   {

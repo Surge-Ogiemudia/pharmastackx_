@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const token = '***REMOVED***';
+const token = process.env.WHAPI_TOKEN;
 const adminPhone = '2349134589572'; // from .env.local
 
 async function test() {

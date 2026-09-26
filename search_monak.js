@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MONGODB_URI = "mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/test?appName=Cluster0";
+const MONGODB_URI = process.env.MONGO_URI;
 
 async function main() {
   try {

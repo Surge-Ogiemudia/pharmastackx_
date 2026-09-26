@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dns from "dns";
+import crypto from "crypto";
 import { dbConnect } from "@/lib/mongoConnect";
 
 // Force IPv4 resolution for outbound requests (fixes Vercel ETIMEDOUT / fetch failed)
@@ -532,7 +533,7 @@ async function finaliseDmRequest(phone: string, medicines: any[], state: string,
       botUser = await UserModel.create({
         username: 'whatsapp_bot',
         email: 'whatsapp@pharmastackx.com',
-        password: 'system_bot_password_123',
+        password: crypto.randomBytes(32).toString('hex'),
         role: 'customer',
         name: 'WhatsApp Automated Bot',
       });
@@ -671,7 +672,7 @@ export async function POST(req: NextRequest) {
                     if (!cls?.isDrugRequest || cls.confidence <= 0.6) continue;
 
                     let botUser = await UserModel.findOne({ username: 'whatsapp_bot' });
-                    if (!botUser) botUser = await UserModel.create({ username: 'whatsapp_bot', email: 'whatsapp@pharmastackx.com', password: 'system_bot_password_123', role: 'customer', name: 'WhatsApp Automated Bot' });
+                    if (!botUser) botUser = await UserModel.create({ username: 'whatsapp_bot', email: 'whatsapp@pharmastackx.com', password: crypto.randomBytes(32).toString('hex'), role: 'customer', name: 'WhatsApp Automated Bot' });
 
                     // Prefer AI-extracted location, fall back to group name resolution
                     let state = extractState(cls.location || '') || stateFromGroup || 'National';
@@ -852,7 +853,7 @@ export async function POST(req: NextRequest) {
                         botUser = await UserModel.create({
                             username: 'whatsapp_bot',
                             email: 'whatsapp@pharmastackx.com',
-                            password: 'system_bot_password_123', // Internal use
+                            password: crypto.randomBytes(32).toString('hex'), // Internal use
                             role: 'customer',
                             name: 'WhatsApp Automated Bot'
                         });

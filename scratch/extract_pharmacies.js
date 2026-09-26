@@ -1,7 +1,7 @@
 
 const mongoose = require('mongoose');
 
-const MONGO_URI = 'mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI;
 
 async function extract() {
   await mongoose.connect(MONGO_URI);

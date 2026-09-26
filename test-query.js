@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb');
 async function test() {
-  const client = new MongoClient('mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0');
+  const client = new MongoClient(process.env.MONGO_URI);
   await client.connect();
   const db = client.db('test');
   const p = await db.collection('products').find({ itemName: /Amlodipine/i, isPublished: true, quantity: { $gt: 0 } }).toArray();

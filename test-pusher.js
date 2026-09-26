@@ -3,7 +3,7 @@ const Pusher = require('pusher');
 const pusher = new Pusher({
   appId: "2152461",
   key: "097f7e40113bef06b815",
-  secret: "***REMOVED***",
+  secret: process.env.PUSHER_SECRET,
   cluster: "eu",
   useTLS: true
 });

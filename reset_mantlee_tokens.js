@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const uri = "mongodb+srv://pharmastakx_db_user:***REMOVED***@cluster0.tpkohgb.mongodb.net/test?appName=Cluster0";
+const uri = process.env.MONGO_URI;
 
 async function resetTokens() {
   try {
