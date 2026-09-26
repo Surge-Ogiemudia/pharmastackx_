@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { pusherServer } from '@/lib/pusher';
 import { v4 as uuidv4 } from 'uuid';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
   try {
-    // Optional: Add strict admin role checking here.
-
     const { targetPharmacySlug, naturalLanguageCommand } = await req.json();
 
     if (!targetPharmacySlug || !naturalLanguageCommand) {

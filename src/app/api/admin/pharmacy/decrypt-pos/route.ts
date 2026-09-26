@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import { decryptMasterData } from '@/lib/encryption';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 // This is an admin-only "God-Mode" endpoint.
 export async function GET(req: NextRequest) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
   try {
-    // 1. In a real production environment, you MUST secure this endpoint
-    // with Admin Session verification (e.g., verifying the user has role 'admin')
-    // For now, we protect it by requiring the exact Master Key from the environment.
-    // If the server doesn't have the key, decryption is impossible.
-    
     const searchParams = req.nextUrl.searchParams;
     const pharmacyId = searchParams.get('pharmacyId');
 

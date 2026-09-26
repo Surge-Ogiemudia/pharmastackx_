@@ -13,6 +13,7 @@ import EnrichmentLock from '@/models/EnrichmentLock';
 import Log from '@/models/Log';
 import UploadLog from '@/models/UploadLog';
 import Order from '@/models/Order';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 const Request = MedicineRequest;
 
 const models: { [key: string]: any } = {
@@ -41,6 +42,10 @@ async function getParamsFromUrl(req: NextRequest) {
 
 // Handler for updating a document
 export async function PUT(req: NextRequest) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
     await dbConnect();
     try {
         const { collection, id } = await getParamsFromUrl(req);
@@ -72,6 +77,10 @@ export async function PUT(req: NextRequest) {
 
 // Handler for deleting a document
 export async function DELETE(req: NextRequest) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
     await dbConnect();
     try {
         const { collection, id } = await getParamsFromUrl(req);

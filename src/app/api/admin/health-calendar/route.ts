@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import HealthCalendarEvent from '@/models/HealthCalendarEvent';
 import User from '@/models/User';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -23,12 +24,12 @@ export async function POST(req: NextRequest) {
     if (!adminId || !name || !month || !day || !category) {
       return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
     }
-    const admin = await User.findById(adminId);
+    const admin = await getAdminFromRequest(req);
     if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
 
-    const event = await HealthCalendarEvent.create({ name, month: Number(month), day: Number(day), category, isActive: true, createdBy: adminId });
+    const event = await HealthCalendarEvent.create({ name, month: Number(month), day: Number(day), category, isActive: true, createdBy: admin._id });
     return NextResponse.json({ success: true, event });
   } catch (err) {
     console.error('POST health-calendar error:', err);
@@ -40,7 +41,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await dbConnect();
     const { eventId, adminId } = await req.json();
-    const admin = await User.findById(adminId);
+    const admin = await getAdminFromRequest(req);
     if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }

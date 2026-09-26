@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 export async function PATCH(req, { params }) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
   try {
     await dbConnect();
     const { id } = params;

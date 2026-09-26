@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbConnect } from '@/lib/mongoConnect';
 import MasterPrompt from '@/models/MasterPrompt';
 import User from '@/models/User';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 export const maxDuration = 60;
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
     }
 
-    const admin = await User.findById(adminId);
+    const admin = await getAdminFromRequest(req);
     if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
@@ -101,7 +102,7 @@ Return ONLY valid JSON: { "variations": ["prompt 1", "prompt 2", "prompt 3", "pr
       variations,
       isActive:   true,
       isNewMonth: isNewMonth === true,
-      createdBy:  adminId,
+      createdBy:  admin._id,
     });
 
     return NextResponse.json({ success: true, prompt: created });
@@ -116,7 +117,7 @@ export async function PATCH(req: NextRequest) {
   try {
     await dbConnect();
     const { promptId, adminId, isNewMonth } = await req.json();
-    const admin = await User.findById(adminId);
+    const admin = await getAdminFromRequest(req);
     if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
@@ -136,7 +137,7 @@ export async function DELETE(req: NextRequest) {
     await dbConnect();
     const { promptId, adminId } = await req.json();
 
-    const admin = await User.findById(adminId);
+    const admin = await getAdminFromRequest(req);
     if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }

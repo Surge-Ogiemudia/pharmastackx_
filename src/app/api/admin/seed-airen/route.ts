@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import Partner from '@/models/Partner';
 import Product from '@/models/Product';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 const AIREN_PRODUCTS = [
   {
@@ -102,7 +103,11 @@ const AIREN_PRODUCTS = [
   }
 ];
 
-export async function GET() {
+export async function GET(req: Request) {
+  const admin = await getAdminFromRequest(req);
+  if (!admin) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+  }
   try {
     await dbConnect();
     
