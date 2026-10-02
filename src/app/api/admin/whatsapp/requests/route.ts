@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { dbConnect } from '@/lib/mongoConnect';
 import WhatsAppRequest from '@/models/WhatsAppRequest';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 async function getAdminSession() {
   const cookieStore = await cookies();

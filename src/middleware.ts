@@ -6,7 +6,8 @@ import { jwtVerify } from 'jose';
 async function verifyToken(token: string) {
   if (!token) return null;
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'changeme');
+    if (!process.env.JWT_SECRET) return null;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const { payload } = await jwtVerify(token, secret);
     return payload as { userId: string; role: string };
   } catch (e) {

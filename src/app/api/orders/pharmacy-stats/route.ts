@@ -6,7 +6,7 @@ import AnalyticsEvent from '@/models/AnalyticsEvent';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 function getDateRange(filter: string, customStart?: string, customEnd?: string) {
   const now = new Date();

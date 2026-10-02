@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { triggerNewOrder } from '@/lib/pusher';
 import { createConciergeSession } from '@/lib/concierge';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 async function getSession(req: NextRequest) {
   const token = req.cookies.get('session_token')?.value;

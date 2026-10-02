@@ -6,7 +6,7 @@ import User from '@/models/User';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 const admin = getFirebaseAdmin();
 
 export async function POST(request: Request) {

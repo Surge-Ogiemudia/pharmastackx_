@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // HELPER: Authorize Admin
 async function authorizeAdmin() {

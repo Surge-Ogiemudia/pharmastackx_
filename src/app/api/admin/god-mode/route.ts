@@ -18,7 +18,7 @@ import UploadLog from '@/models/UploadLog';
 import Order from '@/models/Order';
 // import Request from '@/models/Request.js'; // Redundant with above
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 const models: { [key: string]: any } = {
     'users': User,

@@ -6,7 +6,7 @@ import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import { triggerQuoteUpdate } from '@/lib/pusher';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // Helper to verify the user's session token
 async function getSession(req: NextRequest) {

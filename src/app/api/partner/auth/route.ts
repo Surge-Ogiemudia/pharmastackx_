@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { Resend } from 'resend';
 import { transporter, mailOptions } from '@/lib/nodemailer';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme_partner_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 
 // Default starter password when no custom password has been configured yet

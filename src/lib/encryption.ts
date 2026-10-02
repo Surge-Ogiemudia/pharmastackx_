@@ -6,7 +6,10 @@ const ALGORITHM = 'aes-256-gcm';
  * Ensures the master key is exactly 32 bytes for AES-256.
  */
 function getMasterKey(): Buffer {
-  const keyStr = process.env.MASTER_POS_KEY || 'default_insecure_development_key_change_me!';
+  const keyStr = process.env.MASTER_POS_KEY;
+  if (!keyStr) {
+    throw new Error('MASTER_POS_KEY is not configured');
+  }
   // Hash the key to guarantee it is exactly 32 bytes
   return crypto.createHash('sha256').update(String(keyStr)).digest();
 }

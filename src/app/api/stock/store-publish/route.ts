@@ -5,7 +5,7 @@ import User from '@/models/User';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function POST(req: NextRequest) {
     await dbConnect();

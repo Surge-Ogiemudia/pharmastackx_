@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // Called cross-origin from the web terminal (e.g. pro.psx.ng calling www.psx.ng),
 // which needs the session_token cookie included — that only happens with

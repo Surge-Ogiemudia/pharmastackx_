@@ -6,7 +6,7 @@ import Log from '@/models/Log';
 import User from '@/models/User'; // We need the User model to identify the actor
 
 // This must match the secret used in your login route
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 /**
  * A helper function to get the currently authenticated user from the session token cookie.

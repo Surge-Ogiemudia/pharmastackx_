@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { dbConnect } from '@/lib/mongoConnect';
 import Message from "@/models/Message";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 interface FrontendMessage {
   _id: string;

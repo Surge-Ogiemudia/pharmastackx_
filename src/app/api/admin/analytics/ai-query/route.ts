@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { dbConnect } from '@/lib/mongoConnect';
 import AnalyticsEvent from '@/models/AnalyticsEvent';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 async function getAdminSession() {

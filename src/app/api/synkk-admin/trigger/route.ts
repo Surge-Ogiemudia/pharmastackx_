@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+    const JWT_SECRET = process.env.JWT_SECRET as string;
     let decoded: any;
     try {
       decoded = jwt.verify(token, JWT_SECRET);

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key_123');
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function POST(req: NextRequest) {
   try {

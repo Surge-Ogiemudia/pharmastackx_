@@ -4,7 +4,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '../../../../models/User';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function POST(req) {
   try {

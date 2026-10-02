@@ -7,7 +7,7 @@ import { transporter } from '@/lib/nodemailer';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // GET — returns unpaid balance
 export async function GET(req: NextRequest) {

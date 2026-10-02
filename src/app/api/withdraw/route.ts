@@ -4,7 +4,7 @@ import User from '@/models/User';
 import { transporter, mailOptions } from '@/lib/nodemailer';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 async function getSession(req: NextRequest) {
   const token = req.cookies.get('session_token')?.value;

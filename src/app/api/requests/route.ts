@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import { transporter } from '@/lib/nodemailer';
 import { triggerNewRequest } from '@/lib/pusher';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // Helper to get session from the request cookies
 async function getSession(req: NextRequest) {

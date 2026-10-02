@@ -5,7 +5,7 @@ import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {

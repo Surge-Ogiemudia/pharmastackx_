@@ -5,7 +5,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function GET(req: NextRequest) {
   console.log('--- [GET /api/account/pharmacists] Received request ---');

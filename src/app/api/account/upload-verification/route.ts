@@ -7,7 +7,7 @@ import User from '@/models/User';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 const UPLOAD_DIR = path.join(process.cwd(), 'public/uploads/verifications');
 
 // Helper to ensure the upload directory exists

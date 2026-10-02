@@ -5,7 +5,7 @@ import { dbConnect } from '@/lib/mongoConnect';
 import Comment from '@/models/Comment';
 import User from '@/models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 async function authorizeAdmin() {
     const cookieStore = await cookies();

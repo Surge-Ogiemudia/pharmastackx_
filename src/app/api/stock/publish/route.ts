@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import User from '@/models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // ... (errorMessages and getIncompleteFields remain same)
 const errorMessages: { [key: string]: string } = {

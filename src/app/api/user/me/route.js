@@ -5,7 +5,7 @@ import User from '@/models/User';
 
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function GET(req) {
   try {
