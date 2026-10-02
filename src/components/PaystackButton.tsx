@@ -87,13 +87,6 @@ const PaystackButton: React.FC<PaystackButtonProps> = (props) => {
   };
 
   const handleCheckout = () => {
-    // 🚨 DEVELOPER BYPASS 🚨
-    if (props.promoCode === 'BYPASS') {
-      console.log('[Dev] Bypassing Paystack via BYPASS promo code...');
-      onSuccess({ reference: `bypass_${Date.now()}` });
-      return;
-    }
-
     console.log('Initiating Paystack checkout...', { 
       amount: props.total, 
       email: props.deliveryEmail,

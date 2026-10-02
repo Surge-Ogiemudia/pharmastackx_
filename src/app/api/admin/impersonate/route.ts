@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import UserModel from '@/models/User';
 import jwt from 'jsonwebtoken';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
-const IMPERSONATE_SECRET = 'feelnew-temp-2024-delete-me';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const secret = searchParams.get('secret');
     const slug = searchParams.get('slug');
 
-    if (secret !== IMPERSONATE_SECRET) {
+    const admin = await getAdminFromRequest(req);
+    if (!admin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -54,6 +54,6 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (err: any) {
     console.error('[impersonate] Error:', err);
-    return NextResponse.json({ error: err.message, stack: err.stack }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
