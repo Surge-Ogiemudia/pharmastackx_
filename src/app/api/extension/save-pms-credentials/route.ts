@@ -1,15 +1,17 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import PMSCredential from '@/models/PMSCredential';
 import { NextResponse } from 'next/server';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { pharmacyId, pmsName, pmsUrl, username, password } = await req.json();
-
+    const body = await req.json();
+    const pharmacyId = await extensionPharmacyId(req, body);
     if (!pharmacyId) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+    const { pmsName, pmsUrl, username, password } = body;
 
     let cleanName = pmsName;
     if (!cleanName && pmsUrl) {

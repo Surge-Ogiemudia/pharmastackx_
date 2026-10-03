@@ -1,15 +1,14 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import SyncRequest from '@/models/SyncRequest';
 import { NextResponse } from 'next/server';
+import { getAdminFromRequest } from '@/lib/adminAuth';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function GET(req: Request) {
   try {
-    await dbConnect();
-    const { searchParams } = new URL(req.url);
-    const pharmacyId = searchParams.get('pharmacyId');
-
+    const pharmacyId = await extensionPharmacyId(req);
     if (!pharmacyId) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const doc = await SyncRequest.findOne({ pharmacyId });
@@ -25,13 +24,21 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await dbConnect();
     const body = await req.json();
-    const { pharmacyId, action } = body;
+    const { action } = body;
 
-    if (!pharmacyId) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID is required' }, { status: 400 });
+    // The extension acts for its own pharmacy; an admin (dashboard) names one.
+    let pharmacyId = await extensionPharmacyId(req, body);
+    if (!pharmacyId && (await getAdminFromRequest(req))) {
+      pharmacyId = typeof body.pharmacyId === 'string' ? body.pharmacyId : null;
+      if (!pharmacyId) {
+        return NextResponse.json({ success: false, error: 'Pharmacy ID is required' }, { status: 400 });
+      }
     }
+    if (!pharmacyId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    await dbConnect();
 
     if (action === 'trigger') {
       await SyncRequest.findOneAndUpdate(

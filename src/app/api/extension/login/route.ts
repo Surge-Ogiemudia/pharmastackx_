@@ -2,11 +2,16 @@ import { dbConnect } from '@/lib/mongoConnect';
 import User from '@/models/User';
 import PMSCredential from '@/models/PMSCredential';
 import { NextResponse } from 'next/server';
+import { issueDeviceKey, pruneDeviceKeys } from '@/lib/synkkDeviceKey';
+
+// Keys the extension holds per pharmacy (one per browser it is logged in on).
+const EXTENSION_KEY_LABEL = 'Chrome extension';
+const MAX_EXTENSION_KEYS = 5;
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { email, password } = await req.json();
+    const { email, password, terminalId } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 });
@@ -57,9 +62,15 @@ export async function POST(req: Request) {
       }
     });
 
+    // The extension sends this key with its calls; it identifies the pharmacy.
+    await pruneDeviceKeys(user._id, EXTENSION_KEY_LABEL, MAX_EXTENSION_KEYS);
+    const terminal = typeof terminalId === 'string' && terminalId.trim() ? `: ${terminalId.trim().slice(0, 40)}` : '';
+    const deviceKey = await issueDeviceKey(user._id, EXTENSION_KEY_LABEL + terminal);
+
     return NextResponse.json({
       success: true,
       message: 'Login successful',
+      deviceKey,
       pharmacyId: pharmacyId,
       pharmacyName: pharmacyName,
       pharmacy: {

@@ -1,14 +1,20 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import ExtensionSale from '@/models/ExtensionSale';
 import { NextResponse } from 'next/server';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { pharmacyId, terminalId, items, source } = await req.json();
+    const body = await req.json();
+    const pharmacyId = await extensionPharmacyId(req, body);
+    if (!pharmacyId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { terminalId, items, source } = body;
 
-    if (!pharmacyId || !Array.isArray(items)) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID and items array required' }, { status: 400 });
+    if (!Array.isArray(items)) {
+      return NextResponse.json({ success: false, error: 'Items array required' }, { status: 400 });
     }
 
     const parseNum = (val: any) => {

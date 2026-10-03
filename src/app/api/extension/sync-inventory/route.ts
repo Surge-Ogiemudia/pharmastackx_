@@ -3,14 +3,20 @@ import ExtensionInventory from '@/models/ExtensionInventory';
 import User from '@/models/User';
 import Product from '@/models/Product';
 import { NextResponse } from 'next/server';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { pharmacyId, rows } = await req.json();
+    const body = await req.json();
+    const pharmacyId = await extensionPharmacyId(req, body);
+    if (!pharmacyId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { rows } = body;
 
-    if (!pharmacyId || !Array.isArray(rows)) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID and rows array required' }, { status: 400 });
+    if (!Array.isArray(rows)) {
+      return NextResponse.json({ success: false, error: 'Rows array required' }, { status: 400 });
     }
 
     const parseNum = (val: any) => {

@@ -50,6 +50,23 @@ export async function issueDeviceKey(pharmacyId: unknown, label?: string): Promi
   return key;
 }
 
+/**
+ * Removes the oldest keys whose label starts with labelPrefix so that at most
+ * keep - 1 remain, making room for a new one without evicting other devices' keys.
+ */
+export async function pruneDeviceKeys(pharmacyId: unknown, labelPrefix: string, keep: number): Promise<void> {
+  const doc = await User.findById(pharmacyId).select('+synkkDeviceKeys').lean();
+  const matching = (doc?.synkkDeviceKeys || [])
+    .filter((k) => (k.label || '').startsWith(labelPrefix))
+    .sort((x, y) => new Date(x.createdAt || 0).getTime() - new Date(y.createdAt || 0).getTime());
+  const excess = matching.slice(0, Math.max(0, matching.length - (keep - 1)));
+  if (excess.length === 0) return;
+  await User.updateOne(
+    { _id: pharmacyId },
+    { $pull: { synkkDeviceKeys: { hash: { $in: excess.map((k) => k.hash) } } } },
+  );
+}
+
 export async function revokeDeviceKeys(pharmacyId: unknown): Promise<void> {
   await User.updateOne({ _id: pharmacyId }, { $unset: { synkkDeviceKeys: 1 } });
 }

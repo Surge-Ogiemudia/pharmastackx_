@@ -2,17 +2,18 @@ import { dbConnect } from '@/lib/mongoConnect';
 import ExtensionSearch from '@/models/ExtensionSearch';
 import { NextResponse } from 'next/server';
 import { getAdminFromRequest } from '@/lib/adminAuth';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
     const body = await req.json();
 
-    const { pharmacyId, searches, query, resultCount, terminalId, url } = body;
-
+    const pharmacyId = await extensionPharmacyId(req, body);
     if (!pharmacyId) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+    const { searches, query, resultCount, terminalId, url } = body;
 
     // Support both batch of searches and single search entry
     if (Array.isArray(searches) && searches.length > 0) {

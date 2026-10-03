@@ -2,14 +2,20 @@ import { dbConnect } from '@/lib/mongoConnect';
 import NetworkLog from '@/models/NetworkLog';
 import { NextResponse } from 'next/server';
 import { getAdminFromRequest } from '@/lib/adminAuth';
+import { extensionPharmacyId } from '@/lib/extensionAuth';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { pharmacyId, logs } = await req.json();
+    const body = await req.json();
+    const pharmacyId = await extensionPharmacyId(req, body);
+    if (!pharmacyId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { logs } = body;
 
-    if (!pharmacyId || !Array.isArray(logs)) {
-      return NextResponse.json({ success: false, error: 'Pharmacy ID and logs array required' }, { status: 400 });
+    if (!Array.isArray(logs)) {
+      return NextResponse.json({ success: false, error: 'Logs array required' }, { status: 400 });
     }
 
     const docs = logs.map(l => ({
