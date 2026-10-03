@@ -7,6 +7,8 @@ import Partner from '@/models/Partner';
 import jwt from 'jsonwebtoken';
 import { triggerNewOrder } from '@/lib/pusher';
 import { createConciergeSession } from '@/lib/concierge';
+import { bearerToken, pharmacyFromDeviceKey } from '@/lib/synkkDeviceKey';
+import { sessionCanUpdateOrder } from '@/lib/orderAccess';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -302,8 +304,11 @@ export async function PUT(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
   const isDesktopApp = authHeader === 'Bearer dev-token';
   
+  // A per-pharmacy Synkk device key may only update that pharmacy's orders.
+  const devicePharmacy = await pharmacyFromDeviceKey(bearerToken(req));
+
   const session = await getSession(req);
-  if (!session && !isDesktopApp) {
+  if (!session && !isDesktopApp && !devicePharmacy) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
@@ -313,6 +318,19 @@ export async function PUT(req: NextRequest) {
 
     if (!orderId || !status) {
       return NextResponse.json({ message: 'Order ID and status are required' }, { status: 400 });
+    }
+
+    if (!isDesktopApp) {
+      const existing = await Order.findById(orderId).select('businesses user').lean<{ businesses?: string[]; user?: unknown }>();
+      if (!existing) {
+        return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+      }
+      const allowed = devicePharmacy
+        ? !!devicePharmacy.businessName && (existing.businesses || []).includes(devicePharmacy.businessName)
+        : await sessionCanUpdateOrder(session as jwt.JwtPayload, existing);
+      if (!allowed) {
+        return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+      }
     }
 
     const updatedOrder = await Order.findByIdAndUpdate(

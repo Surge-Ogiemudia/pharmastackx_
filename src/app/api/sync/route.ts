@@ -5,6 +5,7 @@ import ExtensionInventory from '@/models/ExtensionInventory';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import { classifyProducts } from '@/lib/classificationEngine';
+import { pharmacyFromDeviceKey } from '@/lib/synkkDeviceKey';
 
 export const maxDuration = 60; // Increase Vercel timeout to 60 seconds to allow Gemini to finish classifying batch inventory
 
@@ -18,7 +19,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Missing Authorization header' }, { status: 401 });
     }
     const token = authHeader.split(' ')[1];
-    if (token !== (process.env.SYNKK_API_KEY || 'dev-token')) {
+    // A per-pharmacy device key identifies the pharmacy itself.
+    const devicePharmacy = await pharmacyFromDeviceKey(token);
+    if (!devicePharmacy && token !== (process.env.SYNKK_API_KEY || 'dev-token')) {
       return NextResponse.json({ success: false, error: 'Invalid API Key' }, { status: 403 });
     }
 
@@ -28,6 +31,9 @@ export async function POST(req: Request) {
 
     if (!pharmacy_slug || !Array.isArray(updates) || !Array.isArray(deletes)) {
       return NextResponse.json({ success: false, error: 'Invalid payload schema' }, { status: 400 });
+    }
+    if (devicePharmacy && pharmacy_slug !== devicePharmacy.slug) {
+      return NextResponse.json({ success: false, error: 'Device key does not belong to this pharmacy' }, { status: 403 });
     }
 
     // 3. Find the Pharmacy to get their businessName

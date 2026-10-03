@@ -106,6 +106,8 @@ export interface IUser extends Document {
     socialAi?: boolean;
     synkk?: boolean;
   };
+  // Fingerprints (SHA-256) of per-install Synkk desktop keys; see src/lib/synkkDeviceKey.ts
+  synkkDeviceKeys?: { hash: string; label?: string; createdAt?: Date; lastUsedAt?: Date }[];
   synkkMeta?: {
     posMethod?: string;
     posName?: string;
@@ -228,6 +230,16 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
     socialAi: { type: Boolean },
     synkk: { type: Boolean },
   },
+  synkkDeviceKeys: {
+    type: [new mongoose.Schema({
+      hash: { type: String, required: true },
+      label: { type: String },
+      createdAt: { type: Date, default: Date.now },
+      lastUsedAt: { type: Date },
+    }, { _id: false })],
+    select: false,
+    default: undefined,
+  },
   synkkMeta: {
     posMethod: { type: String },
     posName: { type: String },
@@ -261,6 +273,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
 });
 
 // This line creates the model
+userSchema.index({ 'synkkDeviceKeys.hash': 1 }, { sparse: true });
+
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', userSchema, 'users');
 
 export default User;

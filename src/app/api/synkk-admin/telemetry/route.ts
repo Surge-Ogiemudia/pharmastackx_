@@ -2,20 +2,23 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import SynkkLog from '@/models/SynkkLog';
 import User from '@/models/User';
+import { pharmacyFromDeviceKey } from '@/lib/synkkDeviceKey';
 
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     const validToken = process.env.SYNKK_API_KEY || 'dev-token';
-    
-    if (token !== validToken) {
+
+    await dbConnect();
+    // A per-pharmacy device key identifies the pharmacy itself.
+    const devicePharmacy = await pharmacyFromDeviceKey(token ?? null);
+    if (!devicePharmacy && token !== validToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
-    
-    await dbConnect();
+    if (devicePharmacy) body.pharmacySlug = devicePharmacy.slug;
     
     const logEntry = new SynkkLog(body);
     await logEntry.save();
