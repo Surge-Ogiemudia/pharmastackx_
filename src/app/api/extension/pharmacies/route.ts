@@ -6,13 +6,17 @@ import PMSCredential from '@/models/PMSCredential';
 import Product from '@/models/Product';
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 // Check if a string is a valid MongoDB ObjectId
 function isValidObjectId(id: string) {
   return mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await getAdminFromRequest(req))) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await dbConnect();
 

@@ -1,6 +1,7 @@
 import { dbConnect } from '@/lib/mongoConnect';
 import NetworkLog from '@/models/NetworkLog';
 import { NextResponse } from 'next/server';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 export async function POST(req: Request) {
   try {
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  if (!(await getAdminFromRequest(req))) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await dbConnect();
     const { searchParams } = new URL(req.url);

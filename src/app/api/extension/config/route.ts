@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongoConnect';
 import GlobalSettings from '@/models/GlobalSettings';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 
 export async function GET() {
   try {
@@ -22,6 +23,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await getAdminFromRequest(req))) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await dbConnect();
     const body = await req.json();

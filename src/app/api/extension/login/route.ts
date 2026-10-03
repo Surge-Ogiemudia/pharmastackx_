@@ -17,8 +17,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
     }
 
-    let isMatch = (user.password === password);
-    if (!isMatch && user.password) {
+    // Same rule as the main login: only hashed passwords are accepted.
+    let isMatch = false;
+    if (user.password) {
       try {
         const bcrypt = require('bcryptjs');
         isMatch = await bcrypt.compare(password, user.password);
