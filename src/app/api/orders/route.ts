@@ -10,6 +10,27 @@ import { createConciergeSession } from '@/lib/concierge';
 import { bearerToken, pharmacyFromDeviceKey } from '@/lib/synkkDeviceKey';
 import { sessionCanUpdateOrder } from '@/lib/orderAccess';
 
+// Status updates also come cross-origin from the Synkk web terminal (e.g.
+// pro.psx.ng calling www.psx.ng) with the session_token cookie, which needs
+// credentials:'include' on the client and a non-wildcard origin here. Same
+// approach as /api/pharmacy/terminal-modules.
+function terminalCorsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+  if (origin && /^https:\/\/([a-z0-9-]+\.)*psx\.ng$/.test(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Vary'] = 'Origin';
+  }
+  return headers;
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: terminalCorsHeaders(req.headers.get('origin')) });
+}
+
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 async function getSession(req: NextRequest) {
@@ -298,6 +319,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const res = await updateOrderStatus(req);
+  for (const [key, value] of Object.entries(terminalCorsHeaders(req.headers.get('origin')))) {
+    res.headers.set(key, value);
+  }
+  return res;
+}
+
+async function updateOrderStatus(req: NextRequest): Promise<NextResponse> {
   await dbConnect();
   
   // Allow Synkk Desktop app to bypass session via Bearer token
